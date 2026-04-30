@@ -97,7 +97,13 @@ async function handleWebviewMessage(msg) {
         name: f.name,
         path: f.uri.fsPath,
       }));
-      provider.postMessage({ type: "workspaces", folders });
+      // Auto-select the only workspace so the user can skip the project screen
+      if (folders.length === 1) {
+        workspaceRoot = folders[0].path;
+        provider.postMessage({ type: "workspace_confirmed", name: folders[0].name, path: folders[0].path });
+      } else {
+        provider.postMessage({ type: "workspaces", folders });
+      }
       break;
     }
 
