@@ -392,7 +392,8 @@ btnStop.addEventListener('click',()=>vscode.postMessage({type:'stop'}));
 prompt.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();btnSend.click();} });
 
 btnReset.addEventListener('click',()=>{
-  show(scrSelect); setStatus(''); btnLaunch.disabled=false;
+  show(scrSelect); setStatus('');
+  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
   vscode.postMessage({type:'reset'});
 });
 btnChangePr.addEventListener('click',()=>{
@@ -429,7 +430,8 @@ window.addEventListener('message',e=>{
       break;
 
     case 'bridge_failed':
-      show(scrSelect); setStatus(msg.text||'Bridge failed to start.',true); btnLaunch.disabled=false;
+      show(scrSelect); setStatus(msg.text||'Bridge failed to start.',true);
+      document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
       break;
 
     case 'workspaces':

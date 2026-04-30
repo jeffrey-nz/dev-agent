@@ -33,33 +33,44 @@ class AgentSession extends EventEmitter {
       const EVENT_TYPES = [
         "log", "system_message", "message_chunk", "message_complete",
         "phase_change", "turn_start", "thinking", "action_summary",
-        "tool_call_start", "tool_call_end", "session_end",
+        "tool_call_start", "tool_call_end",
       ];
       EVENT_TYPES.forEach((t) => eventBus.on(t, (d) => emit({ type: t, ...d })));
 
-      const client = getBridgeClient();
+      // Auto-finish when the agent asks for human feedback after completing a task.
+      // Sending empty string causes runCopilotFlow to exit the loop cleanly.
+      const onFeedback = ({ requestId }) => {
+        setImmediate(() => eventBus.emit(`ws_response_${requestId}`, { value: "" }));
+      };
+      eventBus.on("prompt_feedback", onFeedback);
 
-      // health check — should already be running, but guard anyway
+      const client = getBridgeClient();
       const alive = await client.health().then(() => true).catch(() => false);
       if (!alive) {
         emit({ type: "system_message", text: "Bridge is not responding.", level: "error" });
         return;
       }
 
-      const session = await client.createSession(this._provider, {});
       emit({ type: "system_message", text: `Session started with ${this._provider}.`, level: "info" });
 
       const { runCopilotFlow } = await import("agent-core/src/copilot/run/main/runCopilotFlow.js");
 
+      const sessionInfo = {
+        isNew: false,
+        status: "approved",
+        initialPrompt: this._prompt,
+        sessionId: `vscode-${Date.now()}`,
+      };
+
       await runCopilotFlow({
-        session,
+        providerName: this._provider,
         projectDir: this._workspaceRoot,
-        prompt: this._prompt,
+        sessionInfo,
         signal: this._abortController.signal,
       });
 
-      await client.closeSession(session.id).catch(() => {});
       EVENT_TYPES.forEach((t) => eventBus.removeAllListeners(t));
+      eventBus.off("prompt_feedback", onFeedback);
       emit({ type: "session_end" });
     } catch (err) {
       if (err.name !== "AbortError") {
