@@ -159,6 +159,13 @@ class DevAgentViewProvider {
 
   /* ── screen 4: chat ── */
   #scr-chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  #activity-bar{font-size:11px;color:var(--muted);padding:3px 12px;border-bottom:1px solid var(--border);
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px;
+                display:flex;align-items:center;gap:5px}
+  #activity-bar:empty{display:none}
+  .spinner{display:inline-block;width:8px;height:8px;border:1.5px solid var(--muted);
+           border-top-color:var(--focus);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
   .chat-header{display:flex;align-items:center;gap:6px;padding:7px 10px;
                border-bottom:1px solid var(--border);flex-wrap:wrap}
   .chat-badge{display:flex;align-items:center;gap:5px;padding:2px 7px;
@@ -229,6 +236,7 @@ class DevAgentViewProvider {
 
 <!-- screen 4: chat -->
 <div id="scr-chat" class="hidden">
+  <div id="activity-bar"></div>
   <div class="chat-header">
     <div class="chat-badge" title="AI providers">
       <span class="chat-badge-label">via</span>
@@ -376,6 +384,13 @@ function chooseFolder(f){
 document.getElementById('btn-browse').addEventListener('click',()=>{ vscode.postMessage({type:'browse_folder'}); });
 document.getElementById('btn-new-folder').addEventListener('click',()=>{ vscode.postMessage({type:'create_folder'}); });
 
+/* ── activity status bar ── */
+const activityBar = document.getElementById('activity-bar');
+function setActivityStatus(text){
+  if(!text){ activityBar.innerHTML=''; return; }
+  activityBar.innerHTML=\`<span class="spinner"></span><span>\${text}</span>\`;
+}
+
 /* ── chat ── */
 function addMsg(text,cls){
   if(!text) return;
@@ -385,10 +400,11 @@ function addMsg(text,cls){
 btnSend.addEventListener('click',()=>{
   const text=prompt.value.trim(); if(!text) return;
   addMsg(text,'user');
+  setActivityStatus('Starting…');
   vscode.postMessage({type:'start_task', prompt:text});
   prompt.value=''; btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
 });
-btnStop.addEventListener('click',()=>vscode.postMessage({type:'stop'}));
+btnStop.addEventListener('click',()=>{ setActivityStatus(''); vscode.postMessage({type:'stop'}); });
 prompt.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();btnSend.click();} });
 
 btnReset.addEventListener('click',()=>{
@@ -455,7 +471,6 @@ window.addEventListener('message',e=>{
       vscode.postMessage({type:'get_workspaces'});
       break;
 
-    case 'log':
     case 'message_complete':
       addMsg(msg.text||msg.content||'','agent'); break;
     case 'thinking':
@@ -464,8 +479,22 @@ window.addEventListener('message',e=>{
       addMsg(msg.text, msg.level==='error'?'error':'system');
       if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
+    case 'phase_change': {
+      const PHASE_LABELS = {
+        EXECUTION:'Working…', PLANNING:'Planning…', ORCHESTRATING:'Selecting pipeline…',
+        RESEARCHING:'Researching…', SCOPING:'Scoping…', CODING:'Writing code…',
+        VERIFYING:'Verifying…', REVIEWING:'Reviewing…',
+      };
+      const label = PHASE_LABELS[msg.phase] || msg.label || msg.phase;
+      setActivityStatus(label);
+      break;
+    }
+    case 'tool_call_start':
+      if(msg.tool && msg.paramsSummary){ setActivityStatus(msg.tool+': '+msg.paramsSummary.slice(0,50)); }
+      break;
     case 'session_end':
     case 'task_complete':
+      setActivityStatus('');
       addMsg('Done.','system');
       btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
       break;

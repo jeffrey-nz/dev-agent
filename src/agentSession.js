@@ -1,4 +1,7 @@
 const { EventEmitter } = require("events");
+const { execSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
 class AgentSession extends EventEmitter {
   constructor({ workspaceRoot, prompt, provider, onEvent, logger }) {
@@ -14,6 +17,24 @@ class AgentSession extends EventEmitter {
 
   isRunning() { return this._running; }
 
+  // Ensure the workspace has its own git repo so the agent never touches a
+  // parent repo. Also clears any stale index.lock that would block git ops.
+  _prepareWorkspace() {
+    fs.mkdirSync(this._workspaceRoot, { recursive: true });
+    const gitDir = path.join(this._workspaceRoot, ".git");
+    if (!fs.existsSync(gitDir)) {
+      execSync("git init", { cwd: this._workspaceRoot, stdio: "ignore" });
+      execSync('git commit --allow-empty -m "init"', {
+        cwd: this._workspaceRoot,
+        stdio: "ignore",
+        env: { ...process.env, GIT_AUTHOR_NAME: "Dev Agent", GIT_AUTHOR_EMAIL: "agent@local", GIT_COMMITTER_NAME: "Dev Agent", GIT_COMMITTER_EMAIL: "agent@local" },
+      });
+    }
+    // Remove stale lock if present
+    const lockFile = path.join(gitDir, "index.lock");
+    if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+  }
+
   async run() {
     this._running = true;
     this._abortController = new AbortController();
@@ -22,6 +43,8 @@ class AgentSession extends EventEmitter {
     this._logger?.info(`Prompt: ${this._prompt}`);
 
     try {
+      this._prepareWorkspace();
+
       const { getBridgeClient } = await import("agent-core/src/providers/api/bridgeClient.js");
       const { eventBus } = await import("agent-core/src/web/eventBus.js");
 
@@ -30,15 +53,23 @@ class AgentSession extends EventEmitter {
         this._onEvent?.(data);
       };
 
-      const EVENT_TYPES = [
-        "log", "system_message", "message_chunk", "message_complete",
+      // Strip ANSI codes from text before forwarding to the UI
+      const stripAnsi = (s) => typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s;
+
+      // Forward only the events the UI actually uses; skip raw 'log' (ANSI-heavy terminal output)
+      const FORWARDED_EVENTS = [
+        "system_message", "message_chunk", "message_complete",
         "phase_change", "turn_start", "thinking", "action_summary",
         "tool_call_start", "tool_call_end",
       ];
-      EVENT_TYPES.forEach((t) => eventBus.on(t, (d) => emit({ type: t, ...d })));
+      FORWARDED_EVENTS.forEach((t) => eventBus.on(t, (d) => {
+        const cleaned = { ...d, type: t };
+        if (cleaned.text) cleaned.text = stripAnsi(cleaned.text);
+        if (cleaned.content) cleaned.content = stripAnsi(cleaned.content);
+        emit(cleaned);
+      }));
 
-      // Auto-finish when the agent asks for human feedback after completing a task.
-      // Sending empty string causes runCopilotFlow to exit the loop cleanly.
+      // Auto-finish when the agent asks for human feedback — sending "" exits the loop
       const onFeedback = ({ requestId }) => {
         setImmediate(() => eventBus.emit(`ws_response_${requestId}`, { value: "" }));
       };
@@ -69,7 +100,7 @@ class AgentSession extends EventEmitter {
         signal: this._abortController.signal,
       });
 
-      EVENT_TYPES.forEach((t) => eventBus.removeAllListeners(t));
+      FORWARDED_EVENTS.forEach((t) => eventBus.removeAllListeners(t));
       eventBus.off("prompt_feedback", onFeedback);
       emit({ type: "session_end" });
     } catch (err) {
