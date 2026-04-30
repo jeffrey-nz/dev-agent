@@ -111,7 +111,6 @@ class AgentSession extends EventEmitter {
 
       handlers.forEach((handler, t) => eventBus.off(t, handler));
       eventBus.off("prompt_feedback", onFeedback);
-      emit({ type: "session_end" });
     } catch (err) {
       if (err.name !== "AbortError") {
         this._logger?.error(err.message);
@@ -120,6 +119,8 @@ class AgentSession extends EventEmitter {
     } finally {
       this._running = false;
       this._logger?.end();
+      // Always notify the UI so it can re-show the Send button
+      this._onEvent?.({ type: "session_end" });
     }
   }
 

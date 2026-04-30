@@ -404,7 +404,11 @@ btnSend.addEventListener('click',()=>{
   vscode.postMessage({type:'start_task', prompt:text});
   prompt.value=''; btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
 });
-btnStop.addEventListener('click',()=>{ setActivityStatus(''); vscode.postMessage({type:'stop'}); });
+btnStop.addEventListener('click',()=>{
+  setActivityStatus('');
+  btnStop.classList.add('hidden'); btnSend.classList.remove('hidden');
+  vscode.postMessage({type:'stop'});
+});
 prompt.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();btnSend.click();} });
 
 btnReset.addEventListener('click',()=>{
