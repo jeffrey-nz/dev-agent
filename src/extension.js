@@ -1,4 +1,6 @@
 const vscode = require("vscode");
+const path = require("path");
+const fs = require("fs");
 const { AgentSession } = require("./agentSession");
 const { DevAgentViewProvider } = require("./panel");
 const { SessionLogger } = require("./logger");
@@ -17,16 +19,14 @@ let provider = null;
 let agentSession = null;
 let logger = null;
 let selectedProviders = [];
+let workspaceRoot = null;   // set when user confirms a project
+let extensionCtx = null;
 
 function activate(context) {
-  const workspaceRoot =
-    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? context.extensionPath;
-
+  extensionCtx = context;
   logger = new SessionLogger(context.extensionPath);
 
-  provider = new DevAgentViewProvider(context, (msg) =>
-    handleWebviewMessage(msg, workspaceRoot),
-  );
+  provider = new DevAgentViewProvider(context, handleWebviewMessage);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -90,14 +90,87 @@ async function handleWebviewMessage(msg) {
       await bridge.skipProvider();
       break;
 
+    // ── Project selection ────────────────────────────────────────────────────
+
+    case "get_workspaces": {
+      const folders = (vscode.workspace.workspaceFolders ?? []).map((f) => ({
+        name: f.name,
+        path: f.uri.fsPath,
+      }));
+      provider.postMessage({ type: "workspaces", folders });
+      break;
+    }
+
+    case "browse_folder": {
+      const uris = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: "Select project folder",
+        title: "Select project folder",
+      });
+      if (uris?.[0]) {
+        const p = uris[0].fsPath;
+        provider.postMessage({ type: "folder_chosen", folder: { name: path.basename(p), path: p } });
+      }
+      break;
+    }
+
+    case "create_folder": {
+      const name = await vscode.window.showInputBox({
+        prompt: "New folder name",
+        placeHolder: "my-project",
+        validateInput: (v) =>
+          v.trim() && /^[^<>:"/\\|?*]+$/.test(v.trim()) ? null : "Enter a valid folder name",
+      });
+      if (!name) break;
+
+      const parentUris = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: "Choose parent location",
+        title: "Where should the new folder be created?",
+      });
+      if (!parentUris?.[0]) break;
+
+      const newPath = path.join(parentUris[0].fsPath, name.trim());
+      try {
+        fs.mkdirSync(newPath, { recursive: true });
+        provider.postMessage({ type: "folder_chosen", folder: { name: name.trim(), path: newPath } });
+
+        // Optionally open the new folder as a workspace
+        await vscode.commands.executeCommand(
+          "vscode.openFolder",
+          vscode.Uri.file(newPath),
+          { forceNewWindow: false },
+        );
+      } catch (err) {
+        provider.postMessage({ type: "system_message", text: `Could not create folder: ${err.message}`, level: "error" });
+      }
+      break;
+    }
+
+    case "confirm_workspace": {
+      workspaceRoot = msg.path;
+      provider.postMessage({ type: "workspace_confirmed", name: msg.name, path: msg.path });
+      break;
+    }
+
+    // ── Chat ─────────────────────────────────────────────────────────────────
+
     case "start_task": {
       if (agentSession?.isRunning()) {
         provider.postMessage({ type: "system_message", text: "Already running.", level: "warn" });
         return;
       }
+      const root = workspaceRoot
+        ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+        ?? process.cwd();
       const chosenProvider = msg.provider || selectedProviders[0] || "copilot";
+
       agentSession = new AgentSession({
-        workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd(),
+        workspaceRoot: root,
         prompt: msg.prompt,
         provider: chosenProvider,
         onEvent: (e) => provider.postMessage(e),
@@ -116,6 +189,12 @@ async function handleWebviewMessage(msg) {
     case "reset":
       agentSession?.stop();
       selectedProviders = [];
+      workspaceRoot = null;
+      break;
+
+    case "change_project":
+      // Return to project selection without restarting the bridge
+      provider.postMessage({ type: "show_project_screen" });
       break;
   }
 }
