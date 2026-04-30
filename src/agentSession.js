@@ -91,6 +91,10 @@ class AgentSession extends EventEmitter {
         status: "approved",
         initialPrompt: this._prompt,
         sessionId: `vscode-${Date.now()}`,
+        // Skip automatic npm-test verification + rollback — the user controls
+        // when to run tests. Rollback on a missing test script would destroy
+        // a perfectly good agent output silently.
+        _benchmarkRun: true,
       };
 
       await runCopilotFlow({
