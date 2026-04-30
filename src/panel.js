@@ -391,6 +391,9 @@ function setActivityStatus(text){
   activityBar.innerHTML=\`<span class="spinner"></span><span>\${text}</span>\`;
 }
 
+// Track current phase so we can suppress verbose planning output in the chat
+let currentPhase = '';
+
 /* ── chat ── */
 function addMsg(text,cls){
   if(!text) return;
@@ -477,7 +480,9 @@ window.addEventListener('message',e=>{
 
     case 'message_complete': {
       const raw=msg.text||msg.content||'';
-      // Show a concise preview — full AI turns can be very long
+      // Suppress verbose planning/research documents — they're internal and very long
+      const silentPhases = new Set(['PLANNING','ORCHESTRATING','RESEARCHING','SCOPING','REVIEWING']);
+      if(silentPhases.has(currentPhase)) break;
       const preview=raw.length>600?raw.slice(0,600)+'…':raw;
       if(preview.trim()) addMsg(preview,'agent');
       break;
@@ -487,6 +492,7 @@ window.addEventListener('message',e=>{
       if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
     case 'phase_change': {
+      currentPhase = msg.phase || '';
       const PHASE_LABELS = {
         EXECUTION:'Working…', PLANNING:'Planning…', ORCHESTRATING:'Selecting pipeline…',
         RESEARCHING:'Researching codebase…', SCOPING:'Scoping task…',
