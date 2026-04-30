@@ -8,7 +8,11 @@ class SessionLogger {
   }
 
   start(meta = {}) {
-    // Overwrite the previous session log every time
+    // Close any previously open fd before overwriting the log
+    if (this._fd !== null) {
+      try { fs.closeSync(this._fd); } catch {}
+      this._fd = null;
+    }
     this._fd = fs.openSync(this._path, "w");
     this._write(`=== Dev Agent Session ===`);
     this._write(`Started: ${new Date().toISOString()}`);

@@ -62,12 +62,17 @@ class AgentSession extends EventEmitter {
         "system_message", "message_chunk", "message_complete",
         "phase_change", "tool_call_start", "tool_call_end",
       ];
-      FORWARDED_EVENTS.forEach((t) => eventBus.on(t, (d) => {
-        const cleaned = { ...d, type: t };
-        if (cleaned.text) cleaned.text = stripAnsi(cleaned.text);
-        if (cleaned.content) cleaned.content = stripAnsi(cleaned.content);
-        emit(cleaned);
-      }));
+      const handlers = new Map();
+      FORWARDED_EVENTS.forEach((t) => {
+        const handler = (d) => {
+          const cleaned = { ...d, type: t };
+          if (cleaned.text) cleaned.text = stripAnsi(cleaned.text);
+          if (cleaned.content) cleaned.content = stripAnsi(cleaned.content);
+          emit(cleaned);
+        };
+        handlers.set(t, handler);
+        eventBus.on(t, handler);
+      });
 
       // Auto-finish when the agent asks for human feedback — sending "" exits the loop
       const onFeedback = ({ requestId }) => {
@@ -104,7 +109,7 @@ class AgentSession extends EventEmitter {
         signal: this._abortController.signal,
       });
 
-      FORWARDED_EVENTS.forEach((t) => eventBus.removeAllListeners(t));
+      handlers.forEach((handler, t) => eventBus.off(t, handler));
       eventBus.off("prompt_feedback", onFeedback);
       emit({ type: "session_end" });
     } catch (err) {
