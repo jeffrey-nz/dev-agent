@@ -471,26 +471,39 @@ window.addEventListener('message',e=>{
       vscode.postMessage({type:'get_workspaces'});
       break;
 
-    case 'message_complete':
-      addMsg(msg.text||msg.content||'','agent'); break;
+    case 'message_complete': {
+      const raw=msg.text||msg.content||'';
+      // Show a concise preview — full AI turns can be very long
+      const preview=raw.length>600?raw.slice(0,600)+'…':raw;
+      if(preview.trim()) addMsg(preview,'agent');
+      break;
+    }
+    case 'action_summary':
+      if(msg.text&&msg.text.trim()) addMsg(msg.text,'agent'); break;
     case 'thinking':
-      addMsg(msg.text||'Thinking…','thinking'); break;
+      if(msg.text&&msg.text.trim()) addMsg(msg.text,'thinking'); break;
     case 'system_message':
       addMsg(msg.text, msg.level==='error'?'error':'system');
       if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
     case 'phase_change': {
       const PHASE_LABELS = {
-        EXECUTION:'Working…', PLANNING:'Planning…', ORCHESTRATING:'Selecting pipeline…',
-        RESEARCHING:'Researching…', SCOPING:'Scoping…', CODING:'Writing code…',
-        VERIFYING:'Verifying…', REVIEWING:'Reviewing…',
+        EXECUTION:'Working…', PLANNING:'Planning intent…', ORCHESTRATING:'Selecting pipeline…',
+        RESEARCHING:'Researching codebase…', SCOPING:'Scoping task…', CODING:'Writing code…',
+        VERIFYING:'Verifying changes…', REVIEWING:'Reviewing…',
       };
       const label = PHASE_LABELS[msg.phase] || msg.label || msg.phase;
       setActivityStatus(label);
+      // Emit a lightweight chat message for major phase transitions
+      const chatPhases = { EXECUTION:'Starting task…', CODING:'Writing code…', VERIFYING:'Verifying…' };
+      if(chatPhases[msg.phase]) addMsg(chatPhases[msg.phase],'system');
       break;
     }
     case 'tool_call_start':
-      if(msg.tool && msg.paramsSummary){ setActivityStatus(msg.tool+': '+msg.paramsSummary.slice(0,50)); }
+      if(msg.tool && msg.paramsSummary){ setActivityStatus(msg.tool+': '+msg.paramsSummary.slice(0,60)); }
+      break;
+    case 'tool_call_end':
+      if(msg.isError){ addMsg('Tool error: '+msg.tool,'error'); }
       break;
     case 'session_end':
     case 'task_complete':
