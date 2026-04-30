@@ -70,7 +70,10 @@ async function handleWebviewMessage(msg) {
         provider.postMessage({ type: "setup_state", state });
       });
 
-      if (!ready) {
+      if (ready) {
+        const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
+        provider.postMessage({ type: "bridge_ready", providerLabel: label });
+      } else {
         provider.postMessage({
           type: "bridge_failed",
           text: "Bridge did not become ready within 2 minutes. Check the terminal for errors.",
