@@ -478,29 +478,25 @@ window.addEventListener('message',e=>{
       if(preview.trim()) addMsg(preview,'agent');
       break;
     }
-    case 'action_summary':
-      if(msg.text&&msg.text.trim()) addMsg(msg.text,'agent'); break;
-    case 'thinking':
-      if(msg.text&&msg.text.trim()) addMsg(msg.text,'thinking'); break;
     case 'system_message':
       addMsg(msg.text, msg.level==='error'?'error':'system');
       if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
     case 'phase_change': {
       const PHASE_LABELS = {
-        EXECUTION:'Working…', PLANNING:'Planning intent…', ORCHESTRATING:'Selecting pipeline…',
-        RESEARCHING:'Researching codebase…', SCOPING:'Scoping task…', CODING:'Writing code…',
+        EXECUTION:'Working…', PLANNING:'Planning…', ORCHESTRATING:'Selecting pipeline…',
+        RESEARCHING:'Researching codebase…', SCOPING:'Scoping task…',
         VERIFYING:'Verifying changes…', REVIEWING:'Reviewing…',
+        DEBUGGING:'Debugging…', WRITING:'Writing…',
       };
       const label = PHASE_LABELS[msg.phase] || msg.label || msg.phase;
       setActivityStatus(label);
-      // Emit a lightweight chat message for major phase transitions
-      const chatPhases = { EXECUTION:'Starting task…', CODING:'Writing code…', VERIFYING:'Verifying…' };
+      const chatPhases = { EXECUTION:'Starting task…', VERIFYING:'Verifying…', DEBUGGING:'Debugging…' };
       if(chatPhases[msg.phase]) addMsg(chatPhases[msg.phase],'system');
       break;
     }
     case 'tool_call_start':
-      if(msg.tool && msg.paramsSummary){ setActivityStatus(msg.tool+': '+msg.paramsSummary.slice(0,60)); }
+      if(msg.tool){ setActivityStatus(msg.paramsSummary ? msg.tool+': '+msg.paramsSummary.slice(0,60) : msg.tool); }
       break;
     case 'tool_call_end':
       if(msg.isError){ addMsg('Tool error: '+msg.tool,'error'); }
