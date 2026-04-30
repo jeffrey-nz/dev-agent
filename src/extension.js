@@ -1,16 +1,33 @@
 const vscode = require("vscode");
 const { AgentSession } = require("./agentSession");
 const { DevAgentViewProvider } = require("./panel");
+const { SessionLogger } = require("./logger");
+const bridge = require("./bridgeLauncher");
+
+// Human-readable label for the provider badge in chat
+const PROVIDER_LABELS = {
+  copilot:    "Microsoft Copilot",
+  copilot365: "Microsoft 365 Copilot",
+  chatgpt:    "ChatGPT",
+  gemini:     "Google Gemini",
+  deepseek:   "DeepSeek",
+  grok:       "xAI Grok",
+};
 
 let provider = null;
 let agentSession = null;
+let logger = null;
+let selectedProviders = [];
 
 function activate(context) {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+  const workspaceRoot =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? context.extensionPath;
 
-  provider = new DevAgentViewProvider(context, (event) => {
-    handlePanelEvent(event, workspaceRoot);
-  });
+  logger = new SessionLogger(context.extensionPath);
+
+  provider = new DevAgentViewProvider(context, (msg) =>
+    handleWebviewMessage(msg, workspaceRoot, context),
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -24,10 +41,8 @@ function activate(context) {
     }),
 
     vscode.commands.registerCommand("devAgent.ask", async () => {
-      const prompt = await vscode.window.showInputBox({ prompt: "Ask Dev Agent" });
-      if (prompt) {
-        handlePanelEvent({ type: "start_task", prompt }, workspaceRoot);
-      }
+      const text = await vscode.window.showInputBox({ prompt: "Ask Dev Agent" });
+      if (text) handleWebviewMessage({ type: "start_task", prompt: text }, workspaceRoot, context);
     }),
 
     vscode.commands.registerCommand("devAgent.stop", () => {
@@ -36,32 +51,79 @@ function activate(context) {
   );
 }
 
-async function handlePanelEvent(event, workspaceRoot) {
-  if (event.type === "start_task") {
-    if (agentSession?.isRunning()) {
-      provider?.postMessage({ type: "system_message", text: "Agent is already running.", level: "warn" });
-      return;
+async function handleWebviewMessage(msg, workspaceRoot, context) {
+  switch (msg.type) {
+
+    case "check_bridge": {
+      const running = await bridge.isRunning();
+      if (running) {
+        const label = selectedProviders.length
+          ? selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ")
+          : "already running";
+        provider.postMessage({ type: "bridge_already_running", providerLabel: label });
+      }
+      // If not running, the setup screen stays — nothing to do
+      break;
     }
 
-    agentSession = new AgentSession({
-      workspaceRoot,
-      prompt: event.prompt,
-      provider: event.provider || "copilot",
-      onEvent: (e) => provider?.postMessage(e),
-    });
+    case "launch_bridge": {
+      selectedProviders = msg.providers ?? [];
+      const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ");
 
-    try {
-      await agentSession.run();
-    } catch (err) {
-      provider?.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
+      provider.postMessage({ type: "bridge_starting", text: "Opening browser automation…" });
+      bridge.launch(selectedProviders);
+
+      const ready = await bridge.waitForReady((text) => {
+        provider.postMessage({ type: "bridge_starting", text });
+      });
+
+      if (ready) {
+        provider.postMessage({ type: "bridge_ready", providerLabel: label });
+      } else {
+        provider.postMessage({
+          type: "bridge_failed",
+          text: "Bridge did not start within 60 s. Check the terminal for errors.",
+        });
+      }
+      break;
     }
-  } else if (event.type === "stop") {
-    agentSession?.stop();
+
+    case "start_task": {
+      if (agentSession?.isRunning()) {
+        provider.postMessage({ type: "system_message", text: "Already running.", level: "warn" });
+        return;
+      }
+
+      const chosenProvider = msg.provider || selectedProviders[0] || "copilot";
+
+      agentSession = new AgentSession({
+        workspaceRoot,
+        prompt: msg.prompt,
+        provider: chosenProvider,
+        onEvent: (e) => provider.postMessage(e),
+        logger,
+      });
+
+      agentSession.run().catch((err) => {
+        provider.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
+      });
+      break;
+    }
+
+    case "stop":
+      agentSession?.stop();
+      break;
+
+    case "reset":
+      agentSession?.stop();
+      selectedProviders = [];
+      break;
   }
 }
 
 function deactivate() {
   agentSession?.stop();
+  logger?.end();
 }
 
 module.exports = { activate, deactivate };
