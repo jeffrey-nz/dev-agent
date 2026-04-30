@@ -1,28 +1,31 @@
 const vscode = require("vscode");
 const { AgentSession } = require("./agentSession");
-const { DevAgentPanel } = require("./panel");
+const { DevAgentViewProvider } = require("./panel");
 
-let panel = null;
+let provider = null;
 let agentSession = null;
 
 function activate(context) {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
 
+  provider = new DevAgentViewProvider(context, (event) => {
+    handlePanelEvent(event, workspaceRoot);
+  });
+
   context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      DevAgentViewProvider.viewType,
+      provider,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+
     vscode.commands.registerCommand("devAgent.start", () => {
-      if (!panel) {
-        panel = new DevAgentPanel(context, workspaceRoot, (event) => {
-          handlePanelEvent(event, workspaceRoot);
-        });
-        panel.onDispose(() => { panel = null; });
-      } else {
-        panel.reveal();
-      }
+      vscode.commands.executeCommand("devAgent.mainView.focus");
     }),
 
     vscode.commands.registerCommand("devAgent.ask", async () => {
       const prompt = await vscode.window.showInputBox({ prompt: "Ask Dev Agent" });
-      if (prompt && panel) {
+      if (prompt) {
         handlePanelEvent({ type: "start_task", prompt }, workspaceRoot);
       }
     }),
@@ -31,15 +34,12 @@ function activate(context) {
       agentSession?.stop();
     }),
   );
-
-  // Auto-open the panel on startup
-  vscode.commands.executeCommand("devAgent.start");
 }
 
 async function handlePanelEvent(event, workspaceRoot) {
   if (event.type === "start_task") {
     if (agentSession?.isRunning()) {
-      panel?.postMessage({ type: "system_message", text: "Agent is already running.", level: "warn" });
+      provider?.postMessage({ type: "system_message", text: "Agent is already running.", level: "warn" });
       return;
     }
 
@@ -47,13 +47,13 @@ async function handlePanelEvent(event, workspaceRoot) {
       workspaceRoot,
       prompt: event.prompt,
       provider: event.provider || "copilot",
-      onEvent: (e) => panel?.postMessage(e),
+      onEvent: (e) => provider?.postMessage(e),
     });
 
     try {
       await agentSession.run();
     } catch (err) {
-      panel?.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
+      provider?.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
     }
   } else if (event.type === "stop") {
     agentSession?.stop();
@@ -62,7 +62,6 @@ async function handlePanelEvent(event, workspaceRoot) {
 
 function deactivate() {
   agentSession?.stop();
-  panel?.dispose();
 }
 
 module.exports = { activate, deactivate };

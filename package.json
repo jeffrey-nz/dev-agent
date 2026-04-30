@@ -49,7 +49,8 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "package": "vsce package",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "sync-modules": "rsync -a --delete ../agent-core/src/ node_modules/agent-core/src/ && rsync -a --delete ../browser-ai-bridge/src/ node_modules/browser-ai-bridge/src/"
   },
   "dependencies": {
     "agent-core": "github:jeffrey-nz/agent-core",

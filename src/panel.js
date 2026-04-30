@@ -2,60 +2,48 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 
-class DevAgentPanel {
-  constructor(context, workspaceRoot, onMessage) {
-    this._disposables = [];
+class DevAgentViewProvider {
+  static viewType = "devAgent.mainView";
+
+  constructor(context, onMessage) {
+    this._context = context;
     this._onMessage = onMessage;
+    this._view = null;
+  }
 
-    this._panel = vscode.window.createWebviewPanel(
-      "devAgent",
-      "Dev Agent",
-      vscode.ViewColumn.Beside,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(context.extensionPath, "webview")),
-        ],
-      },
-    );
+  resolveWebviewView(webviewView) {
+    this._view = webviewView;
 
-    this._panel.webview.html = this._getHtml(context.extensionPath);
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.file(path.join(this._context.extensionPath, "webview")),
+      ],
+    };
 
-    this._panel.webview.onDidReceiveMessage(
+    webviewView.webview.html = this._getHtml();
+
+    webviewView.webview.onDidReceiveMessage(
       (msg) => this._onMessage(msg),
       null,
-      this._disposables,
+      this._context.subscriptions,
     );
 
-    this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
+    webviewView.onDidDispose(() => {
+      this._view = null;
+    });
   }
 
   postMessage(message) {
-    this._panel?.webview.postMessage(message);
+    this._view?.webview.postMessage(message);
   }
 
   reveal() {
-    this._panel?.reveal();
+    this._view?.show(true);
   }
 
-  onDispose(fn) {
-    this._onDisposeCallback = fn;
-  }
-
-  _dispose() {
-    this._disposables.forEach((d) => d.dispose());
-    this._disposables = [];
-    this._panel = null;
-    this._onDisposeCallback?.();
-  }
-
-  dispose() {
-    this._panel?.dispose();
-  }
-
-  _getHtml(extensionPath) {
-    const htmlPath = path.join(extensionPath, "webview", "index.html");
+  _getHtml() {
+    const htmlPath = path.join(this._context.extensionPath, "webview", "index.html");
     if (fs.existsSync(htmlPath)) {
       return fs.readFileSync(htmlPath, "utf8");
     }
@@ -145,4 +133,4 @@ class DevAgentPanel {
   }
 }
 
-module.exports = { DevAgentPanel };
+module.exports = { DevAgentViewProvider };
