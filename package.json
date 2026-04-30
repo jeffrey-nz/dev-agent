@@ -1,0 +1,63 @@
+{
+  "name": "dev-agent",
+  "displayName": "Dev Agent",
+  "description": "Embedded AI code editor powered by browser-ai-bridge — runs the full agent pipeline inside VS Code.",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20.0.0"
+  },
+  "categories": ["AI", "Other"],
+  "activationEvents": ["onCommand:devAgent.start", "onStartupFinished"],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devAgent.start",
+        "title": "Dev Agent: Open"
+      },
+      {
+        "command": "devAgent.ask",
+        "title": "Dev Agent: Ask"
+      },
+      {
+        "command": "devAgent.stop",
+        "title": "Dev Agent: Stop"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "devAgent",
+          "title": "Dev Agent",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "devAgent": [
+        {
+          "type": "webview",
+          "id": "devAgent.mainView",
+          "name": "Dev Agent"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "package": "vsce package",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "agent-core": "github:jeffrey-nz/agent-core",
+    "browser-ai-bridge": "github:jeffrey-nz/browser-ai-bridge"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.0",
+    "@vscode/vsce": "^3.0.0"
+  }
+}
