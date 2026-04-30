@@ -42,11 +42,15 @@ class AgentSession extends EventEmitter {
     this._logger?.start({ provider: this._provider, workspace: this._workspaceRoot });
     this._logger?.info(`Prompt: ${this._prompt}`);
 
+    let handlers = new Map();
+    let onFeedback = null;
+    let eventBus = null;
+
     try {
       this._prepareWorkspace();
 
       const { getBridgeClient } = await import("agent-core/src/providers/api/bridgeClient.js");
-      const { eventBus } = await import("agent-core/src/web/eventBus.js");
+      ({ eventBus } = await import("agent-core/src/web/eventBus.js"));
 
       const emit = (data) => {
         this._logger?.event(data.type, data);
@@ -62,7 +66,6 @@ class AgentSession extends EventEmitter {
         "system_message", "message_chunk", "message_complete",
         "phase_change", "tool_call_start", "tool_call_end",
       ];
-      const handlers = new Map();
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {
           const cleaned = { ...d, type: t };
@@ -75,7 +78,7 @@ class AgentSession extends EventEmitter {
       });
 
       // Auto-finish when the agent asks for human feedback — sending "" exits the loop
-      const onFeedback = ({ requestId }) => {
+      onFeedback = ({ requestId }) => {
         setImmediate(() => eventBus.emit(`ws_response_${requestId}`, { value: "" }));
       };
       eventBus.on("prompt_feedback", onFeedback);
@@ -108,15 +111,17 @@ class AgentSession extends EventEmitter {
         sessionInfo,
         signal: this._abortController.signal,
       });
-
-      handlers.forEach((handler, t) => eventBus.off(t, handler));
-      eventBus.off("prompt_feedback", onFeedback);
     } catch (err) {
       if (err.name !== "AbortError") {
         this._logger?.error(err.message);
         this._onEvent?.({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
       }
     } finally {
+      // Clean up eventBus listeners regardless of how we exited
+      if (eventBus) {
+        handlers.forEach((handler, t) => eventBus.off(t, handler));
+        if (onFeedback) eventBus.off("prompt_feedback", onFeedback);
+      }
       this._running = false;
       this._logger?.end();
       // Always notify the UI so it can re-show the Send button
