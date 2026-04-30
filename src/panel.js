@@ -41,11 +41,8 @@ class DevAgentViewProvider {
   }
 
   _buildHtml() {
-    const providerRows = PROVIDERS.map((p) => `
-      <label class="prow" data-id="${p.id}">
-        <input type="checkbox" name="provider" value="${p.id}" checked />
-        <span class="prow-label">${p.label}</span>
-      </label>`).join("");
+    const providerCards = PROVIDERS.map((p) => `
+      <button class="provider-btn" data-id="${p.id}">${p.label}</button>`).join("");
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -101,18 +98,12 @@ class DevAgentViewProvider {
   /* ── screen 1: provider select ── */
   #scr-select{flex:1;display:flex;flex-direction:column;padding:14px;gap:12px;overflow-y:auto}
   #scr-select h2{font-size:13px;font-weight:600}
-
-  .plist{display:flex;flex-direction:column;gap:5px}
-  .prow-all{display:flex;align-items:center;gap:8px;padding:4px 0 8px;
-            border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);cursor:pointer}
-  .prow{display:flex;align-items:center;gap:9px;padding:6px 10px;
-        border:1px solid var(--border);border-radius:var(--radius);
-        cursor:pointer;user-select:none;transition:border-color .1s,background .1s}
-  .prow:hover{background:var(--hover-bg)}
-  .prow.on{border-color:var(--focus);background:var(--sel-bg)}
-  .prow input{cursor:pointer;accent-color:var(--btn-bg)}
-  .prow-label{font-size:12px;font-weight:500}
-  .select-footer{display:flex;flex-direction:column;gap:6px}
+  .provider-list{display:flex;flex-direction:column;gap:6px}
+  .provider-btn{width:100%;text-align:left;padding:9px 13px;background:transparent;
+                border:1px solid var(--border);border-radius:var(--radius);
+                color:var(--fg);font-size:12px;font-weight:500;
+                transition:border-color .1s,background .1s}
+  .provider-btn:hover{background:var(--hover-bg);border-color:var(--focus)}
   #sel-status{font-size:12px;color:var(--muted);min-height:16px;text-align:center}
   #sel-status.err{color:var(--err)}
 
@@ -198,18 +189,12 @@ class DevAgentViewProvider {
 <div id="scr-select">
   <div>
     <h2>Dev Agent</h2>
-    <p style="margin-top:5px">Choose which AI providers to open in Chrome, then launch the automation.</p>
+    <p style="margin-top:5px">Choose an AI provider to start.</p>
   </div>
-  <div class="plist">
-    <label class="prow-all">
-      <input type="checkbox" id="chk-all" checked/> All providers
-    </label>
-    ${providerRows}
+  <div class="provider-list">
+    ${providerCards}
   </div>
-  <div class="select-footer">
-    <div id="sel-status"></div>
-    <button class="btn-primary" id="btn-launch">Launch bridge</button>
-  </div>
+  <div id="sel-status"></div>
 </div>
 
 <!-- screen 2: per-provider confirmation -->
@@ -274,8 +259,6 @@ const scrSelect  = document.getElementById('scr-select');
 const scrConfirm = document.getElementById('scr-confirm');
 const scrProject = document.getElementById('scr-project');
 const scrChat    = document.getElementById('scr-chat');
-const chkAll     = document.getElementById('chk-all');
-const btnLaunch  = document.getElementById('btn-launch');
 const selStatus  = document.getElementById('sel-status');
 const pcardList  = document.getElementById('pcard-list');
 const projBody   = document.getElementById('proj-body');
@@ -287,8 +270,6 @@ const btnReset   = document.getElementById('btn-reset');
 const btnChangePr= document.getElementById('btn-change-proj');
 const chatProv   = document.getElementById('chat-provider');
 const chatProj   = document.getElementById('chat-project');
-const provChecks = document.querySelectorAll('input[name="provider"]');
-const provRows   = document.querySelectorAll('.prow');
 
 const ALL_SCRS = [scrSelect, scrConfirm, scrProject, scrChat];
 
@@ -296,26 +277,14 @@ const ALL_SCRS = [scrSelect, scrConfirm, scrProject, scrChat];
 function show(scr){ ALL_SCRS.forEach(s=>s.classList.add('hidden')); scr.classList.remove('hidden'); }
 function setStatus(t,isErr=false){ selStatus.textContent=t; selStatus.className=isErr?'err':''; }
 
-/* ── provider checkboxes ── */
-function syncAllChk(){
-  const any=[...provChecks].some(c=>c.checked), all=[...provChecks].every(c=>c.checked);
-  chkAll.checked=all; chkAll.indeterminate=any&&!all;
-}
-function updateRow(row){ row.classList.toggle('on', row.querySelector('input').checked); }
-provRows.forEach(row=>{
-  updateRow(row);
-  row.addEventListener('click',()=>{ const c=row.querySelector('input'); c.checked=!c.checked; updateRow(row); syncAllChk(); });
-  row.querySelector('input').addEventListener('click',e=>e.stopPropagation());
-});
-chkAll.addEventListener('change',()=>{ provChecks.forEach(c=>{c.checked=chkAll.checked}); provRows.forEach(updateRow); });
-function selectedProviders(){ return [...provChecks].filter(c=>c.checked).map(c=>c.value); }
-
-btnLaunch.addEventListener('click',()=>{
-  const providers=selectedProviders();
-  if(!providers.length){ setStatus('Select at least one provider.',true); return; }
-  btnLaunch.disabled=true;
-  setStatus('Launching browser automation…');
-  vscode.postMessage({type:'launch_bridge', providers});
+/* ── provider selection ── */
+document.querySelectorAll('.provider-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.dataset.id;
+    document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=true);
+    setStatus('Launching browser automation…');
+    vscode.postMessage({type:'launch_bridge', providers:[id]});
+  });
 });
 
 /* ── provider cards (screen 2) ── */
