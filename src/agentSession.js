@@ -61,9 +61,9 @@ class AgentSession extends EventEmitter {
       const stripAnsi = (s) => typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s;
 
       // Forward only the events the UI actually uses; skip raw 'log' (ANSI-heavy terminal output).
-      // Note: turn_start / thinking / action_summary are not emitted by agent-core.
+      // message_chunk is not forwarded — the panel only shows message_complete.
       const FORWARDED_EVENTS = [
-        "system_message", "message_chunk", "message_complete",
+        "system_message", "message_complete",
         "phase_change", "tool_call_start", "tool_call_end",
       ];
       FORWARDED_EVENTS.forEach((t) => {
