@@ -213,37 +213,16 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 
 /* ── screen 1: provider ── */
 #scr-select{flex:1;display:flex;flex-direction:column;align-items:center;
-            padding:40px 24px 24px;gap:0;overflow-y:auto}
-.sel-inner{width:100%;max-width:500px}
+            padding:32px 24px 24px;gap:0;overflow-y:auto}
+.sel-inner{width:100%;max-width:480px}
+.sel-hero{text-align:center;margin-bottom:28px}
+.sel-logo{font-size:36px;margin-bottom:10px}
 #scr-select h2{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
-#scr-select .sub{font-size:13px;color:var(--mu);margin-bottom:18px;line-height:1.5}
-
-/* pre-flight status bar */
-#sel-preflight{
-  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r);
-  border:1px solid var(--bd);font-size:12px;margin-bottom:18px;
-  background:color-mix(in srgb,var(--fg) 3%,transparent);
-  transition:border-color .2s,background .2s;
-}
-.spf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}
-.spf-dot.checking{background:var(--mu);opacity:.4;animation:pulse .9s infinite}
-.spf-dot.running{background:var(--ck)}
-.spf-dot.idle{background:var(--mu);opacity:.4}
-.spf-dot.error{background:var(--err)}
-#spf-label{font-size:12px;color:var(--mu);flex:1}
-#sel-preflight.running{border-color:color-mix(in srgb,var(--ck) 35%,transparent);
-  background:color-mix(in srgb,var(--ck) 6%,transparent)}
-#sel-preflight.running #spf-label{color:var(--ck)}
-#sel-preflight.error{border-color:color-mix(in srgb,var(--err) 35%,transparent);
-  background:color-mix(in srgb,var(--err) 6%,transparent)}
-#sel-preflight.error #spf-label{color:var(--err)}
-.spf-action{
-  margin-left:auto;flex-shrink:0;background:transparent;color:var(--foc);border:none;
-  font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;cursor:pointer;
-  transition:background .12s;white-space:nowrap;
-}
-.spf-action:hover{background:color-mix(in srgb,var(--foc) 12%,transparent)}
-.spf-action.restart{color:var(--mu)}
+#scr-select .sub{font-size:13px;color:var(--mu);margin-bottom:0;line-height:1.6}
+.sel-footer{margin-top:18px;text-align:center;font-size:12px;color:var(--mu)}
+.btn-link{background:transparent;border:none;color:var(--foc);font:inherit;font-size:12px;
+          cursor:pointer;padding:0 2px;text-decoration:underline;text-underline-offset:2px}
+.btn-link:hover{opacity:.75}
 
 .provider-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:16px}
 .provider-btn{
@@ -616,23 +595,24 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
       <div class="wz-line"></div>
       <div class="wz-step"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
     </div>
-    <h2>Choose a provider</h2>
-    <p class="sub">Select the AI assistant to use. Dev Agent will open it in Chrome.</p>
-    <div id="sel-preflight">
-      <div class="spf-dot checking" id="spf-dot"></div>
-      <span id="spf-label">Checking bridge status…</span>
-      <button id="spf-btn" class="spf-action hidden"></button>
+    <div class="sel-hero">
+      <div class="sel-logo">🤖</div>
+      <h2>Choose an AI provider</h2>
+      <p class="sub">Dev Agent opens Chrome and drives your AI account directly.<br>No API key needed — uses your existing subscription.</p>
     </div>
     <div id="sel-launching" class="hidden">
       <div class="sla-spinner"></div>
       <div id="sla-provider"></div>
       <div id="sla-detail">Launching browser automation…</div>
-      <button id="sla-cancel" class="btn-g" style="margin-top:6px;font-size:11px;padding:4px 12px">Cancel</button>
+      <button id="sla-cancel" class="btn-g" style="margin-top:8px;font-size:11px;padding:4px 12px">Cancel</button>
     </div>
     <div class="provider-grid" id="provider-grid">
       ${providerCards}
     </div>
     <div id="sel-status"></div>
+    <div class="sel-footer">
+      Bridge already running? <button id="btn-connect" class="btn-link">Connect →</button>
+    </div>
   </div>
 </div>
 
@@ -1147,10 +1127,6 @@ function addDoneBanner(){
 }
 
 /* ── provider selection (screen 1) ── */
-let _bridgeRunning = false;
-let _spfState = 'checking'; // checking | running | idle | timeout
-let _checkFallback = null;
-
 function showLaunching(label, detail) {
   document.getElementById('provider-grid').classList.add('hidden');
   document.getElementById('sel-launching').classList.remove('hidden');
@@ -1161,32 +1137,29 @@ function hideLaunching() {
   document.getElementById('provider-grid').classList.remove('hidden');
   document.getElementById('sel-launching').classList.add('hidden');
 }
+function resetSelectScreen() {
+  hideLaunching();
+  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+}
 
 document.querySelectorAll('.provider-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
+  btn.addEventListener('click', () => {
     document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=true);
-    if (_bridgeRunning) {
-      showLaunching(btn.textContent, 'Bridge already running — connecting…');
-      vscode.postMessage({type:'select_provider', providers:[btn.dataset.id]});
-    } else {
-      showLaunching(btn.textContent, 'Launching browser automation…');
-      vscode.postMessage({type:'launch_bridge', providers:[btn.dataset.id]});
-    }
+    setSelStatus('');
+    showLaunching(btn.textContent, 'Launching browser automation…');
+    vscode.postMessage({type:'launch_bridge', providers:[btn.dataset.id]});
   });
 });
 
-document.getElementById('spf-btn').addEventListener('click', () => {
-  if (_spfState === 'timeout') {
-    sendCheckBridge();
-  } else {
-    showLaunching('', 'Choose a provider in the VS Code picker…');
-    vscode.postMessage({type:'launch_bridge_qp'});
-  }
+document.getElementById('btn-connect').addEventListener('click', () => {
+  setSelStatus('');
+  showLaunching('', 'Checking if bridge is running…');
+  vscode.postMessage({type:'check_bridge'});
 });
 
 document.getElementById('sla-cancel').addEventListener('click', () => {
-  hideLaunching();
-  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+  resetSelectScreen();
+  setSelStatus('');
 });
 
 /* ── provider cards (screen 2) ── */
@@ -1258,8 +1231,8 @@ document.getElementById('btn-sb-proj').addEventListener('click',()=>{
   closeDropdowns(); vscode.postMessage({type:'change_project'});
 });
 document.getElementById('btn-sb-prov').addEventListener('click',()=>{
-  closeDropdowns(); show(scrSelect); setSelStatus('');
-  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+  closeDropdowns(); show(scrSelect);
+  resetSelectScreen(); setSelStatus('');
   vscode.postMessage({type:'reset'});
 });
 document.getElementById('btn-sel-provider-qp').addEventListener('click',()=>{
@@ -1305,34 +1278,13 @@ window.addEventListener('message',e=>{
   const msg=e.data; if(!msg?.type) return;
   switch(msg.type){
 
-    case 'bridge_status': {
-      clearTimeout(_checkFallback);
-      _bridgeRunning = msg.running;
-      _spfState = msg.running ? 'running' : 'idle';
-      const spfDot = document.getElementById('spf-dot');
-      const spfLabel = document.getElementById('spf-label');
-      const spfEl = document.getElementById('sel-preflight');
-      const spfBtn = document.getElementById('spf-btn');
-      if (msg.running) {
-        spfDot.className = 'spf-dot running';
-        spfLabel.textContent = 'Bridge running · port ' + (msg.port || '—');
-        spfEl.className = 'running';
-        spfBtn.textContent = 'Restart';
-        spfBtn.className = 'spf-action restart';
-      } else if (msg.binExists) {
-        spfDot.className = 'spf-dot idle';
-        spfLabel.textContent = 'Bridge not running';
-        spfEl.className = '';
-        spfBtn.textContent = 'Start Bridge';
-        spfBtn.className = 'spf-action';
-      } else {
-        spfDot.className = 'spf-dot error';
-        spfLabel.textContent = 'Bridge not installed — run npm run sync-modules';
-        spfEl.className = 'error';
-        spfBtn.className = 'spf-action hidden';
+    case 'bridge_status':
+      // Only arrives from the "Connect →" button. If running, bridge_ready fires next.
+      if (!msg.running) {
+        resetSelectScreen();
+        setSelStatus('Bridge is not running — click a provider above to start it.', true);
       }
       break;
-    }
 
     case 'bridge_starting':
       buildCards(msg.providers||[]);
@@ -1386,17 +1338,11 @@ window.addEventListener('message',e=>{
       }
       break;
 
-    case 'bridge_launch_cancelled':
-      hideLaunching();
-      document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
-      break;
-
     case 'bridge_failed':
       stopBridgeTicker();
       show(scrSelect);
       setSelStatus(msg.text||'Bridge failed to start.',true);
-      document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
-      hideLaunching();
+      resetSelectScreen();
       break;
 
     case 'workspaces':
@@ -1497,38 +1443,6 @@ function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
 
-/* ── bridge status check with fallback ── */
-function sendCheckBridge() {
-  _spfState = 'checking';
-  const dot = document.getElementById('spf-dot');
-  const lbl = document.getElementById('spf-label');
-  const el  = document.getElementById('sel-preflight');
-  const btn = document.getElementById('spf-btn');
-  if (dot) dot.className = 'spf-dot checking';
-  if (lbl) lbl.textContent = 'Checking bridge status…';
-  if (el)  el.className = '';
-  if (btn) btn.className = 'spf-action hidden';
-  clearTimeout(_checkFallback);
-  _checkFallback = setTimeout(() => {
-    if (_spfState !== 'checking') return;
-    _spfState = 'timeout';
-    const d = document.getElementById('spf-dot');
-    const l = document.getElementById('spf-label');
-    const e = document.getElementById('sel-preflight');
-    const b = document.getElementById('spf-btn');
-    if (d) d.className = 'spf-dot error';
-    if (l) l.textContent = 'No response from extension — try reloading';
-    if (e) e.className = 'error';
-    if (b) { b.textContent = 'Retry'; b.className = 'spf-action'; }
-  }, 5000);
-  vscode.postMessage({type: 'check_bridge'});
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && (_spfState === 'checking' || _spfState === 'timeout')) sendCheckBridge();
-});
-
-setTimeout(sendCheckBridge, 100);
 </script>
 </body>
 </html>`;
