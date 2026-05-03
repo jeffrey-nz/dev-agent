@@ -66,6 +66,7 @@
     "watch": "node scripts/build.mjs --watch",
     "package": "vsce package",
     "lint": "eslint src/",
+    "bridge": "node node_modules/browser-ai-bridge/bin/browser-ai-bridge.js",
     "sync-modules": "rsync -a --delete ../agent-core/src/ node_modules/agent-core/src/ && rsync -a --delete ../browser-ai-bridge/src/ node_modules/browser-ai-bridge/src/ && rsync -a --delete ../browser-ai-bridge/bin/ node_modules/browser-ai-bridge/bin/"
   },
   "dependencies": {
