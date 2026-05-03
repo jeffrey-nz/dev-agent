@@ -234,6 +234,22 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 .setup-hdr{padding:28px 32px 0;max-width:600px;width:100%;margin:0 auto;flex-shrink:0}
 .setup-hdr strong{display:block;font-size:15px;font-weight:700;margin-bottom:5px}
 .setup-hdr p{font-size:13px;color:var(--mu);line-height:1.5}
+
+/* bridge launch progress */
+#bridge-launch{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:32px;text-align:center;
+}
+.bl-spinner{width:32px;height:32px;border:3px solid var(--bd);border-top-color:var(--foc);
+            border-radius:50%;animation:spin .7s linear infinite}
+.bl-stage{font-size:13px;font-weight:600;color:var(--fg)}
+.bl-detail{font-size:12px;color:var(--mu);min-height:18px}
+.bl-elapsed{font-size:11px;color:var(--mu);opacity:.5}
+.bl-port{font-size:11px;font-family:var(--vscode-editor-font-family,monospace);
+         color:var(--mu);opacity:.5}
+#bridge-launch.error .bl-spinner{display:none}
+#bridge-launch.error .bl-stage{color:var(--err)}
+#bridge-launch.error::before{content:'⚠';font-size:28px}
 .pcard{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
 .pcard-head{display:flex;align-items:center;gap:10px;padding:12px 16px}
 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
@@ -579,7 +595,16 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <strong>Browser setup</strong>
     <p>Log into each provider in Chrome, then confirm below.</p>
   </div>
-  <div class="setup-wrap" id="pcard-list"></div>
+  <!-- shown while bridge process is starting -->
+  <div id="bridge-launch">
+    <div class="bl-spinner"></div>
+    <div class="bl-stage" id="bl-stage">Launching browser process…</div>
+    <div class="bl-detail" id="bl-detail">Opening Chrome and starting the automation server</div>
+    <div class="bl-elapsed" id="bl-elapsed"></div>
+    <div class="bl-port" id="bl-port"></div>
+  </div>
+  <!-- shown once providers need confirming -->
+  <div class="setup-wrap hidden" id="pcard-list"></div>
 </div>
 
 <!-- ─── screen 3: project selection ─── -->
@@ -1197,14 +1222,48 @@ window.addEventListener('message',e=>{
   switch(msg.type){
 
     case 'bridge_starting':
-      buildCards(msg.providers||[]); show(scrConfirm); break;
-
-    case 'setup_state':
-      if(msg.state?.phase==='waiting_confirm'&&msg.state.provider)
-        setCardPending(msg.state.provider.id,msg.state.provider.detected);
+      buildCards(msg.providers||[]);
+      show(scrConfirm);
+      startBridgeTicker();
       break;
 
+    case 'setup_state': {
+      const st = msg.state; if(!st) break;
+      const blLaunch = document.getElementById('bridge-launch');
+      const blStage  = document.getElementById('bl-stage');
+      const blDetail = document.getElementById('bl-detail');
+      const blElapsed= document.getElementById('bl-elapsed');
+      const blPort   = document.getElementById('bl-port');
+
+      // Update elapsed timer from server-provided value
+      if (st.elapsed != null) blElapsed.textContent = st.elapsed + 's elapsed';
+      if (st.port) blPort.textContent = 'port ' + st.port;
+
+      if (st.phase === 'waiting_for_server') {
+        blLaunch.classList.remove('error');
+        blStage.textContent  = 'Launching browser process…';
+        blDetail.textContent = 'Starting Chrome and the automation server';
+        pcardList.classList.add('hidden'); blLaunch.style.display = '';
+      } else if (st.phase === 'starting') {
+        blLaunch.classList.remove('error');
+        blStage.textContent  = 'Browser connected';
+        blDetail.textContent = 'Running authentication sequence…';
+        pcardList.classList.add('hidden'); blLaunch.style.display = '';
+      } else if (st.phase === 'waiting_confirm') {
+        // Transition to provider cards
+        blLaunch.style.display = 'none'; pcardList.classList.remove('hidden');
+        if (st.provider) setCardPending(st.provider.id, st.provider.detected);
+      } else if (st.phase === 'lost_connection') {
+        blLaunch.classList.add('error');
+        blStage.textContent  = 'Lost connection to browser process';
+        blDetail.textContent = 'It may have crashed — check the browser-ai-bridge terminal.';
+        pcardList.classList.add('hidden'); blLaunch.style.display = '';
+      }
+      break;
+    }
+
     case 'bridge_ready':
+      stopBridgeTicker();
       Object.keys(pcards).forEach(id=>{ if(pcards[id].phase==='waiting') setCardDone(id,'confirm'); });
       hdrProv.textContent = msg.providerLabel || '—';
       if(msg.alreadyRunning){
@@ -1215,6 +1274,7 @@ window.addEventListener('message',e=>{
       break;
 
     case 'bridge_failed':
+      stopBridgeTicker();
       show(scrSelect); setSelStatus(msg.text||'Bridge failed to start.',true);
       document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
       break;
@@ -1299,6 +1359,23 @@ window.addEventListener('message',e=>{
       break;
   }
 });
+
+/* ── bridge launch elapsed ticker ── */
+let _bridgeLaunchTs = null;
+let _elapsedTick    = null;
+function startBridgeTicker() {
+  _bridgeLaunchTs = Date.now();
+  if (_elapsedTick) clearInterval(_elapsedTick);
+  _elapsedTick = setInterval(() => {
+    const el = document.getElementById('bl-elapsed');
+    if (el && _bridgeLaunchTs) {
+      el.textContent = Math.round((Date.now() - _bridgeLaunchTs) / 1000) + 's elapsed';
+    }
+  }, 1000);
+}
+function stopBridgeTicker() {
+  if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
+}
 
 vscode.postMessage({type:'check_bridge'});
 </script>

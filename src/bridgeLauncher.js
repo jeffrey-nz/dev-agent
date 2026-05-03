@@ -7,6 +7,7 @@ const os = require("os");
 const BRIDGE_BIN = path.join(__dirname, "../node_modules/browser-ai-bridge/bin/browser-ai-bridge.js");
 const CONFIG_FILE = path.join(os.tmpdir(), "browser-ai-bridge-config.json");
 
+// Reads the port the bridge bound to. Returns 3333 if config not yet written.
 function resolvePort() {
   try {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
@@ -15,10 +16,10 @@ function resolvePort() {
   return 3333;
 }
 
-function _get(port, path) {
+function _get(port, urlPath) {
   return new Promise((resolve) => {
     const req = http.get(
-      { host: "localhost", port, path, timeout: 2000 },
+      { host: "localhost", port, path: urlPath, timeout: 2000 },
       (res) => {
         let body = "";
         res.on("data", (d) => (body += d));
@@ -33,10 +34,10 @@ function _get(port, path) {
   });
 }
 
-function _post(port, path) {
+function _post(port, urlPath) {
   return new Promise((resolve) => {
     const req = http.request(
-      { host: "localhost", port, path, method: "POST",
+      { host: "localhost", port, path: urlPath, method: "POST",
         headers: { "Content-Length": 0 }, timeout: 3000 },
       (res) => { res.resume(); resolve(res.statusCode < 400); },
     );
@@ -52,12 +53,6 @@ async function isRunning() {
   return res.ok && res.data?.status === "ready";
 }
 
-async function getSetupState() {
-  const port = resolvePort();
-  const res = await _get(port, "/api/setup");
-  return res.ok ? res.data : null;
-}
-
 async function confirmProvider() {
   return _post(resolvePort(), "/api/setup/confirm");
 }
@@ -67,11 +62,17 @@ async function skipProvider() {
 }
 
 function launch(providers = []) {
-  console.log(`[DevAgent bridge] launching binary: ${BRIDGE_BIN}`);
-  console.log(`[DevAgent bridge] providers env: ${providers.join(",") || "(none)"}`);
   let binExists = false;
   try { fs.accessSync(BRIDGE_BIN); binExists = true; } catch {}
-  console.log(`[DevAgent bridge] binary exists: ${binExists}`);
+  console.log(`[DevAgent bridge] launching binary: ${BRIDGE_BIN} (exists=${binExists})`);
+  console.log(`[DevAgent bridge] providers: ${providers.join(",") || "(none)"}`);
+
+  if (!binExists) {
+    vscode.window.showErrorMessage(
+      `Dev Agent: bridge binary not found at ${BRIDGE_BIN}. Run 'npm run sync-modules' in the extension directory.`,
+    );
+  }
+
   const terminal = vscode.window.createTerminal({
     name: "browser-ai-bridge",
     env: providers.length ? { BROWSER_AI_PROVIDERS: providers.join(",") } : {},
@@ -82,32 +83,85 @@ function launch(providers = []) {
 }
 
 /**
- * Waits until the bridge's setup state is "ready".
- * Calls onSetupState(state) whenever the state changes so the caller can
- * update the UI with pending provider confirmations.
+ * Polls until the bridge reaches phase "ready".
+ *
+ * Key behaviours:
+ * - Re-reads the port config on every poll until the server responds, because
+ *   the bridge writes the config file AFTER it binds its port.
+ * - Emits richer state objects that include `elapsed` and a `waiting_for_server`
+ *   phase before the HTTP server is up.
+ * - Adaptive delay: 1 500 ms while waiting for the process to start, 700 ms
+ *   once the server is responding.
+ * - Periodic elapsed heartbeats (every 5 s) so the UI can update a timer even
+ *   when the setup phase hasn't changed.
+ * - Detects lost-connection (server was up then stopped responding) and emits a
+ *   dedicated phase so the panel can show a useful error.
  */
 async function waitForReady(onSetupState, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
-  const port = resolvePort();
-  let lastPhase = null;
-  let pollCount = 0;
+  const startTs  = Date.now();
+  let serverUp         = false;
+  let lastEmittedPhase = null;
+  let lastHeartbeat    = 0;
+  let port             = resolvePort();
+  let pollCount        = 0;
+
+  // Emit immediately so the panel can start showing "launching…"
+  onSetupState?.({ phase: "waiting_for_server", elapsed: 0, port });
 
   while (Date.now() < deadline) {
     pollCount++;
-    const state = await getSetupState();
-    console.log(`[DevAgent bridge] poll #${pollCount} port=${port} state=${JSON.stringify(state)}`);
+    const elapsed = Math.round((Date.now() - startTs) / 1000);
 
-    if (state && state.phase !== lastPhase) {
-      lastPhase = state.phase;
-      onSetupState?.(state);
+    // Keep re-reading the port file until the server is up — the bridge writes
+    // it after binding, so early reads return the previous value or default.
+    if (!serverUp) port = resolvePort();
+
+    const res = await _get(port, "/api/setup");
+
+    let emitPhase, emitData;
+
+    if (res.ok) {
+      if (!serverUp) {
+        serverUp = true;
+        console.log(`[DevAgent bridge] server up port=${port} elapsed=${elapsed}s`);
+      }
+      emitPhase = res.data?.phase ?? "starting";
+      emitData  = { ...res.data, elapsed, port };
+    } else {
+      if (serverUp) {
+        // Was responding, now isn't — possible crash.
+        console.log(`[DevAgent bridge] lost connection port=${port} elapsed=${elapsed}s`);
+        serverUp = false; // allow port re-read in case it restarted on a new port
+        emitPhase = "lost_connection";
+      } else {
+        emitPhase = "waiting_for_server";
+      }
+      emitData = { phase: emitPhase, elapsed, port };
     }
 
-    if (state?.phase === "ready") return true;
+    console.log(`[DevAgent bridge] poll #${pollCount} port=${port} elapsed=${elapsed}s phase=${emitPhase}`);
 
-    await new Promise((r) => setTimeout(r, 800));
+    const phaseChanged = emitPhase !== lastEmittedPhase;
+    const heartbeatDue = elapsed - lastHeartbeat >= 5 && elapsed > 0;
+
+    if (phaseChanged || heartbeatDue) {
+      lastEmittedPhase = emitPhase;
+      lastHeartbeat    = elapsed;
+      onSetupState?.(emitData);
+    }
+
+    if (emitPhase === "ready") return true;
+
+    // Wait longer while the process is still starting (avoids hammering before
+    // the server is even up), faster once it's responding.
+    await new Promise((r) => setTimeout(r, serverUp ? 700 : 1500));
   }
-  console.log(`[DevAgent bridge] waitForReady timed out after ${pollCount} polls`);
+
+  const elapsed = Math.round((Date.now() - startTs) / 1000);
+  console.log(`[DevAgent bridge] timed out after ${elapsed}s (${pollCount} polls, serverUp=${serverUp})`);
+  onSetupState?.({ phase: "timeout", elapsed, port, serverUp });
   return false;
 }
 
-module.exports = { isRunning, getSetupState, confirmProvider, skipProvider, launch, waitForReady };
+module.exports = { isRunning, confirmProvider, skipProvider, launch, waitForReady, resolvePort };

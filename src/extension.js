@@ -170,24 +170,43 @@ async function handleWebviewMessage(msg) {
         providers: selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
       });
 
+      const SETUP_PHASE_LABELS = {
+        waiting_for_server: "Launching browser process…",
+        starting:           "Browser connected · authenticating…",
+        waiting_confirm:    "Waiting for confirmation…",
+        lost_connection:    "Lost connection · retrying…",
+        ready:              "Ready",
+      };
+
+      let lastSetupState = null;
       const ready = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Window, title: "Dev Agent: Starting browser…", cancellable: false },
+        { location: vscode.ProgressLocation.Window, title: "Dev Agent", cancellable: false },
         async (progress) => bridge.waitForReady((state) => {
-          progress.report({ message: state?.phase ?? "Initializing…" });
-          console.log("[DevAgent] setup_state update:", JSON.stringify(state));
+          lastSetupState = state;
+          const label = SETUP_PHASE_LABELS[state?.phase] ?? state?.phase ?? "Starting…";
+          const elapsed = state?.elapsed ? ` (${state.elapsed}s)` : "";
+          progress.report({ message: label + elapsed });
+          console.log("[DevAgent] setup_state:", JSON.stringify(state));
           panel?.postMessage({ type: "setup_state", state });
         }),
       );
 
-      console.log("[DevAgent] waitForReady resolved:", ready);
+      console.log("[DevAgent] waitForReady resolved:", ready, "lastState:", lastSetupState?.phase);
       if (ready) {
         const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
         panel?.postMessage({ type: "bridge_ready", providerLabel: label });
       } else {
-        panel?.postMessage({
-          type: "bridge_failed",
-          text: "Bridge did not become ready within 2 minutes. Check the terminal for errors.",
-        });
+        const phase = lastSetupState?.phase;
+        const elapsed = lastSetupState?.elapsed;
+        let failText = `Bridge did not become ready after ${elapsed ?? "?"}s.`;
+        if (!lastSetupState?.serverUp && phase !== "lost_connection") {
+          failText += " The browser process may not have started — check the 'browser-ai-bridge' terminal.";
+        } else if (phase === "lost_connection") {
+          failText += " Lost connection to the browser process — it may have crashed.";
+        } else {
+          failText += " Check the 'browser-ai-bridge' terminal for errors.";
+        }
+        panel?.postMessage({ type: "bridge_failed", text: failText });
       }
       break;
     }
