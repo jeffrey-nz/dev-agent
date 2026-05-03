@@ -376,7 +376,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;
 .w-logo{font-size:40px;margin-bottom:16px}
 .w-title{font-size:19px;font-weight:600;color:var(--fg);margin-bottom:8px;letter-spacing:-.3px}
 .w-sub{font-size:12px;line-height:1.6;margin-bottom:28px;max-width:320px}
-.w-examples{display:grid;grid-template-columns:1fr 1fr;gap:9px;max-width:520px;width:100%}
+.w-examples{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:9px;max-width:520px;width:100%}
 .w-ex{text-align:left;padding:11px 14px;background:transparent;
       border:1px solid var(--bd);border-radius:var(--r);color:var(--mu);
       font:inherit;font-size:12px;cursor:pointer;line-height:1.4;
@@ -410,6 +410,8 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;
 .mab-md h3{font-size:14px;font-weight:700;margin:10px 0 4px;color:var(--fg)}
 .mab-md h1.md-h:first-child,.mab-md h2.md-h:first-child,.mab-md h3.md-h:first-child{margin-top:0}
 .mab-md ul,.mab-md ol{padding-left:22px;margin:4px 0 8px}
+.mab-md ul{list-style-type:disc}
+.mab-md ol{list-style-type:decimal}
 .mab-md li{margin:3px 0;line-height:1.6}
 .mab-md strong{font-weight:700}
 .mab-md em{font-style:italic}
@@ -433,7 +435,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;
 
 /* File preview card */
 .fp-card{border:1px solid var(--bd);border-left:3px solid var(--ce);border-radius:6px;
-         overflow:hidden;margin:10px 0;animation:tIn .16s ease}
+         overflow:hidden;margin:10px 0;animation:tIn .16s ease;max-width:680px}
 .fp-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;
         background:color-mix(in srgb,var(--ce) 6%,transparent);
         border-bottom:1px solid var(--bd)}
@@ -699,7 +701,8 @@ function relTime(d){
 /* ══════════════════════════════════════
    MARKDOWN RENDERER
 ══════════════════════════════════════ */
-let _cbSeq = 0;
+// PUA Unicode sentinels — never appear in agent text, safe as code-block placeholders
+const CB_S = '', CB_E = '';
 
 function renderCodeBlock(code, lang) {
   const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -714,7 +717,7 @@ function renderMarkdown(md) {
   // 1. Extract code fences, replace with non-HTML placeholder
   const blocks = [];
   let text = md.replace(/\`\`\`([\w]*)\n?([\s\S]*?)\`\`\`/g, (_, lang, code) => {
-    const key = ' '+(blocks.length)+' ';
+    const key = CB_S + blocks.length + CB_E;
     blocks.push({lang: lang.trim(), code: code.replace(/\n$/, '')});
     return key;
   });
@@ -731,6 +734,7 @@ function renderMarkdown(md) {
   let inList = null;
   const closeList = () => { if (inList) { out.push('</'+inList+'>'); inList = null; } };
   for (const line of lines) {
+    if (line.includes(CB_S)) { closeList(); out.push(line); continue; }
     const hm = line.match(/^(#{1,3}) (.+)/);
     const ulm = line.match(/^[-*] (.+)/);
     const olm = line.match(/^\d+\. (.+)/);
@@ -754,14 +758,22 @@ function renderMarkdown(md) {
   text = out.join('');
   // 5. Restore code blocks
   blocks.forEach((b, i) => {
-    text = text.replace(' '+i+' ', renderCodeBlock(b.code, b.lang));
+    text = text.replace(CB_S + i + CB_E, renderCodeBlock(b.code, b.lang));
   });
   return text;
 }
 
+function clipboardWrite(text) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  const ta = Object.assign(document.createElement('textarea'),
+    {value: text, style: 'position:fixed;opacity:0'});
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+  return Promise.resolve();
+}
 function copyCode(btn) {
   const code = btn.closest('.cb').querySelector('pre code').textContent;
-  navigator.clipboard.writeText(code).then(() => {
+  clipboardWrite(code).then(() => {
     const orig = btn.textContent;
     btn.textContent = '✓ Copied';
     setTimeout(() => { btn.textContent = orig; }, 1500);
@@ -797,7 +809,7 @@ function addFilePreview(data) {
 
 function copyFpCode(btn) {
   const code = btn.closest('.fp-card').querySelector('pre code').textContent;
-  navigator.clipboard.writeText(code).then(() => {
+  clipboardWrite(code).then(() => {
     const orig = btn.textContent;
     btn.textContent = '✓';
     setTimeout(() => { btn.textContent = orig; }, 1500);
@@ -859,7 +871,7 @@ function newChat(){
   activeSid=null;
   clearMsgs(); showWelcome(); hideTyping();
   phaseBar.classList.add('hidden');
-  currentStepIdx=-1; lastPhase=''; readBuf=[];
+  currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null;
   resetDividers();
   btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
   renderSessions();
