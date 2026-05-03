@@ -84,6 +84,11 @@ function startBridgeWatcher(context) {
   async function poll() {
     const status = await bridge.checkStatus().catch(() => ({ running: false }));
     const key = status.running ? status.phase : "offline";
+    // Always keep initialState fresh so the next panel creation is correct
+    DevAgentPanel.initialState = {
+      bridgeReady: status.running && status.phase === "ready",
+      bridgePort:  bridge.resolvePort(),
+    };
     if (key === _lastBridgeKey) return;
     _lastBridgeKey = key;
     broadcastBridgeStatus(status);
@@ -109,9 +114,21 @@ function pushToPanelNow(panel) {
     .catch(() => broadcastBridgeStatus({ running: false }, panel));
 }
 
-function activate(context) {
+async function activate(context) {
   extensionCtx = context;
   logger = new SessionLogger(context.extensionPath);
+
+  // Pre-check bridge status so _buildHtml() can embed it — panels created
+  // during activate (revive) will start in the correct screen immediately.
+  try {
+    const initStatus = await bridge.checkStatus();
+    DevAgentPanel.initialState = {
+      bridgeReady: initStatus.running && initStatus.phase === "ready",
+      bridgePort:  bridge.resolvePort(),
+    };
+  } catch {
+    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort() };
+  }
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.command = "devAgent.start";
@@ -152,11 +169,21 @@ function activate(context) {
   startBridgeWatcher(context);
 }
 
-function openChatPanel() {
+async function openChatPanel() {
+  // Refresh initial state so the new panel's HTML is accurate
+  try {
+    const status = await bridge.checkStatus();
+    DevAgentPanel.initialState = {
+      bridgeReady: status.running && status.phase === "ready",
+      bridgePort:  bridge.resolvePort(),
+    };
+  } catch {
+    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort() };
+  }
   const instance = DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
-  // Push current status to newly-created panels immediately
-  if (instance?.isNew) {
-    setTimeout(() => pushToPanelNow(instance.panel), 400);
+  // For non-new reveals, push port so the panel's fetch uses the right port
+  if (!instance?.isNew) {
+    sendBridgePort(instance?.panel);
   }
 }
 

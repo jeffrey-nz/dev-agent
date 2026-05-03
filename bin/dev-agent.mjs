@@ -3,6 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
+import http from "node:http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,10 +23,34 @@ for (let i = 0; i < 4; i++) {
   dir = parent;
 }
 
-// Optional workspace path — open VS Code if provided
 const workspacePath = process.argv[2];
+
+// Poll bridge until ready, then open VS Code (if workspace provided)
 if (workspacePath) {
-  spawn("code", [workspacePath], { stdio: "ignore", detached: true }).unref();
+  let opened = false;
+  const poll = setInterval(() => {
+    if (opened) return;
+    const req = http.get(
+      { host: "localhost", port: 3333, path: "/api/setup", timeout: 1000 },
+      (res) => {
+        let body = "";
+        res.on("data", (d) => (body += d));
+        res.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            if (data.phase === "ready" && !opened) {
+              opened = true;
+              clearInterval(poll);
+              console.log(`\n[dev-agent] Bridge ready — opening VS Code at ${workspacePath}`);
+              spawn("code", [workspacePath], { stdio: "ignore", detached: true }).unref();
+            }
+          } catch {}
+        });
+      },
+    );
+    req.on("error", () => {});
+    req.on("timeout", () => req.destroy());
+  }, 1500);
 }
 
 const { init } = await import(resolve(__dirname, "../node_modules/browser-ai-bridge/src/index.js"));

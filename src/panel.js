@@ -134,6 +134,7 @@ window.addEventListener('message', e => {
 
 class DevAgentPanel {
   static currentPanel = null;
+  static initialState = { bridgeReady: false, bridgePort: 3333 };
 
   static revive(context, webviewPanel, onMessage) {
     DevAgentPanel.currentPanel = new DevAgentPanel(context, webviewPanel, onMessage);
@@ -166,6 +167,7 @@ class DevAgentPanel {
   reveal() { this._panel?.reveal(vscode.ViewColumn.One); }
 
   _buildHtml() {
+    const initJson = JSON.stringify(DevAgentPanel.initialState);
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -173,6 +175,7 @@ class DevAgentPanel {
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; connect-src http://localhost:*;">
 <title>Dev Agent</title>
+<script>const _INIT=${initJson};</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1135,7 +1138,7 @@ function addDoneBanner(){
 // Bridge connection is checked directly via HTTP fetch — no postMessage
 // round-trip needed, so this works regardless of the extension↔webview
 // message channel state.
-let _bridgePort = 3333;
+let _bridgePort = (_INIT && _INIT.bridgePort) || 3333;
 let _cncPollTimer = null;
 let _cncElapsed = 0;
 let _cncState = 'connecting';
@@ -1499,9 +1502,17 @@ function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
 
-// Auto-connect on load via direct HTTP — no postMessage round-trip needed
-cncShow('connecting');
-cncStartPoll();
+// On load: if the extension already knows the bridge is ready, skip
+// the connect screen entirely. Otherwise start the direct HTTP poll.
+if (_INIT && _INIT.bridgeReady) {
+  hdrProv.textContent = 'Connected';
+  show(scrProject);
+  vscode.postMessage({type:'get_workspaces'});
+  vscode.postMessage({type:'bridge_connected_direct'});
+} else {
+  cncShow('connecting');
+  cncStartPoll();
+}
 
 </script>
 </body>
