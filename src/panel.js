@@ -571,12 +571,18 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
       <div class="cnc-hint">Connecting to bridge…</div>
     </div>
 
+    <!-- waiting state (bridge found but still in setup) -->
+    <div id="cnc-waiting" class="hidden">
+      <div class="cnc-spinner"></div>
+      <div class="cnc-hint">Bridge is starting up…</div>
+      <div class="cnc-hint" style="margin-top:6px;font-size:11px;opacity:.7">Waiting for setup to complete in terminal</div>
+    </div>
+
     <!-- offline state -->
     <div id="cnc-offline" class="hidden">
       <div class="cnc-badge offline">Bridge not running</div>
-      <p class="cnc-desc">Start the bridge to get going.<br>It runs as a background process in a terminal.</p>
-      <button class="btn-p cnc-main-btn" id="btn-start-bridge">▶ Start Bridge</button>
-      <div class="cnc-cmd hidden" id="cnc-cmd"></div>
+      <p class="cnc-desc">Run this in a terminal to start the bridge:</p>
+      <div class="cnc-cmd" id="cnc-cmd">dev-agent</div>
       <div class="cnc-poll">
         <span class="cnc-pulse"></span>
         <span id="cnc-poll-lbl">Checking…</span>
@@ -585,7 +591,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 
     <!-- error state -->
     <div id="cnc-error" class="hidden">
-      <div class="cnc-badge error">⚠ Could not start</div>
+      <div class="cnc-badge error">⚠ Bridge error</div>
       <p class="cnc-desc" id="cnc-err-txt"></p>
       <button class="btn-g" id="btn-cnc-retry" style="font-size:12px;padding:6px 16px">Try again</button>
     </div>
@@ -1104,34 +1110,36 @@ function addDoneBanner(){
 let _cncPollTimer = null;
 let _cncElapsed = 0;
 
+// Owns the poll timer. States: 'connecting' | 'waiting' | 'offline' | 'error'
 function cncShow(state) {
   document.getElementById('cnc-connecting').classList.toggle('hidden', state !== 'connecting');
+  document.getElementById('cnc-waiting').classList.toggle('hidden', state !== 'waiting');
   document.getElementById('cnc-offline').classList.toggle('hidden', state !== 'offline');
   document.getElementById('cnc-error').classList.toggle('hidden', state !== 'error');
-}
 
-function cncStartPoll() {
-  _cncElapsed = 0;
   clearInterval(_cncPollTimer);
-  _cncPollTimer = setInterval(() => {
-    _cncElapsed++;
-    const countdown = 3 - (_cncElapsed % 3);
-    const lbl = document.getElementById('cnc-poll-lbl');
-    if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
-    if (_cncElapsed % 3 === 0) vscode.postMessage({type: 'check_bridge'});
-  }, 1000);
+  _cncPollTimer = null;
+  _cncElapsed = 0;
+
+  if (state === 'connecting' || state === 'waiting') {
+    // Retry every 2s — handles lost responses and mid-setup waits
+    _cncPollTimer = setInterval(() => vscode.postMessage({type: 'check_bridge'}), 2000);
+  } else if (state === 'offline') {
+    // Slower poll with countdown label
+    _cncPollTimer = setInterval(() => {
+      _cncElapsed++;
+      const countdown = 3 - (_cncElapsed % 3);
+      const lbl = document.getElementById('cnc-poll-lbl');
+      if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
+      if (_cncElapsed % 3 === 0) vscode.postMessage({type: 'check_bridge'});
+    }, 1000);
+  }
 }
 
 function cncStopPoll() {
   clearInterval(_cncPollTimer);
   _cncPollTimer = null;
 }
-
-document.getElementById('btn-start-bridge').addEventListener('click', () => {
-  cncStopPoll();
-  cncShow('connecting');
-  vscode.postMessage({type: 'launch_bridge', providers: []});
-});
 
 document.getElementById('btn-cnc-retry').addEventListener('click', () => {
   cncShow('connecting');
@@ -1208,7 +1216,6 @@ document.getElementById('btn-sb-proj').addEventListener('click',()=>{
 });
 document.getElementById('btn-sb-prov').addEventListener('click',()=>{
   closeDropdowns(); show(scrConnect); cncShow('connecting');
-  vscode.postMessage({type:'check_bridge'});
   vscode.postMessage({type:'reset'});
 });
 document.getElementById('btn-sel-provider-qp').addEventListener('click',()=>{
@@ -1255,22 +1262,27 @@ window.addEventListener('message',e=>{
   switch(msg.type){
 
     case 'bridge_offline':
-      cncStopPoll();
-      cncShow('offline');
       vscode.postMessage({type: 'get_bridge_info'});
-      cncStartPoll();
+      cncShow('offline');
       break;
 
     case 'bridge_info': {
       const cmd = document.getElementById('cnc-cmd');
-      if (cmd) { cmd.textContent = msg.cmd; cmd.classList.remove('hidden'); }
+      if (cmd) cmd.textContent = msg.cmd || 'dev-agent';
       break;
     }
 
     case 'bridge_starting':
-      buildCards(msg.providers||[]);
-      show(scrConfirm);
-      startBridgeTicker();
+      if (msg.providers && msg.providers.length > 0) {
+        // Launched from within VS Code — show provider confirm screen
+        buildCards(msg.providers);
+        show(scrConfirm);
+        startBridgeTicker();
+      } else {
+        // External CLI bridge is starting — wait on connect screen
+        show(scrConnect);
+        cncShow('waiting');
+      }
       break;
 
     case 'setup_state': {
@@ -1309,6 +1321,7 @@ window.addEventListener('message',e=>{
     }
 
     case 'bridge_ready':
+      cncStopPoll();
       stopBridgeTicker();
       Object.keys(pcards).forEach(id=>{ if(pcards[id].phase==='waiting') setCardDone(id,'confirm'); });
       hdrProv.textContent = msg.providerLabel || '—';
@@ -1427,7 +1440,8 @@ function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
 
-// Auto-connect on load
+// Auto-connect on load — cncShow starts the retry poll
+cncShow('connecting');
 vscode.postMessage({type: 'check_bridge'});
 
 </script>
