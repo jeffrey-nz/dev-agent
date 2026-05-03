@@ -46,6 +46,62 @@ let workspaceRoot = null;
 let extensionCtx = null;
 let statusBar = null;
 
+// ── Bridge status broadcast ───────────────────────────────────────────────
+// The extension polls the bridge every 2 s and pushes status to all open
+// panels. This is the primary connection mechanism — the webview's
+// check_bridge message is kept as a fallback.
+
+let _lastBridgeKey = null; // tracks last broadcast so we don't repeat
+
+function broadcastBridgeStatus(status, targetPanel) {
+  const panel = targetPanel ?? DevAgentPanel.currentPanel;
+  if (!panel) return;
+
+  if (!status.running) {
+    const { binPath } = bridge.checkInstall();
+    panel.postMessage({ type: "bridge_offline" });
+    panel.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
+    sidebarProvider?.postMessage({ type: "bridge_offline" });
+  } else if (status.phase === "ready") {
+    const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
+    panel.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
+    sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
+    if (workspaceRoot) {
+      panel.postMessage({
+        type: "workspace_confirmed",
+        name: path.basename(workspaceRoot),
+        path: workspaceRoot,
+      });
+    }
+  } else {
+    panel.postMessage({ type: "bridge_starting", providers: [] });
+    panel.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
+    sidebarProvider?.postMessage({ type: "bridge_starting" });
+  }
+}
+
+function startBridgeWatcher(context) {
+  async function poll() {
+    const status = await bridge.checkStatus().catch(() => ({ running: false }));
+    const key = status.running ? status.phase : "offline";
+    if (key === _lastBridgeKey) return;
+    _lastBridgeKey = key;
+    broadcastBridgeStatus(status);
+  }
+
+  poll(); // check immediately on activation
+  const timer = setInterval(poll, 2000);
+  context.subscriptions.push({ dispose: () => clearInterval(timer) });
+}
+
+// Call when a new panel is created so it gets status right away without
+// waiting for the 2-second poller cycle.
+function pushToPanelNow(panel) {
+  bridge.checkStatus()
+    .then((status) => broadcastBridgeStatus(status, panel))
+    .catch(() => broadcastBridgeStatus({ running: false }, panel));
+}
+
 function activate(context) {
   extensionCtx = context;
   logger = new SessionLogger(context.extensionPath);
@@ -78,14 +134,23 @@ function activate(context) {
     vscode.commands.registerCommand("devAgent.selectProvider", selectProviderQuickPick),
     vscode.window.registerWebviewPanelSerializer("devAgent.chat", {
       async deserializeWebviewPanel(webviewPanel) {
-        DevAgentPanel.revive(extensionCtx, webviewPanel, handleWebviewMessage);
+        const instance = DevAgentPanel.revive(extensionCtx, webviewPanel, handleWebviewMessage);
+        // Push bridge status immediately to the revived panel (don't wait for the poller)
+        setTimeout(() => pushToPanelNow(instance), 400);
       },
     }),
   );
+
+  // Start watching bridge status — proactively pushes to panels on change
+  startBridgeWatcher(context);
 }
 
 function openChatPanel() {
-  DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
+  const instance = DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
+  // Push current status to newly-created panels immediately
+  if (instance?.isNew) {
+    setTimeout(() => pushToPanelNow(instance.panel), 400);
+  }
 }
 
 function handleSidebarMessage(msg) {
@@ -143,7 +208,7 @@ async function selectProviderQuickPick() {
   });
 }
 
-// ── Bridge launch helper ───────────────────────────────────────────────────
+// ── Bridge launch helper (for VS Code-initiated launches) ──────────────────
 
 const SETUP_PHASE_LABELS = {
   waiting_for_server: "Launching browser process…",
@@ -166,8 +231,8 @@ async function watchBridge(panel) {
     }),
   );
   if (ready) {
-    const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
-    panel?.postMessage({ type: "bridge_ready", providerLabel: label });
+    // Reset cache so the poller broadcasts the new ready state
+    _lastBridgeKey = null;
   } else {
     const phase = lastSetupState?.phase;
     const elapsed = lastSetupState?.elapsed;
@@ -183,42 +248,21 @@ async function watchBridge(panel) {
   }
 }
 
-async function doLaunchBridge(providers, panel) {
-  bridge.launch(providers);
-  panel?.postMessage({
-    type: "bridge_starting",
-    providers: providers.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
-  });
-  await watchBridge(panel);
-}
-
 // ── Webview message handler ────────────────────────────────────────────────
+// senderPanel is the DevAgentPanel instance that sent the message (set in
+// the per-panel closure registered in DevAgentPanel's constructor). Using
+// the sender directly avoids the DevAgentPanel.currentPanel race condition
+// where two panels can exist simultaneously with the wrong one as current.
 
-async function handleWebviewMessage(msg) {
-  const panel = DevAgentPanel.currentPanel;
+async function handleWebviewMessage(msg, senderPanel) {
+  // Use the sender if provided; fall back to currentPanel for legacy paths
+  const panel = senderPanel ?? DevAgentPanel.currentPanel;
 
   switch (msg.type) {
 
     case "check_bridge": {
-      const status = await bridge.checkStatus();
-      if (!status.running) {
-        panel?.postMessage({ type: "bridge_offline" });
-      } else if (status.phase === "ready") {
-        const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
-        panel?.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
-        if (workspaceRoot) {
-          panel?.postMessage({
-            type: "workspace_confirmed",
-            name: path.basename(workspaceRoot),
-            path: workspaceRoot,
-          });
-        }
-      } else {
-        // Bridge is running but still in setup (e.g. reconnecting mid-setup)
-        panel?.postMessage({ type: "bridge_starting", providers: [] });
-        panel?.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
-        watchBridge(panel);
-      }
+      // The panel requested an immediate status check (retry or manual)
+      pushToPanelNow(panel);
       break;
     }
 
@@ -229,8 +273,15 @@ async function handleWebviewMessage(msg) {
     }
 
     case "launch_bridge": {
+      // VS Code-initiated launch (kept for fallback; primary flow is CLI)
       selectedProviders = msg.providers ?? [];
-      await doLaunchBridge(selectedProviders, panel);
+      bridge.launch(selectedProviders);
+      panel?.postMessage({
+        type: "bridge_starting",
+        providers: selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
+      });
+      _lastBridgeKey = null; // let poller detect when it's ready
+      watchBridge(panel);
       break;
     }
 
@@ -357,6 +408,7 @@ async function handleWebviewMessage(msg) {
       agentSession?.stop();
       selectedProviders = [];
       workspaceRoot = null;
+      _lastBridgeKey = null; // force re-broadcast on next poll
       setStatusIdle();
       break;
 

@@ -43,6 +43,9 @@ body{font-family:var(--vscode-font-family);font-size:12px;
 .sb-dot{width:7px;height:7px;border-radius:50%;background:var(--vscode-descriptionForeground);opacity:.35;flex-shrink:0;transition:background .3s}
 .sb-dot.running{background:#2ecc8a;opacity:1;animation:pulse .9s infinite}
 .sb-dot.done{background:#4caf50;opacity:1}
+.sb-dot.bridge-on{background:#2ecc8a;opacity:1}
+.sb-dot.bridge-wait{background:#e5a100;opacity:1;animation:pulse 1.2s infinite}
+.sb-dot.bridge-off{background:var(--vscode-descriptionForeground);opacity:.4}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .sb-phase{font-size:11px;color:var(--vscode-descriptionForeground);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-tool{font-size:10px;color:var(--vscode-descriptionForeground);
@@ -62,6 +65,11 @@ hr{border:none;border-top:1px solid var(--vscode-panel-border,rgba(128,128,128,.
   <button class="btn" id="o">Open Chat ↗</button>
 </div>
 <div class="sb-status">
+  <div class="sb-dot bridge-off" id="bridgedot"></div>
+  <span class="sb-phase" id="bridgephase" style="color:var(--vscode-descriptionForeground)">Connecting…</span>
+</div>
+<hr/>
+<div class="sb-status" style="padding-top:8px">
   <div class="sb-dot" id="dot"></div>
   <span class="sb-phase" id="phase">Idle</span>
 </div>
@@ -83,8 +91,25 @@ const PC = {PLANNING:'#7c6af7',ORCHESTRATING:'#7c6af7',RESEARCHING:'#4da6ff',
             VERIFYING:'#e5a100',REVIEWING:'#e5a100',DEBUGGING:'#e54545'};
 const dot=document.getElementById('dot'), phase=document.getElementById('phase'),
       tool=document.getElementById('tool');
+const bdot=document.getElementById('bridgedot'), bphase=document.getElementById('bridgephase');
 window.addEventListener('message', e => {
   const m = e.data;
+  if (m.type === 'bridge_ready') {
+    bdot.className = 'sb-dot bridge-on';
+    bphase.textContent = 'Bridge: ' + (m.providerLabel || 'Connected');
+    bphase.style.color = '#2ecc8a';
+    document.getElementById('prov').textContent = m.providerLabel || '—';
+  }
+  if (m.type === 'bridge_offline') {
+    bdot.className = 'sb-dot bridge-off';
+    bphase.textContent = 'Bridge offline';
+    bphase.style.color = '';
+  }
+  if (m.type === 'bridge_starting') {
+    bdot.className = 'sb-dot bridge-wait';
+    bphase.textContent = 'Bridge starting…';
+    bphase.style.color = '#e5a100';
+  }
   if (m.type === 'phase_change') {
     dot.className = 'sb-dot running';
     phase.textContent = m.phase || 'Running';
@@ -101,7 +126,6 @@ window.addEventListener('message', e => {
     setTimeout(() => { dot.className = 'sb-dot'; phase.textContent = 'Idle'; phase.style.color = ''; }, 5000);
   }
   if (m.type === 'workspace_confirmed') document.getElementById('proj').textContent = m.name || '—';
-  if (m.type === 'bridge_ready') document.getElementById('prov').textContent = m.providerLabel || '—';
 });
 </script></body></html>`;
   }
@@ -114,19 +138,20 @@ class DevAgentPanel {
 
   static revive(context, webviewPanel, onMessage) {
     DevAgentPanel.currentPanel = new DevAgentPanel(context, webviewPanel, onMessage);
+    return DevAgentPanel.currentPanel;
   }
 
   static createOrReveal(context, onMessage) {
     if (DevAgentPanel.currentPanel) {
       DevAgentPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
-      return DevAgentPanel.currentPanel;
+      return { panel: DevAgentPanel.currentPanel, isNew: false };
     }
     const panel = vscode.window.createWebviewPanel(
       "devAgent.chat", "Dev Agent", vscode.ViewColumn.One,
       { enableScripts: true, retainContextWhenHidden: true },
     );
     DevAgentPanel.currentPanel = new DevAgentPanel(context, panel, onMessage);
-    return DevAgentPanel.currentPanel;
+    return { panel: DevAgentPanel.currentPanel, isNew: true };
   }
 
   constructor(context, panel, onMessage) {
@@ -134,7 +159,7 @@ class DevAgentPanel {
     this._panel = panel;
     panel.webview.options = { enableScripts: true };
     panel.webview.html = this._buildHtml();
-    panel.webview.onDidReceiveMessage(onMessage, null, context.subscriptions);
+    panel.webview.onDidReceiveMessage((msg) => onMessage(msg, this), null, context.subscriptions);
     panel.onDidDispose(() => { DevAgentPanel.currentPanel = null; }, null, context.subscriptions);
   }
 
