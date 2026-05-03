@@ -146,7 +146,13 @@ async function handleWebviewMessage(msg) {
   switch (msg.type) {
 
     case "check_bridge": {
+      const { binExists } = bridge.checkInstall();
       const running = await bridge.isRunning();
+      const port = bridge.resolvePort();
+
+      // Always reply — panel needs to know the state even when bridge isn't running
+      panel?.postMessage({ type: "bridge_status", running, port, binExists });
+
       if (running) {
         const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
         panel?.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });

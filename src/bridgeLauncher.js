@@ -164,4 +164,10 @@ async function waitForReady(onSetupState, timeoutMs = 120_000) {
   return false;
 }
 
-module.exports = { isRunning, confirmProvider, skipProvider, launch, waitForReady, resolvePort };
+function checkInstall() {
+  let binExists = false;
+  try { fs.accessSync(BRIDGE_BIN); binExists = true; } catch {}
+  return { binExists, binPath: BRIDGE_BIN };
+}
+
+module.exports = { isRunning, confirmProvider, skipProvider, launch, waitForReady, resolvePort, checkInstall };
