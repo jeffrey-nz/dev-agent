@@ -19,7 +19,6 @@ class DevAgentViewProvider {
     webviewView.webview.html = this._buildSidebarHtml();
     webviewView.webview.onDidReceiveMessage(this._onMessage, null, this._context.subscriptions);
     webviewView.onDidDispose(() => { this._view = null; });
-    setTimeout(() => this._onMessage({ type: "open_panel" }), 80);
   }
 
   postMessage(msg) { this._view?.webview.postMessage(msg); }
@@ -172,6 +171,7 @@ class DevAgentPanel {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; connect-src http://localhost:*;">
 <title>Dev Agent</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1132,33 +1132,20 @@ function addDoneBanner(){
 }
 
 /* ── connect screen (screen 1) ── */
+// Bridge connection is checked directly via HTTP fetch — no postMessage
+// round-trip needed, so this works regardless of the extension↔webview
+// message channel state.
+let _bridgePort = 3333;
 let _cncPollTimer = null;
 let _cncElapsed = 0;
+let _cncState = 'connecting';
 
-// Owns the poll timer. States: 'connecting' | 'waiting' | 'offline' | 'error'
 function cncShow(state) {
+  _cncState = state;
   document.getElementById('cnc-connecting').classList.toggle('hidden', state !== 'connecting');
   document.getElementById('cnc-waiting').classList.toggle('hidden', state !== 'waiting');
   document.getElementById('cnc-offline').classList.toggle('hidden', state !== 'offline');
   document.getElementById('cnc-error').classList.toggle('hidden', state !== 'error');
-
-  clearInterval(_cncPollTimer);
-  _cncPollTimer = null;
-  _cncElapsed = 0;
-
-  if (state === 'connecting' || state === 'waiting') {
-    // Retry every 2s — handles lost responses and mid-setup waits
-    _cncPollTimer = setInterval(() => vscode.postMessage({type: 'check_bridge'}), 2000);
-  } else if (state === 'offline') {
-    // Slower poll with countdown label
-    _cncPollTimer = setInterval(() => {
-      _cncElapsed++;
-      const countdown = 3 - (_cncElapsed % 3);
-      const lbl = document.getElementById('cnc-poll-lbl');
-      if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
-      if (_cncElapsed % 3 === 0) vscode.postMessage({type: 'check_bridge'});
-    }, 1000);
-  }
 }
 
 function cncStopPoll() {
@@ -1166,9 +1153,53 @@ function cncStopPoll() {
   _cncPollTimer = null;
 }
 
+async function _cncTick() {
+  try {
+    const res = await fetch('http://localhost:' + _bridgePort + '/api/setup', { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) throw new Error('not ok');
+    const data = await res.json();
+
+    if (data.phase === 'ready') {
+      cncStopPoll();
+      // Bridge is ready — skip the setup screen entirely
+      cncStopPoll();
+      hdrProv.textContent = data.providerLabel || '—';
+      show(scrProject);
+      vscode.postMessage({type:'get_workspaces'});
+      // Tell extension so it can update the status bar + sidebar
+      vscode.postMessage({type:'bridge_connected_direct'});
+    } else if (data.phase === 'waiting_confirm' || data.phase === 'starting') {
+      if (_cncState !== 'waiting') cncShow('waiting');
+      // Update elapsed if available
+      if (data.elapsed != null) {
+        const hint = document.querySelector('#cnc-waiting .cnc-hint:last-child');
+        if (hint) hint.textContent = 'Setup in terminal… ' + data.elapsed + 's';
+      }
+    }
+    // else: still starting, keep polling
+  } catch {
+    // Bridge not reachable
+    if (_cncState !== 'offline') {
+      cncShow('offline');
+      vscode.postMessage({type:'get_bridge_info'}); // get CLI command to show
+    }
+    _cncElapsed++;
+    const countdown = 3 - (_cncElapsed % 3);
+    const lbl = document.getElementById('cnc-poll-lbl');
+    if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
+  }
+}
+
+function cncStartPoll() {
+  cncStopPoll();
+  _cncElapsed = 0;
+  _cncTick();
+  _cncPollTimer = setInterval(_cncTick, 2000);
+}
+
 document.getElementById('btn-cnc-retry').addEventListener('click', () => {
   cncShow('connecting');
-  vscode.postMessage({type: 'check_bridge'});
+  cncStartPoll();
 });
 
 /* ── provider cards (screen 2) ── */
@@ -1241,6 +1272,7 @@ document.getElementById('btn-sb-proj').addEventListener('click',()=>{
 });
 document.getElementById('btn-sb-prov').addEventListener('click',()=>{
   closeDropdowns(); show(scrConnect); cncShow('connecting');
+  cncStartPoll();
   vscode.postMessage({type:'reset'});
 });
 document.getElementById('btn-sel-provider-qp').addEventListener('click',()=>{
@@ -1286,9 +1318,9 @@ window.addEventListener('message',e=>{
   const msg=e.data; if(!msg?.type) return;
   switch(msg.type){
 
-    case 'bridge_offline':
-      vscode.postMessage({type: 'get_bridge_info'});
-      cncShow('offline');
+    case 'bridge_port':
+      // Extension tells us the port so direct fetch uses the right one
+      _bridgePort = msg.port || 3333;
       break;
 
     case 'bridge_info': {
@@ -1299,15 +1331,13 @@ window.addEventListener('message',e=>{
 
     case 'bridge_starting':
       if (msg.providers && msg.providers.length > 0) {
-        // Launched from within VS Code — show provider confirm screen
+        // VS Code-launched bridge — show provider confirm screen
+        cncStopPoll();
         buildCards(msg.providers);
         show(scrConfirm);
         startBridgeTicker();
-      } else {
-        // External CLI bridge is starting — wait on connect screen
-        show(scrConnect);
-        cncShow('waiting');
       }
+      // External CLI bridge: direct poll already handles the waiting state
       break;
 
     case 'setup_state': {
@@ -1346,10 +1376,14 @@ window.addEventListener('message',e=>{
     }
 
     case 'bridge_ready':
+      // Sent by extension (via postMessage) for VS Code-launched bridge.
+      // For CLI bridge, the direct fetch poll navigates directly.
+      // Handle both paths here as a fallback/supplement.
       cncStopPoll();
       stopBridgeTicker();
       Object.keys(pcards).forEach(id=>{ if(pcards[id].phase==='waiting') setCardDone(id,'confirm'); });
-      hdrProv.textContent = msg.providerLabel || '—';
+      if (msg.providerLabel) hdrProv.textContent = msg.providerLabel;
+      if (!scrProject.classList.contains('hidden') || !scrChat.classList.contains('hidden')) break;
       if(msg.alreadyRunning){
         show(scrProject); vscode.postMessage({type:'get_workspaces'});
       } else {
@@ -1465,9 +1499,9 @@ function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
 
-// Auto-connect on load — cncShow starts the retry poll
+// Auto-connect on load via direct HTTP — no postMessage round-trip needed
 cncShow('connecting');
-vscode.postMessage({type: 'check_bridge'});
+cncStartPoll();
 
 </script>
 </body>

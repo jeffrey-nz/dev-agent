@@ -94,9 +94,16 @@ function startBridgeWatcher(context) {
   context.subscriptions.push({ dispose: () => clearInterval(timer) });
 }
 
+// Send the bridge port to a panel so its direct fetch uses the right port.
+function sendBridgePort(panel) {
+  const port = bridge.resolvePort();
+  panel?.postMessage({ type: "bridge_port", port });
+}
+
 // Call when a new panel is created so it gets status right away without
 // waiting for the 2-second poller cycle.
 function pushToPanelNow(panel) {
+  sendBridgePort(panel);
   bridge.checkStatus()
     .then((status) => broadcastBridgeStatus(status, panel))
     .catch(() => broadcastBridgeStatus({ running: false }, panel));
@@ -261,8 +268,16 @@ async function handleWebviewMessage(msg, senderPanel) {
   switch (msg.type) {
 
     case "check_bridge": {
-      // The panel requested an immediate status check (retry or manual)
+      // Fallback manual check — primary connection now uses direct fetch
       pushToPanelNow(panel);
+      break;
+    }
+
+    case "bridge_connected_direct": {
+      // Webview connected to bridge via direct fetch — update sidebar/status bar
+      const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "Connected";
+      sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
+      _lastBridgeKey = "ready";
       break;
     }
 
