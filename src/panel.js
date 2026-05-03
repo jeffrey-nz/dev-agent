@@ -212,7 +212,28 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
             padding:40px 24px 24px;gap:0;overflow-y:auto}
 .sel-inner{width:100%;max-width:500px}
 #scr-select h2{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
-#scr-select .sub{font-size:13px;color:var(--mu);margin-bottom:24px;line-height:1.5}
+#scr-select .sub{font-size:13px;color:var(--mu);margin-bottom:18px;line-height:1.5}
+
+/* pre-flight status bar */
+#sel-preflight{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r);
+  border:1px solid var(--bd);font-size:12px;margin-bottom:18px;
+  background:color-mix(in srgb,var(--fg) 3%,transparent);
+  transition:border-color .2s,background .2s;
+}
+.spf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.spf-dot.checking{background:var(--mu);opacity:.4;animation:pulse .9s infinite}
+.spf-dot.running{background:var(--ck)}
+.spf-dot.idle{background:var(--mu);opacity:.4}
+.spf-dot.error{background:var(--err)}
+#spf-label{font-size:12px;color:var(--mu);flex:1}
+#sel-preflight.running{border-color:color-mix(in srgb,var(--ck) 35%,transparent);
+  background:color-mix(in srgb,var(--ck) 6%,transparent)}
+#sel-preflight.running #spf-label{color:var(--ck)}
+#sel-preflight.error{border-color:color-mix(in srgb,var(--err) 35%,transparent);
+  background:color-mix(in srgb,var(--err) 6%,transparent)}
+#sel-preflight.error #spf-label{color:var(--err)}
+
 .provider-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:16px}
 .provider-btn{
   width:100%;text-align:left;padding:12px 14px 12px 18px;background:transparent;
@@ -224,6 +245,17 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
   border-color:var(--pb-color,var(--foc));
   box-shadow:0 0 0 1px color-mix(in srgb,var(--pb-color,var(--foc)) 20%,transparent)}
 .provider-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* post-click launching overlay (replaces provider grid while waiting for screen 2) */
+#sel-launching{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:32px 0;text-align:center;
+}
+.sla-spinner{width:28px;height:28px;border:3px solid var(--bd);border-top-color:var(--foc);
+             border-radius:50%;animation:spin .7s linear infinite}
+#sla-provider{font-size:13px;font-weight:600;color:var(--fg)}
+#sla-detail{font-size:12px;color:var(--mu)}
+
 #sel-status{font-size:12px;color:var(--mu);min-height:18px;text-align:center}
 #sel-status.err{color:var(--err)}
 
@@ -575,7 +607,16 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     </div>
     <h2>Choose a provider</h2>
     <p class="sub">Select the AI assistant to use. Dev Agent will open it in Chrome.</p>
-    <div class="provider-grid">
+    <div id="sel-preflight">
+      <div class="spf-dot checking" id="spf-dot"></div>
+      <span id="spf-label">Checking bridge status…</span>
+    </div>
+    <div id="sel-launching" class="hidden">
+      <div class="sla-spinner"></div>
+      <div id="sla-provider"></div>
+      <div id="sla-detail">Launching browser automation…</div>
+    </div>
+    <div class="provider-grid" id="provider-grid">
       ${providerCards}
     </div>
     <div id="sel-status"></div>
@@ -1098,9 +1139,11 @@ console.log('[DevAgent] provider btns found:', _providerBtns.length, [..._provid
 if (!_providerBtns.length) console.error('[DevAgent] NO provider-btn elements found — HTML may not have rendered');
 _providerBtns.forEach(btn=>{
   btn.addEventListener('click',()=>{
-    console.log('[DevAgent] provider btn clicked:', btn.dataset.id);
     document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=true);
-    setSelStatus('Launching browser automation… (provider: '+btn.dataset.id+')');
+    document.getElementById('provider-grid').classList.add('hidden');
+    document.getElementById('sel-launching').classList.remove('hidden');
+    document.getElementById('sla-provider').textContent = btn.textContent;
+    document.getElementById('sla-detail').textContent = 'Launching browser automation…';
     vscode.postMessage({type:'launch_bridge',providers:[btn.dataset.id]});
   });
 });
@@ -1221,6 +1264,22 @@ window.addEventListener('message',e=>{
   const msg=e.data; if(!msg?.type) return;
   switch(msg.type){
 
+    case 'bridge_status': {
+      const spfDot   = document.getElementById('spf-dot');
+      const spfLabel = document.getElementById('spf-label');
+      const spfEl    = document.getElementById('sel-preflight');
+      if (msg.running) {
+        spfDot.className = 'spf-dot running';
+        spfLabel.textContent = 'Bridge running · port ' + (msg.port || '—');
+        spfEl.className = 'running';
+      } else {
+        spfDot.className = 'spf-dot idle';
+        spfLabel.textContent = msg.binExists ? 'Bridge not running' : 'Bridge not installed';
+        spfEl.className = '';
+      }
+      break;
+    }
+
     case 'bridge_starting':
       buildCards(msg.providers||[]);
       show(scrConfirm);
@@ -1275,8 +1334,11 @@ window.addEventListener('message',e=>{
 
     case 'bridge_failed':
       stopBridgeTicker();
-      show(scrSelect); setSelStatus(msg.text||'Bridge failed to start.',true);
+      show(scrSelect);
+      setSelStatus(msg.text||'Bridge failed to start.',true);
       document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+      document.getElementById('provider-grid').classList.remove('hidden');
+      document.getElementById('sel-launching').classList.add('hidden');
       break;
 
     case 'workspaces':
