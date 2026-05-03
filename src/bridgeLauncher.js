@@ -67,6 +67,11 @@ async function skipProvider() {
 }
 
 function launch(providers = []) {
+  console.log(`[DevAgent bridge] launching binary: ${BRIDGE_BIN}`);
+  console.log(`[DevAgent bridge] providers env: ${providers.join(",") || "(none)"}`);
+  let binExists = false;
+  try { fs.accessSync(BRIDGE_BIN); binExists = true; } catch {}
+  console.log(`[DevAgent bridge] binary exists: ${binExists}`);
   const terminal = vscode.window.createTerminal({
     name: "browser-ai-bridge",
     env: providers.length ? { BROWSER_AI_PROVIDERS: providers.join(",") } : {},
@@ -83,10 +88,14 @@ function launch(providers = []) {
  */
 async function waitForReady(onSetupState, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
+  const port = resolvePort();
   let lastPhase = null;
+  let pollCount = 0;
 
   while (Date.now() < deadline) {
+    pollCount++;
     const state = await getSetupState();
+    console.log(`[DevAgent bridge] poll #${pollCount} port=${port} state=${JSON.stringify(state)}`);
 
     if (state && state.phase !== lastPhase) {
       lastPhase = state.phase;
@@ -97,6 +106,7 @@ async function waitForReady(onSetupState, timeoutMs = 120_000) {
 
     await new Promise((r) => setTimeout(r, 800));
   }
+  console.log(`[DevAgent bridge] waitForReady timed out after ${pollCount} polls`);
   return false;
 }
 

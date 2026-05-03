@@ -13,13 +13,11 @@ function isWriteTool(name) {
 function resolveToolPath(paramsSummary, workspaceRoot) {
   if (!paramsSummary) return null;
   const s = paramsSummary.trim();
-  // Whole string looks like a path
   if (/^[~./]?[\w./\-]+\.\w+$/.test(s)) {
     let p = s.replace(/^~/, process.env.HOME || "");
     if (!path.isAbsolute(p) && workspaceRoot) p = path.join(workspaceRoot, p);
     return p;
   }
-  // Extract path-like fragment from description
   const m = s.match(/(?:^|[\s"':`])([~./]?(?:[\w.-]+\/)+[\w.-]+\.\w{1,12})/);
   if (m) {
     let p = m[1].replace(/^~/, process.env.HOME || "");
@@ -29,14 +27,16 @@ function resolveToolPath(paramsSummary, workspaceRoot) {
   return null;
 }
 
-const PROVIDER_LABELS = {
-  copilot:    "Microsoft Copilot",
-  copilot365: "Microsoft 365 Copilot",
-  chatgpt:    "ChatGPT",
-  gemini:     "Google Gemini",
-  deepseek:   "DeepSeek",
-  grok:       "xAI Grok",
-};
+const PROVIDERS = [
+  { id: "copilot",    label: "Microsoft Copilot",    description: "Microsoft's AI assistant" },
+  { id: "copilot365", label: "Microsoft 365 Copilot", description: "Enterprise Microsoft 365" },
+  { id: "chatgpt",   label: "ChatGPT",               description: "OpenAI's ChatGPT" },
+  { id: "gemini",    label: "Google Gemini",          description: "Google's AI assistant" },
+  { id: "deepseek",  label: "DeepSeek",               description: "DeepSeek AI" },
+  { id: "grok",      label: "xAI Grok",               description: "xAI's Grok assistant" },
+];
+
+const PROVIDER_LABELS = Object.fromEntries(PROVIDERS.map((p) => [p.id, p.label]));
 
 let sidebarProvider = null;
 let agentSession = null;
@@ -44,10 +44,18 @@ let logger = null;
 let selectedProviders = [];
 let workspaceRoot = null;
 let extensionCtx = null;
+let statusBar = null;
 
 function activate(context) {
   extensionCtx = context;
   logger = new SessionLogger(context.extensionPath);
+
+  statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.command = "devAgent.start";
+  statusBar.text = "$(robot) Dev Agent";
+  statusBar.tooltip = "Open Dev Agent";
+  statusBar.show();
+  context.subscriptions.push(statusBar);
 
   sidebarProvider = new DevAgentViewProvider(context, handleSidebarMessage);
 
@@ -63,7 +71,11 @@ function activate(context) {
       const text = await vscode.window.showInputBox({ prompt: "Ask Dev Agent" });
       if (text) handleWebviewMessage({ type: "start_task", prompt: text });
     }),
-    vscode.commands.registerCommand("devAgent.stop", () => agentSession?.stop()),
+    vscode.commands.registerCommand("devAgent.stop", () => {
+      agentSession?.stop();
+      setStatusIdle();
+    }),
+    vscode.commands.registerCommand("devAgent.selectProvider", selectProviderQuickPick),
   );
 }
 
@@ -75,6 +87,59 @@ function handleSidebarMessage(msg) {
   if (msg.type === "open_panel") openChatPanel();
 }
 
+// ── Status bar helpers ─────────────────────────────────────────────────────
+
+const PHASE_ICONS = {
+  PLANNING:      "$(list-ordered)",
+  ORCHESTRATING: "$(settings-gear)",
+  RESEARCHING:   "$(search)",
+  SCOPING:       "$(map)",
+  EXECUTION:     "$(zap)",
+  WRITING:       "$(edit)",
+  VERIFYING:     "$(beaker)",
+  REVIEWING:     "$(eye)",
+  DEBUGGING:     "$(bug)",
+};
+
+function setStatusPhase(phase) {
+  if (!statusBar) return;
+  const icon = PHASE_ICONS[phase] ?? "$(sync~spin)";
+  const label = phase.charAt(0) + phase.slice(1).toLowerCase();
+  statusBar.text = `${icon} Dev Agent · ${label}`;
+  statusBar.backgroundColor = undefined;
+}
+
+function setStatusDone() {
+  if (!statusBar) return;
+  statusBar.text = "$(pass) Dev Agent · Done";
+  statusBar.backgroundColor = undefined;
+  setTimeout(setStatusIdle, 4000);
+}
+
+function setStatusIdle() {
+  if (!statusBar) return;
+  statusBar.text = "$(robot) Dev Agent";
+  statusBar.backgroundColor = undefined;
+}
+
+// ── Provider QuickPick ─────────────────────────────────────────────────────
+
+async function selectProviderQuickPick() {
+  const picked = await vscode.window.showQuickPick(
+    PROVIDERS.map((p) => ({ label: p.label, description: p.description, id: p.id })),
+    { placeHolder: "Choose an AI provider", title: "Dev Agent: Select Provider" },
+  );
+  if (!picked) return;
+  selectedProviders = [picked.id];
+  DevAgentPanel.currentPanel?.postMessage({
+    type: "provider_selected_quickpick",
+    id: picked.id,
+    label: picked.label,
+  });
+}
+
+// ── Webview message handler ────────────────────────────────────────────────
+
 async function handleWebviewMessage(msg) {
   const panel = DevAgentPanel.currentPanel;
 
@@ -85,7 +150,6 @@ async function handleWebviewMessage(msg) {
       if (running) {
         const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
         panel?.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
-        // If workspace is already chosen, skip straight to chat
         if (workspaceRoot) {
           panel?.postMessage({
             type: "workspace_confirmed",
@@ -99,17 +163,23 @@ async function handleWebviewMessage(msg) {
 
     case "launch_bridge": {
       selectedProviders = msg.providers ?? [];
+      console.log("[DevAgent] launch_bridge received, providers:", selectedProviders);
       bridge.launch(selectedProviders);
-
       panel?.postMessage({
         type: "bridge_starting",
         providers: selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
       });
 
-      const ready = await bridge.waitForReady((state) => {
-        panel?.postMessage({ type: "setup_state", state });
-      });
+      const ready = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: "Dev Agent: Starting browser…", cancellable: false },
+        async (progress) => bridge.waitForReady((state) => {
+          progress.report({ message: state?.phase ?? "Initializing…" });
+          console.log("[DevAgent] setup_state update:", JSON.stringify(state));
+          panel?.postMessage({ type: "setup_state", state });
+        }),
+      );
 
+      console.log("[DevAgent] waitForReady resolved:", ready);
       if (ready) {
         const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
         panel?.postMessage({ type: "bridge_ready", providerLabel: label });
@@ -130,8 +200,6 @@ async function handleWebviewMessage(msg) {
       await bridge.skipProvider();
       break;
 
-    // ── Project selection ────────────────────────────────────────────────────
-
     case "get_workspaces": {
       const folders = (vscode.workspace.workspaceFolders ?? []).map((f) => ({
         name: f.name,
@@ -148,11 +216,8 @@ async function handleWebviewMessage(msg) {
 
     case "browse_folder": {
       const uris = await vscode.window.showOpenDialog({
-        canSelectFolders: true,
-        canSelectFiles: false,
-        canSelectMany: false,
-        openLabel: "Select project folder",
-        title: "Select project folder",
+        canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+        openLabel: "Select project folder", title: "Select project folder",
       });
       if (uris?.[0]) {
         const p = uris[0].fsPath;
@@ -163,31 +228,20 @@ async function handleWebviewMessage(msg) {
 
     case "create_folder": {
       const name = await vscode.window.showInputBox({
-        prompt: "New folder name",
-        placeHolder: "my-project",
-        validateInput: (v) =>
-          v.trim() && /^[^<>:"/\\|?*]+$/.test(v.trim()) ? null : "Enter a valid folder name",
+        prompt: "New folder name", placeHolder: "my-project",
+        validateInput: (v) => v.trim() && /^[^<>:"/\\|?*]+$/.test(v.trim()) ? null : "Enter a valid folder name",
       });
       if (!name) break;
-
       const parentUris = await vscode.window.showOpenDialog({
-        canSelectFolders: true,
-        canSelectFiles: false,
-        canSelectMany: false,
-        openLabel: "Choose parent location",
-        title: "Where should the new folder be created?",
+        canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+        openLabel: "Choose parent location", title: "Where should the new folder be created?",
       });
       if (!parentUris?.[0]) break;
-
       const newPath = path.join(parentUris[0].fsPath, name.trim());
       try {
         fs.mkdirSync(newPath, { recursive: true });
         panel?.postMessage({ type: "folder_chosen", folder: { name: name.trim(), path: newPath } });
-        await vscode.commands.executeCommand(
-          "vscode.openFolder",
-          vscode.Uri.file(newPath),
-          { forceNewWindow: false },
-        );
+        await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(newPath), { forceNewWindow: false });
       } catch (err) {
         panel?.postMessage({ type: "system_message", text: `Could not create folder: ${err.message}`, level: "error" });
       }
@@ -200,12 +254,8 @@ async function handleWebviewMessage(msg) {
       break;
     }
 
-    // ── Chat ─────────────────────────────────────────────────────────────────
-
     case "open_file": {
-      if (msg.path) {
-        vscode.window.showTextDocument(vscode.Uri.file(msg.path)).catch(() => {});
-      }
+      if (msg.path) vscode.window.showTextDocument(vscode.Uri.file(msg.path)).catch(() => {});
       break;
     }
 
@@ -214,15 +264,17 @@ async function handleWebviewMessage(msg) {
         panel?.postMessage({ type: "system_message", text: "Already running.", level: "warn" });
         return;
       }
-      const root = workspaceRoot
-        ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-        ?? process.cwd();
+      const root = workspaceRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
       const chosenProvider = msg.provider || selectedProviders[0] || "copilot";
 
       let lastWritePath = null;
       const broadcast = (e) => {
         panel?.postMessage(e);
         sidebarProvider?.postMessage(e);
+
+        if (e.type === "phase_change") setStatusPhase(e.phase);
+        if (e.type === "session_end" || e.type === "task_complete") setStatusDone();
+
         if (e.type === "tool_call_start" && isWriteTool(e.tool)) {
           lastWritePath = resolveToolPath(e.paramsSummary, root);
         } else if (e.type === "tool_call_start") {
@@ -246,14 +298,9 @@ async function handleWebviewMessage(msg) {
         }
       };
 
-      agentSession = new AgentSession({
-        workspaceRoot: root,
-        prompt: msg.prompt,
-        provider: chosenProvider,
-        onEvent: broadcast,
-        logger,
-      });
+      agentSession = new AgentSession({ workspaceRoot: root, prompt: msg.prompt, provider: chosenProvider, onEvent: broadcast, logger });
       agentSession.run().catch((err) => {
+        setStatusIdle();
         panel?.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });
       });
       break;
@@ -261,16 +308,22 @@ async function handleWebviewMessage(msg) {
 
     case "stop":
       agentSession?.stop();
+      setStatusIdle();
       break;
 
     case "reset":
       agentSession?.stop();
       selectedProviders = [];
       workspaceRoot = null;
+      setStatusIdle();
       break;
 
     case "change_project":
       panel?.postMessage({ type: "show_project_screen" });
+      break;
+
+    case "select_provider_qp":
+      await selectProviderQuickPick();
       break;
   }
 }

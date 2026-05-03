@@ -24,6 +24,22 @@
       {
         "command": "devAgent.stop",
         "title": "Dev Agent: Stop"
+      },
+      {
+        "command": "devAgent.selectProvider",
+        "title": "Dev Agent: Select Provider"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "devAgent.start",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d"
+      },
+      {
+        "command": "devAgent.stop",
+        "key": "ctrl+shift+.",
+        "mac": "cmd+shift+."
       }
     ],
     "viewsContainers": {
