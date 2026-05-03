@@ -138,6 +138,53 @@ async function selectProviderQuickPick() {
   });
 }
 
+// ── Bridge launch helper ───────────────────────────────────────────────────
+
+const SETUP_PHASE_LABELS = {
+  waiting_for_server: "Launching browser process…",
+  starting:           "Browser connected · authenticating…",
+  waiting_confirm:    "Waiting for confirmation…",
+  lost_connection:    "Lost connection · retrying…",
+  ready:              "Ready",
+};
+
+async function doLaunchBridge(providers, panel) {
+  bridge.launch(providers);
+  panel?.postMessage({
+    type: "bridge_starting",
+    providers: providers.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
+  });
+
+  let lastSetupState = null;
+  const ready = await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Window, title: "Dev Agent", cancellable: false },
+    async (progress) => bridge.waitForReady((state) => {
+      lastSetupState = state;
+      const label = SETUP_PHASE_LABELS[state?.phase] ?? state?.phase ?? "Starting…";
+      const elapsed = state?.elapsed ? ` (${state.elapsed}s)` : "";
+      progress.report({ message: label + elapsed });
+      panel?.postMessage({ type: "setup_state", state });
+    }),
+  );
+
+  if (ready) {
+    const label = providers.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
+    panel?.postMessage({ type: "bridge_ready", providerLabel: label });
+  } else {
+    const phase = lastSetupState?.phase;
+    const elapsed = lastSetupState?.elapsed;
+    let failText = `Bridge did not become ready after ${elapsed ?? "?"}s.`;
+    if (!lastSetupState?.serverUp && phase !== "lost_connection") {
+      failText += " The browser process may not have started — check the 'browser-ai-bridge' terminal.";
+    } else if (phase === "lost_connection") {
+      failText += " Lost connection to the browser process — it may have crashed.";
+    } else {
+      failText += " Check the 'browser-ai-bridge' terminal for errors.";
+    }
+    panel?.postMessage({ type: "bridge_failed", text: failText });
+  }
+}
+
 // ── Webview message handler ────────────────────────────────────────────────
 
 async function handleWebviewMessage(msg) {
@@ -169,50 +216,35 @@ async function handleWebviewMessage(msg) {
 
     case "launch_bridge": {
       selectedProviders = msg.providers ?? [];
-      console.log("[DevAgent] launch_bridge received, providers:", selectedProviders);
-      bridge.launch(selectedProviders);
-      panel?.postMessage({
-        type: "bridge_starting",
-        providers: selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
-      });
+      await doLaunchBridge(selectedProviders, panel);
+      break;
+    }
 
-      const SETUP_PHASE_LABELS = {
-        waiting_for_server: "Launching browser process…",
-        starting:           "Browser connected · authenticating…",
-        waiting_confirm:    "Waiting for confirmation…",
-        lost_connection:    "Lost connection · retrying…",
-        ready:              "Ready",
-      };
-
-      let lastSetupState = null;
-      const ready = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Window, title: "Dev Agent", cancellable: false },
-        async (progress) => bridge.waitForReady((state) => {
-          lastSetupState = state;
-          const label = SETUP_PHASE_LABELS[state?.phase] ?? state?.phase ?? "Starting…";
-          const elapsed = state?.elapsed ? ` (${state.elapsed}s)` : "";
-          progress.report({ message: label + elapsed });
-          console.log("[DevAgent] setup_state:", JSON.stringify(state));
-          panel?.postMessage({ type: "setup_state", state });
-        }),
+    case "launch_bridge_qp": {
+      const picked = await vscode.window.showQuickPick(
+        PROVIDERS.map((p) => ({ label: p.label, description: p.description, id: p.id })),
+        { placeHolder: "Choose a provider to start with", title: "Dev Agent: Start Bridge" },
       );
+      if (!picked) {
+        panel?.postMessage({ type: "bridge_launch_cancelled" });
+        break;
+      }
+      selectedProviders = [picked.id];
+      panel?.postMessage({ type: "provider_selected_quickpick", id: picked.id, label: picked.label });
+      await doLaunchBridge(selectedProviders, panel);
+      break;
+    }
 
-      console.log("[DevAgent] waitForReady resolved:", ready, "lastState:", lastSetupState?.phase);
-      if (ready) {
-        const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
-        panel?.postMessage({ type: "bridge_ready", providerLabel: label });
-      } else {
-        const phase = lastSetupState?.phase;
-        const elapsed = lastSetupState?.elapsed;
-        let failText = `Bridge did not become ready after ${elapsed ?? "?"}s.`;
-        if (!lastSetupState?.serverUp && phase !== "lost_connection") {
-          failText += " The browser process may not have started — check the 'browser-ai-bridge' terminal.";
-        } else if (phase === "lost_connection") {
-          failText += " Lost connection to the browser process — it may have crashed.";
-        } else {
-          failText += " Check the 'browser-ai-bridge' terminal for errors.";
-        }
-        panel?.postMessage({ type: "bridge_failed", text: failText });
+    case "select_provider": {
+      selectedProviders = msg.providers ?? [];
+      const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
+      panel?.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
+      if (workspaceRoot) {
+        panel?.postMessage({
+          type: "workspace_confirmed",
+          name: path.basename(workspaceRoot),
+          path: workspaceRoot,
+        });
       }
       break;
     }

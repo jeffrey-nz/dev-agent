@@ -233,6 +233,13 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 #sel-preflight.error{border-color:color-mix(in srgb,var(--err) 35%,transparent);
   background:color-mix(in srgb,var(--err) 6%,transparent)}
 #sel-preflight.error #spf-label{color:var(--err)}
+.spf-action{
+  margin-left:auto;flex-shrink:0;background:transparent;color:var(--foc);border:none;
+  font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;cursor:pointer;
+  transition:background .12s;white-space:nowrap;
+}
+.spf-action:hover{background:color-mix(in srgb,var(--foc) 12%,transparent)}
+.spf-action.restart{color:var(--mu)}
 
 .provider-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:16px}
 .provider-btn{
@@ -610,11 +617,13 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <div id="sel-preflight">
       <div class="spf-dot checking" id="spf-dot"></div>
       <span id="spf-label">Checking bridge status…</span>
+      <button id="spf-btn" class="spf-action hidden"></button>
     </div>
     <div id="sel-launching" class="hidden">
       <div class="sla-spinner"></div>
       <div id="sla-provider"></div>
       <div id="sla-detail">Launching browser automation…</div>
+      <button id="sla-cancel" class="btn-g" style="margin-top:6px;font-size:11px;padding:4px 12px">Cancel</button>
     </div>
     <div class="provider-grid" id="provider-grid">
       ${providerCards}
@@ -1134,18 +1143,40 @@ function addDoneBanner(){
 }
 
 /* ── provider selection (screen 1) ── */
-const _providerBtns = document.querySelectorAll('.provider-btn');
-console.log('[DevAgent] provider btns found:', _providerBtns.length, [..._providerBtns].map(b=>b.dataset.id));
-if (!_providerBtns.length) console.error('[DevAgent] NO provider-btn elements found — HTML may not have rendered');
-_providerBtns.forEach(btn=>{
+let _bridgeRunning = false;
+
+function showLaunching(label, detail) {
+  document.getElementById('provider-grid').classList.add('hidden');
+  document.getElementById('sel-launching').classList.remove('hidden');
+  document.getElementById('sla-provider').textContent = label;
+  document.getElementById('sla-detail').textContent = detail || 'Launching browser automation…';
+}
+function hideLaunching() {
+  document.getElementById('provider-grid').classList.remove('hidden');
+  document.getElementById('sel-launching').classList.add('hidden');
+}
+
+document.querySelectorAll('.provider-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=true);
-    document.getElementById('provider-grid').classList.add('hidden');
-    document.getElementById('sel-launching').classList.remove('hidden');
-    document.getElementById('sla-provider').textContent = btn.textContent;
-    document.getElementById('sla-detail').textContent = 'Launching browser automation…';
-    vscode.postMessage({type:'launch_bridge',providers:[btn.dataset.id]});
+    if (_bridgeRunning) {
+      showLaunching(btn.textContent, 'Bridge already running — connecting…');
+      vscode.postMessage({type:'select_provider', providers:[btn.dataset.id]});
+    } else {
+      showLaunching(btn.textContent, 'Launching browser automation…');
+      vscode.postMessage({type:'launch_bridge', providers:[btn.dataset.id]});
+    }
   });
+});
+
+document.getElementById('spf-btn').addEventListener('click', () => {
+  showLaunching('', 'Choose a provider in the VS Code picker…');
+  vscode.postMessage({type:'launch_bridge_qp'});
+});
+
+document.getElementById('sla-cancel').addEventListener('click', () => {
+  hideLaunching();
+  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
 });
 
 /* ── provider cards (screen 2) ── */
@@ -1265,17 +1296,28 @@ window.addEventListener('message',e=>{
   switch(msg.type){
 
     case 'bridge_status': {
-      const spfDot   = document.getElementById('spf-dot');
+      _bridgeRunning = msg.running;
+      const spfDot = document.getElementById('spf-dot');
       const spfLabel = document.getElementById('spf-label');
-      const spfEl    = document.getElementById('sel-preflight');
+      const spfEl = document.getElementById('sel-preflight');
+      const spfBtn = document.getElementById('spf-btn');
       if (msg.running) {
         spfDot.className = 'spf-dot running';
         spfLabel.textContent = 'Bridge running · port ' + (msg.port || '—');
         spfEl.className = 'running';
-      } else {
+        spfBtn.textContent = 'Restart';
+        spfBtn.className = 'spf-action restart';
+      } else if (msg.binExists) {
         spfDot.className = 'spf-dot idle';
-        spfLabel.textContent = msg.binExists ? 'Bridge not running' : 'Bridge not installed';
+        spfLabel.textContent = 'Bridge not running';
         spfEl.className = '';
+        spfBtn.textContent = 'Start Bridge';
+        spfBtn.className = 'spf-action';
+      } else {
+        spfDot.className = 'spf-dot error';
+        spfLabel.textContent = 'Bridge not installed — run npm run sync-modules';
+        spfEl.className = 'error';
+        spfBtn.className = 'spf-action hidden';
       }
       break;
     }
@@ -1332,13 +1374,17 @@ window.addEventListener('message',e=>{
       }
       break;
 
+    case 'bridge_launch_cancelled':
+      hideLaunching();
+      document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+      break;
+
     case 'bridge_failed':
       stopBridgeTicker();
       show(scrSelect);
       setSelStatus(msg.text||'Bridge failed to start.',true);
       document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
-      document.getElementById('provider-grid').classList.remove('hidden');
-      document.getElementById('sel-launching').classList.add('hidden');
+      hideLaunching();
       break;
 
     case 'workspaces':
