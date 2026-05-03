@@ -76,6 +76,11 @@ function activate(context) {
       setStatusIdle();
     }),
     vscode.commands.registerCommand("devAgent.selectProvider", selectProviderQuickPick),
+    vscode.window.registerWebviewPanelSerializer("devAgent.chat", {
+      async deserializeWebviewPanel(webviewPanel) {
+        DevAgentPanel.revive(extensionCtx, webviewPanel, handleWebviewMessage);
+      },
+    }),
   );
 }
 

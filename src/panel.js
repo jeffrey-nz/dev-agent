@@ -121,6 +121,10 @@ window.addEventListener('message', e => {
 class DevAgentPanel {
   static currentPanel = null;
 
+  static revive(context, webviewPanel, onMessage) {
+    DevAgentPanel.currentPanel = new DevAgentPanel(context, webviewPanel, onMessage);
+  }
+
   static createOrReveal(context, onMessage) {
     if (DevAgentPanel.currentPanel) {
       DevAgentPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
@@ -1144,6 +1148,8 @@ function addDoneBanner(){
 
 /* ── provider selection (screen 1) ── */
 let _bridgeRunning = false;
+let _spfState = 'checking'; // checking | running | idle | timeout
+let _checkFallback = null;
 
 function showLaunching(label, detail) {
   document.getElementById('provider-grid').classList.add('hidden');
@@ -1170,8 +1176,12 @@ document.querySelectorAll('.provider-btn').forEach(btn=>{
 });
 
 document.getElementById('spf-btn').addEventListener('click', () => {
-  showLaunching('', 'Choose a provider in the VS Code picker…');
-  vscode.postMessage({type:'launch_bridge_qp'});
+  if (_spfState === 'timeout') {
+    sendCheckBridge();
+  } else {
+    showLaunching('', 'Choose a provider in the VS Code picker…');
+    vscode.postMessage({type:'launch_bridge_qp'});
+  }
 });
 
 document.getElementById('sla-cancel').addEventListener('click', () => {
@@ -1296,7 +1306,9 @@ window.addEventListener('message',e=>{
   switch(msg.type){
 
     case 'bridge_status': {
+      clearTimeout(_checkFallback);
       _bridgeRunning = msg.running;
+      _spfState = msg.running ? 'running' : 'idle';
       const spfDot = document.getElementById('spf-dot');
       const spfLabel = document.getElementById('spf-label');
       const spfEl = document.getElementById('sel-preflight');
@@ -1485,7 +1497,38 @@ function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
 
-vscode.postMessage({type:'check_bridge'});
+/* ── bridge status check with fallback ── */
+function sendCheckBridge() {
+  _spfState = 'checking';
+  const dot = document.getElementById('spf-dot');
+  const lbl = document.getElementById('spf-label');
+  const el  = document.getElementById('sel-preflight');
+  const btn = document.getElementById('spf-btn');
+  if (dot) dot.className = 'spf-dot checking';
+  if (lbl) lbl.textContent = 'Checking bridge status…';
+  if (el)  el.className = '';
+  if (btn) btn.className = 'spf-action hidden';
+  clearTimeout(_checkFallback);
+  _checkFallback = setTimeout(() => {
+    if (_spfState !== 'checking') return;
+    _spfState = 'timeout';
+    const d = document.getElementById('spf-dot');
+    const l = document.getElementById('spf-label');
+    const e = document.getElementById('sel-preflight');
+    const b = document.getElementById('spf-btn');
+    if (d) d.className = 'spf-dot error';
+    if (l) l.textContent = 'No response from extension — try reloading';
+    if (e) e.className = 'error';
+    if (b) { b.textContent = 'Retry'; b.className = 'spf-action'; }
+  }, 5000);
+  vscode.postMessage({type: 'check_bridge'});
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (_spfState === 'checking' || _spfState === 'timeout')) sendCheckBridge();
+});
+
+setTimeout(sendCheckBridge, 100);
 </script>
 </body>
 </html>`;
