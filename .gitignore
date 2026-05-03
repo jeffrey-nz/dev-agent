@@ -6,3 +6,4 @@ dev-agent.log
 .copilot-handoffs/
 copilot-reports/
 .verification_complete.txt
+logs/
