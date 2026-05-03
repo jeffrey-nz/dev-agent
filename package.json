@@ -11,6 +11,9 @@
   "categories": ["AI", "Other"],
   "activationEvents": ["onCommand:devAgent.start", "onStartupFinished"],
   "main": "./dist/extension.cjs",
+  "bin": {
+    "dev-agent": "./bin/dev-agent.mjs"
+  },
   "contributes": {
     "commands": [
       {
@@ -66,7 +69,7 @@
     "watch": "node scripts/build.mjs --watch",
     "package": "vsce package",
     "lint": "eslint src/",
-    "bridge": "node node_modules/browser-ai-bridge/bin/browser-ai-bridge.js",
+    "start": "node bin/dev-agent.mjs",
     "sync-modules": "rsync -a --delete ../agent-core/src/ node_modules/agent-core/src/ && rsync -a --delete ../browser-ai-bridge/src/ node_modules/browser-ai-bridge/src/ && rsync -a --delete ../browser-ai-bridge/bin/ node_modules/browser-ai-bridge/bin/"
   },
   "dependencies": {
