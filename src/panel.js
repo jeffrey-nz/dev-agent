@@ -2,15 +2,6 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 
-const PROVIDERS = [
-  { id: "copilot",    label: "Microsoft Copilot",    color: "#0078D4" },
-  { id: "copilot365", label: "Microsoft 365 Copilot", color: "#0078D4" },
-  { id: "chatgpt",   label: "ChatGPT",               color: "#10A37F" },
-  { id: "gemini",    label: "Google Gemini",          color: "#4285F4" },
-  { id: "deepseek",  label: "DeepSeek",               color: "#5E5CE6" },
-  { id: "grok",      label: "xAI Grok",               color: "#1D9BF0" },
-];
-
 // ─── Sidebar widget ────────────────────────────────────────────────────────
 
 class DevAgentViewProvider {
@@ -151,10 +142,6 @@ class DevAgentPanel {
   reveal() { this._panel?.reveal(vscode.ViewColumn.One); }
 
   _buildHtml() {
-    const providerCards = PROVIDERS.map((p) =>
-      `<button class="provider-btn" data-id="${p.id}" style="--pb-color:${p.color}">${p.label}</button>`,
-    ).join("\n      ");
-
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -211,43 +198,30 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
          align-self:flex-start;margin-top:11px;transition:background .25s}
 .wz-line.done{background:var(--ck)}
 
-/* ── screen 1: provider ── */
-#scr-select{flex:1;display:flex;flex-direction:column;align-items:center;
-            padding:32px 24px 24px;gap:0;overflow-y:auto}
-.sel-inner{width:100%;max-width:480px}
-.sel-hero{text-align:center;margin-bottom:28px}
-.sel-logo{font-size:36px;margin-bottom:10px}
-#scr-select h2{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
-#scr-select .sub{font-size:13px;color:var(--mu);margin-bottom:0;line-height:1.6}
-.sel-footer{margin-top:18px;text-align:center;font-size:12px;color:var(--mu)}
-.btn-link{background:transparent;border:none;color:var(--foc);font:inherit;font-size:12px;
-          cursor:pointer;padding:0 2px;text-decoration:underline;text-underline-offset:2px}
-.btn-link:hover{opacity:.75}
-
-.provider-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:16px}
-.provider-btn{
-  width:100%;text-align:left;padding:12px 14px 12px 18px;background:transparent;
-  border:1px solid var(--bd);border-left:3px solid var(--pb-color,var(--bd));
-  border-radius:var(--r);color:var(--fg);font-size:13px;font-weight:500;
-  transition:border-color .12s,background .12s,box-shadow .12s}
-.provider-btn:hover{
-  background:color-mix(in srgb,var(--pb-color,var(--foc)) 7%,transparent);
-  border-color:var(--pb-color,var(--foc));
-  box-shadow:0 0 0 1px color-mix(in srgb,var(--pb-color,var(--foc)) 20%,transparent)}
-.provider-btn:disabled{opacity:.45;cursor:not-allowed}
-
-/* post-click launching overlay (replaces provider grid while waiting for screen 2) */
-#sel-launching{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;padding:32px 0;text-align:center;
-}
-.sla-spinner{width:28px;height:28px;border:3px solid var(--bd);border-top-color:var(--foc);
-             border-radius:50%;animation:spin .7s linear infinite}
-#sla-provider{font-size:13px;font-weight:600;color:var(--fg)}
-#sla-detail{font-size:12px;color:var(--mu)}
-
-#sel-status{font-size:12px;color:var(--mu);min-height:18px;text-align:center}
-#sel-status.err{color:var(--err)}
+/* ── screen 1: connect ── */
+#scr-connect{flex:1;display:flex;flex-direction:column;align-items:center;
+             justify-content:center;padding:40px 24px}
+.cnc-wrap{width:100%;max-width:380px;text-align:center;display:flex;
+          flex-direction:column;align-items:center}
+.cnc-logo{font-size:40px;margin-bottom:14px}
+.cnc-title{font-size:22px;font-weight:700;margin-bottom:32px;letter-spacing:-.4px}
+.cnc-spinner{width:30px;height:30px;border:3px solid var(--bd);border-top-color:var(--foc);
+             border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+.cnc-hint{font-size:13px;color:var(--mu);margin-bottom:0}
+.cnc-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+           padding:4px 12px;border-radius:20px;margin-bottom:18px}
+.cnc-badge.offline{background:color-mix(in srgb,var(--mu) 10%,transparent);color:var(--mu)}
+.cnc-badge.error{background:color-mix(in srgb,var(--err) 10%,transparent);color:var(--err)}
+.cnc-desc{font-size:13px;color:var(--mu);line-height:1.6;margin-bottom:22px}
+.cnc-main-btn{font-size:13px;padding:9px 26px;margin-bottom:18px}
+.cnc-cmd{font-size:11px;font-family:var(--vscode-editor-font-family,monospace);
+         color:var(--mu);background:color-mix(in srgb,var(--fg) 5%,transparent);
+         border:1px solid var(--bd);padding:7px 12px;border-radius:var(--r);
+         margin-bottom:20px;word-break:break-all;text-align:left;width:100%}
+.cnc-poll{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mu);
+          justify-content:center;margin-top:4px}
+.cnc-pulse{width:6px;height:6px;border-radius:50%;background:var(--mu);opacity:.4;
+           animation:pulse .9s infinite;flex-shrink:0}
 
 /* ── screen 2: confirm ── */
 #scr-confirm{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -585,33 +559,35 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 </head>
 <body>
 
-<!-- ─── screen 1: provider selection ─── -->
-<div id="scr-select">
-  <div class="sel-inner">
-    <div class="wizard" aria-label="Setup steps">
-      <div class="wz-step active"><div class="wz-dot">1</div><div class="wz-label">Provider</div></div>
-      <div class="wz-line"></div>
-      <div class="wz-step"><div class="wz-dot">2</div><div class="wz-label">Browser</div></div>
-      <div class="wz-line"></div>
-      <div class="wz-step"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
+<!-- ─── screen 1: connect ─── -->
+<div id="scr-connect">
+  <div class="cnc-wrap">
+    <div class="cnc-logo">🤖</div>
+    <div class="cnc-title">Dev Agent</div>
+
+    <!-- connecting state (shown on load) -->
+    <div id="cnc-connecting">
+      <div class="cnc-spinner"></div>
+      <div class="cnc-hint">Connecting to bridge…</div>
     </div>
-    <div class="sel-hero">
-      <div class="sel-logo">🤖</div>
-      <h2>Choose an AI provider</h2>
-      <p class="sub">Dev Agent opens Chrome and drives your AI account directly.<br>No API key needed — uses your existing subscription.</p>
+
+    <!-- offline state -->
+    <div id="cnc-offline" class="hidden">
+      <div class="cnc-badge offline">Bridge not running</div>
+      <p class="cnc-desc">Start the bridge to get going.<br>It runs as a background process in a terminal.</p>
+      <button class="btn-p cnc-main-btn" id="btn-start-bridge">▶ Start Bridge</button>
+      <div class="cnc-cmd hidden" id="cnc-cmd"></div>
+      <div class="cnc-poll">
+        <span class="cnc-pulse"></span>
+        <span id="cnc-poll-lbl">Checking…</span>
+      </div>
     </div>
-    <div id="sel-launching" class="hidden">
-      <div class="sla-spinner"></div>
-      <div id="sla-provider"></div>
-      <div id="sla-detail">Launching browser automation…</div>
-      <button id="sla-cancel" class="btn-g" style="margin-top:8px;font-size:11px;padding:4px 12px">Cancel</button>
-    </div>
-    <div class="provider-grid" id="provider-grid">
-      ${providerCards}
-    </div>
-    <div id="sel-status"></div>
-    <div class="sel-footer">
-      Bridge already running? <button id="btn-connect" class="btn-link">Connect →</button>
+
+    <!-- error state -->
+    <div id="cnc-error" class="hidden">
+      <div class="cnc-badge error">⚠ Could not start</div>
+      <p class="cnc-desc" id="cnc-err-txt"></p>
+      <button class="btn-g" id="btn-cnc-retry" style="font-size:12px;padding:6px 16px">Try again</button>
     </div>
   </div>
 </div>
@@ -620,9 +596,9 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 <div id="scr-confirm" class="hidden">
   <div class="setup-hdr">
     <div class="wizard">
-      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Provider</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Bridge</div></div>
       <div class="wz-line done"></div>
-      <div class="wz-step active"><div class="wz-dot">2</div><div class="wz-label">Browser</div></div>
+      <div class="wz-step active"><div class="wz-dot">2</div><div class="wz-label">Setup</div></div>
       <div class="wz-line"></div>
       <div class="wz-step"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
     </div>
@@ -645,9 +621,9 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 <div id="scr-project" class="hidden">
   <div class="setup-hdr">
     <div class="wizard">
-      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Provider</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Bridge</div></div>
       <div class="wz-line done"></div>
-      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Browser</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Setup</div></div>
       <div class="wz-line done"></div>
       <div class="wz-step active"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
     </div>
@@ -689,7 +665,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
   <!-- settings dropdown -->
   <div id="settings-drop" class="hidden">
     <button class="drop-item" id="btn-sb-proj">📂 Change project…</button>
-    <button class="drop-item" id="btn-sb-prov">↩ Change provider</button>
+    <button class="drop-item" id="btn-sb-prov">↩ Reconnect bridge</button>
     <div class="drop-sep"></div>
     <button class="drop-item" id="btn-sel-provider-qp">⚡ Quick-pick provider…</button>
   </div>
@@ -746,11 +722,10 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 const vscode = acquireVsCodeApi();
 
 /* ── element refs ── */
-const scrSelect  = document.getElementById('scr-select');
+const scrConnect = document.getElementById('scr-connect');
 const scrConfirm = document.getElementById('scr-confirm');
 const scrProject = document.getElementById('scr-project');
 const scrChat    = document.getElementById('scr-chat');
-const selStatus  = document.getElementById('sel-status');
 const pcardList  = document.getElementById('pcard-list');
 const projBody   = document.getElementById('proj-body');
 const messages   = document.getElementById('messages');
@@ -769,11 +744,10 @@ const hdrProj    = document.getElementById('hdr-proj');
 const hdrProv    = document.getElementById('hdr-prov');
 const btnSessions    = document.getElementById('btn-sessions');
 const btnSettingsBtn = document.getElementById('btn-settings');
-const ALL_SCRS   = [scrSelect, scrConfirm, scrProject, scrChat];
+const ALL_SCRS   = [scrConnect, scrConfirm, scrProject, scrChat];
 
 /* ── screen helpers ── */
 function show(s){ ALL_SCRS.forEach(x=>x.classList.add('hidden')); s.classList.remove('hidden'); closeDropdowns(); }
-function setSelStatus(t,e){ selStatus.textContent=t; selStatus.className=e?'err':''; }
 function ts(){ return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function relTime(d){
@@ -1126,40 +1100,42 @@ function addDoneBanner(){
   d.innerHTML='<span>✅</span><span>Task complete</span>'; ibt(d);
 }
 
-/* ── provider selection (screen 1) ── */
-function showLaunching(label, detail) {
-  document.getElementById('provider-grid').classList.add('hidden');
-  document.getElementById('sel-launching').classList.remove('hidden');
-  document.getElementById('sla-provider').textContent = label;
-  document.getElementById('sla-detail').textContent = detail || 'Launching browser automation…';
-}
-function hideLaunching() {
-  document.getElementById('provider-grid').classList.remove('hidden');
-  document.getElementById('sel-launching').classList.add('hidden');
-}
-function resetSelectScreen() {
-  hideLaunching();
-  document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=false);
+/* ── connect screen (screen 1) ── */
+let _cncPollTimer = null;
+let _cncElapsed = 0;
+
+function cncShow(state) {
+  document.getElementById('cnc-connecting').classList.toggle('hidden', state !== 'connecting');
+  document.getElementById('cnc-offline').classList.toggle('hidden', state !== 'offline');
+  document.getElementById('cnc-error').classList.toggle('hidden', state !== 'error');
 }
 
-document.querySelectorAll('.provider-btn').forEach(btn=>{
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.provider-btn').forEach(b=>b.disabled=true);
-    setSelStatus('');
-    showLaunching(btn.textContent, 'Launching browser automation…');
-    vscode.postMessage({type:'launch_bridge', providers:[btn.dataset.id]});
-  });
+function cncStartPoll() {
+  _cncElapsed = 0;
+  clearInterval(_cncPollTimer);
+  _cncPollTimer = setInterval(() => {
+    _cncElapsed++;
+    const countdown = 3 - (_cncElapsed % 3);
+    const lbl = document.getElementById('cnc-poll-lbl');
+    if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
+    if (_cncElapsed % 3 === 0) vscode.postMessage({type: 'check_bridge'});
+  }, 1000);
+}
+
+function cncStopPoll() {
+  clearInterval(_cncPollTimer);
+  _cncPollTimer = null;
+}
+
+document.getElementById('btn-start-bridge').addEventListener('click', () => {
+  cncStopPoll();
+  cncShow('connecting');
+  vscode.postMessage({type: 'launch_bridge', providers: []});
 });
 
-document.getElementById('btn-connect').addEventListener('click', () => {
-  setSelStatus('');
-  showLaunching('', 'Checking if bridge is running…');
-  vscode.postMessage({type:'check_bridge'});
-});
-
-document.getElementById('sla-cancel').addEventListener('click', () => {
-  resetSelectScreen();
-  setSelStatus('');
+document.getElementById('btn-cnc-retry').addEventListener('click', () => {
+  cncShow('connecting');
+  vscode.postMessage({type: 'check_bridge'});
 });
 
 /* ── provider cards (screen 2) ── */
@@ -1231,8 +1207,8 @@ document.getElementById('btn-sb-proj').addEventListener('click',()=>{
   closeDropdowns(); vscode.postMessage({type:'change_project'});
 });
 document.getElementById('btn-sb-prov').addEventListener('click',()=>{
-  closeDropdowns(); show(scrSelect);
-  resetSelectScreen(); setSelStatus('');
+  closeDropdowns(); show(scrConnect); cncShow('connecting');
+  vscode.postMessage({type:'check_bridge'});
   vscode.postMessage({type:'reset'});
 });
 document.getElementById('btn-sel-provider-qp').addEventListener('click',()=>{
@@ -1278,13 +1254,18 @@ window.addEventListener('message',e=>{
   const msg=e.data; if(!msg?.type) return;
   switch(msg.type){
 
-    case 'bridge_status':
-      // Only arrives from the "Connect →" button. If running, bridge_ready fires next.
-      if (!msg.running) {
-        resetSelectScreen();
-        setSelStatus('Bridge is not running — click a provider above to start it.', true);
-      }
+    case 'bridge_offline':
+      cncStopPoll();
+      cncShow('offline');
+      vscode.postMessage({type: 'get_bridge_info'});
+      cncStartPoll();
       break;
+
+    case 'bridge_info': {
+      const cmd = document.getElementById('cnc-cmd');
+      if (cmd) { cmd.textContent = msg.cmd; cmd.classList.remove('hidden'); }
+      break;
+    }
 
     case 'bridge_starting':
       buildCards(msg.providers||[]);
@@ -1339,10 +1320,13 @@ window.addEventListener('message',e=>{
       break;
 
     case 'bridge_failed':
+      cncStopPoll();
       stopBridgeTicker();
-      show(scrSelect);
-      setSelStatus(msg.text||'Bridge failed to start.',true);
-      resetSelectScreen();
+      // If we're already in chat or project screen, don't interrupt
+      if (!scrChat.classList.contains('hidden') || !scrProject.classList.contains('hidden')) break;
+      show(scrConnect);
+      cncShow('error');
+      document.getElementById('cnc-err-txt').textContent = msg.text || 'Bridge failed to start.';
       break;
 
     case 'workspaces':
@@ -1442,6 +1426,9 @@ function startBridgeTicker() {
 function stopBridgeTicker() {
   if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
 }
+
+// Auto-connect on load
+vscode.postMessage({type: 'check_bridge'});
 
 </script>
 </body>

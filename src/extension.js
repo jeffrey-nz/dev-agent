@@ -153,13 +153,7 @@ const SETUP_PHASE_LABELS = {
   ready:              "Ready",
 };
 
-async function doLaunchBridge(providers, panel) {
-  bridge.launch(providers);
-  panel?.postMessage({
-    type: "bridge_starting",
-    providers: providers.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
-  });
-
+async function watchBridge(panel) {
   let lastSetupState = null;
   const ready = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Window, title: "Dev Agent", cancellable: false },
@@ -171,23 +165,31 @@ async function doLaunchBridge(providers, panel) {
       panel?.postMessage({ type: "setup_state", state });
     }),
   );
-
   if (ready) {
-    const label = providers.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
+    const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
     panel?.postMessage({ type: "bridge_ready", providerLabel: label });
   } else {
     const phase = lastSetupState?.phase;
     const elapsed = lastSetupState?.elapsed;
     let failText = `Bridge did not become ready after ${elapsed ?? "?"}s.`;
     if (!lastSetupState?.serverUp && phase !== "lost_connection") {
-      failText += " The browser process may not have started — check the 'browser-ai-bridge' terminal.";
+      failText += " The browser process may not have started.";
     } else if (phase === "lost_connection") {
-      failText += " Lost connection to the browser process — it may have crashed.";
+      failText += " Lost connection to the browser process.";
     } else {
-      failText += " Check the 'browser-ai-bridge' terminal for errors.";
+      failText += " Check the bridge terminal for errors.";
     }
     panel?.postMessage({ type: "bridge_failed", text: failText });
   }
+}
+
+async function doLaunchBridge(providers, panel) {
+  bridge.launch(providers);
+  panel?.postMessage({
+    type: "bridge_starting",
+    providers: providers.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })),
+  });
+  await watchBridge(panel);
 }
 
 // ── Webview message handler ────────────────────────────────────────────────
@@ -198,8 +200,10 @@ async function handleWebviewMessage(msg) {
   switch (msg.type) {
 
     case "check_bridge": {
-      const running = await bridge.isRunning();
-      if (running) {
+      const status = await bridge.checkStatus();
+      if (!status.running) {
+        panel?.postMessage({ type: "bridge_offline" });
+      } else if (status.phase === "ready") {
         const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
         panel?.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
         if (workspaceRoot) {
@@ -210,8 +214,17 @@ async function handleWebviewMessage(msg) {
           });
         }
       } else {
-        panel?.postMessage({ type: "bridge_status", running: false });
+        // Bridge is running but still in setup (e.g. reconnecting mid-setup)
+        panel?.postMessage({ type: "bridge_starting", providers: [] });
+        panel?.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
+        watchBridge(panel);
       }
+      break;
+    }
+
+    case "get_bridge_info": {
+      const { binPath } = bridge.checkInstall();
+      panel?.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
       break;
     }
 
