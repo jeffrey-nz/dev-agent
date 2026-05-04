@@ -655,6 +655,42 @@ a{color:var(--acc)}
 /* stop button disabled during stopping */
 .inp-stop:disabled{opacity:.45;cursor:not-allowed}
 
+/* ── banner action row ── */
+.banner-acts{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.bact{
+  background:transparent;border:1px solid var(--bd);color:var(--mu);
+  font:inherit;font-size:11px;padding:4px 11px;border-radius:var(--r);
+  cursor:pointer;transition:background .1s,color .1s,border-color .1s;
+}
+.bact:hover{background:var(--hov);color:var(--fg);border-color:var(--mu)}
+.bact.primary{
+  background:color-mix(in srgb,var(--acc) 10%,transparent);
+  border-color:color-mix(in srgb,var(--acc) 30%,transparent);
+  color:var(--acc);
+}
+.bact.primary:hover{background:color-mix(in srgb,var(--acc) 18%,transparent)}
+
+/* ── compact mode: hide tool noise ── */
+#chat-main.compact .tcrd,
+#chat-main.compact .rg-card,
+#chat-main.compact .pdiv{display:none!important}
+
+/* ── input char count ── */
+.inp-char{font-size:10px;color:var(--mu);opacity:.4;font-family:var(--mono);margin-left:auto}
+
+/* ── compact dot toggle (in settings drop) ── */
+.drop-item-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tog-track{
+  width:28px;height:15px;border-radius:8px;background:var(--bd);
+  position:relative;flex-shrink:0;transition:background .2s;cursor:pointer;
+}
+.tog-track.on{background:var(--acc)}
+.tog-track::after{
+  content:'';position:absolute;width:11px;height:11px;border-radius:50%;
+  background:#fff;top:2px;left:2px;transition:transform .2s;
+}
+.tog-track.on::after{transform:translateX(13px)}
+
 /* ── input area ───────────────────────────────────────────────────────── */
 .inp-area{padding:8px 14px 11px;border-top:1px solid var(--bd);flex-shrink:0;position:relative}
 .inp-wrap{
@@ -834,6 +870,13 @@ a{color:var(--acc)}
   <div id="settings-drop" class="hidden">
     <button class="drop-item" id="btn-sb-proj">Change project…</button>
     <div class="drop-sep"></div>
+    <div class="drop-item drop-item-row" id="btn-compact" style="cursor:pointer">
+      <span>Compact mode</span>
+      <div class="tog-track" id="compact-dot"></div>
+    </div>
+    <div class="drop-sep"></div>
+    <button class="drop-item" id="btn-export">Export transcript</button>
+    <div class="drop-sep"></div>
     <button class="drop-item" id="btn-sb-prov">Reconnect bridge</button>
   </div>
 
@@ -881,6 +924,7 @@ a{color:var(--acc)}
           <span class="prov-chip-caret">▾</span>
         </button>
         <span class="inp-hint" id="inp-hint">↵ send · ↑ history</span>
+        <span class="inp-char" id="inp-char"></span>
       </div>
       <div id="prov-drop" class="hidden"></div>
     </div>

@@ -55,6 +55,8 @@ let statusBar = null;
 
 let _lastBridgeKey = null; // tracks last broadcast so we don't repeat
 let _bridgeOfflineTicks = 0; // grace period: require 3 consecutive failures before offline broadcast
+// Buffer session events so a reopened panel can replay the current session
+let _sessionBuffer = null; // null = no session; array = session active or recently ended
 
 async function broadcastBridgeStatus(status, targetPanel) {
   const panel = targetPanel ?? DevAgentPanel.currentPanel;
@@ -346,6 +348,10 @@ async function handleWebviewMessage(msg, senderPanel) {
     case "panel_ready": {
       // Webview signals it's loaded and ready — push current bridge status immediately
       pushToPanelNow(panel);
+      // Replay buffered session so a reopened panel catches up
+      if (_sessionBuffer && _sessionBuffer.length > 0) {
+        panel?.postMessage({ type: "session_replay", messages: _sessionBuffer });
+      }
       break;
     }
 
@@ -469,6 +475,7 @@ async function handleWebviewMessage(msg, senderPanel) {
 
       // Unique tag so the webview can discard session_end events from aborted sessions
       const taskId = `task-${Date.now()}`;
+      _sessionBuffer = [{ type: "task_started", taskId }];
       panel?.postMessage({ type: "task_started", taskId });
 
       let lastWritePath = null;
@@ -478,6 +485,7 @@ async function handleWebviewMessage(msg, senderPanel) {
         const msg2 = (e.type === "session_end" || e.type === "task_complete")
           ? { ...e, _taskId: taskId }
           : e;
+        if (_sessionBuffer !== null) _sessionBuffer.push(msg2);
         // Use currentPanel (not captured panel) so events reach a reopened panel
         (DevAgentPanel.currentPanel ?? panel)?.postMessage(msg2);
         sidebarProvider?.postMessage(e);
@@ -501,7 +509,9 @@ async function handleWebviewMessage(msg, senderPanel) {
             const relPath = path.relative(root, lastWritePath);
             const ext = path.extname(lastWritePath).slice(1);
             const diff = computeFileDiff(lastWriteOldContent, newContent, lastWritePath, relPath, ext);
-            (DevAgentPanel.currentPanel ?? panel)?.postMessage({ type: "file_diff", ...diff });
+            const diffMsg = { type: "file_diff", ...diff };
+            if (_sessionBuffer !== null) _sessionBuffer.push(diffMsg);
+            (DevAgentPanel.currentPanel ?? panel)?.postMessage(diffMsg);
           } catch {}
           lastWritePath = null;
           lastWriteOldContent = undefined;

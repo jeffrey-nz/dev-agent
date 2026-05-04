@@ -123,6 +123,40 @@ function renderMarkdown(md) {
   return text;
 }
 
+/* ── JSON extraction ── */
+function extractAgentText(raw) {
+  const s = (raw || '').trim();
+  if (!s.startsWith('{') && !s.startsWith('[')) return raw;
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) {
+      const strs = parsed.filter(x => typeof x === 'string');
+      return strs.length ? strs.join('\n\n') : raw;
+    }
+    if (typeof parsed !== 'object' || parsed === null) return raw;
+    // Priority-ordered fields that typically hold the human-readable content
+    const FIELDS = ['plan','review','content','text','message','response',
+                    'analysis','summary','result','description','output',
+                    'reasoning','explanation','answer','feedback'];
+    for (const f of FIELDS) {
+      const v = parsed[f];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    // Multi-field: goal + steps
+    const parts = [];
+    if (typeof parsed.goal === 'string') parts.push(parsed.goal);
+    if (typeof parsed.objective === 'string') parts.push(parsed.objective);
+    if (Array.isArray(parsed.steps)) {
+      parts.push(parsed.steps.map((st, i) =>
+        (i+1) + '. ' + (typeof st === 'string' ? st : (st.description || JSON.stringify(st)))
+      ).join('\n'));
+    }
+    if (parts.length) return parts.join('\n\n');
+    // Last resort: render as fenced JSON
+    return '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+  } catch { return raw; }
+}
+
 /* ── phase elapsed timer ── */
 let _phaseStartTs = null, _phaseTimer = null, _phaseBaseLabel = '';
 function startPhaseTimer(label) {
@@ -555,27 +589,43 @@ function addSysMsg(text,isErr){
   const d=document.createElement('div'); d.className=isErr?'msg-err':'msg-sys';
   d.textContent=isErr?'✗ '+text:text; ibt(d);
 }
+function _bannerTime() {
+  if (!_sessionStartTs) return '';
+  const s = Math.round((Date.now() - _sessionStartTs) / 1000);
+  return ' · ' + (s >= 60 ? Math.floor(s/60) + 'm ' + s%60 + 's' : s + 's');
+}
+
+function _addBannerActs(lastPrompt) {
+  if (!lastPrompt) return;
+  const acts = document.createElement('div'); acts.className = 'banner-acts';
+  acts.innerHTML =
+    '<button class="bact primary" data-p="'+esc(lastPrompt)+'" onclick="retryPrompt(this)">↺ Run again</button>'
+    + '<button class="bact" onclick="fillPrompt(\'Fix any remaining issues or errors\')">Fix issues</button>'
+    + '<button class="bact" onclick="fillPrompt(\'Write tests for the changes made\')">Write tests</button>';
+  ibt(acts);
+}
+
+function retryPrompt(btn) {
+  const text = btn?.dataset?.p || _history[0] || '';
+  if (!text || sessionLocked) return;
+  fillPrompt(text);
+  btnSend.click();
+}
+
 function addDoneBanner(){
   const d=document.createElement('div'); d.className='done-banner';
-  let label='✓ Task complete';
-  if(_sessionStartTs){
-    const s=Math.round((Date.now()-_sessionStartTs)/1000);
-    label += ' · '+(s>=60?Math.floor(s/60)+'m '+s%60+'s':s+'s');
-  }
+  let label='✓ Task complete' + _bannerTime();
   const sess=sessions.find(x=>x.id===runningSid||x.id===activeSid);
   if(sess?.tools) label+=' · '+sess.tools+' tools';
   d.innerHTML='<div class="done-line"></div><span>'+label+'</span><div class="done-line"></div>';
   ibt(d);
+  _addBannerActs(_history[0]);
 }
 function addStopBanner(){
   const d=document.createElement('div'); d.className='stop-banner';
-  let label='✗ Stopped';
-  if(_sessionStartTs){
-    const s=Math.round((Date.now()-_sessionStartTs)/1000);
-    label += ' · '+(s>=60?Math.floor(s/60)+'m '+s%60+'s':s+'s');
-  }
-  d.innerHTML='<div class="stop-line"></div><span>'+label+'</span><div class="stop-line"></div>';
+  d.innerHTML='<div class="stop-line"></div><span>✗ Stopped'+_bannerTime()+'</span><div class="stop-line"></div>';
   ibt(d);
+  _addBannerActs(_history[0]);
 }
 
 /* ── provider selection ── */
@@ -832,6 +882,52 @@ function chooseFolder(f){ vscode.postMessage({type:'confirm_workspace',name:f.na
 document.getElementById('btn-browse').addEventListener('click',()=>vscode.postMessage({type:'browse_folder'}));
 document.getElementById('btn-new-folder').addEventListener('click',()=>vscode.postMessage({type:'create_folder'}));
 
+/* ── compact mode ── */
+const chatMain = document.getElementById('chat-main');
+const compactDot = document.getElementById('compact-dot');
+let _compact = localStorage.getItem('da-compact') === '1';
+function applyCompact() {
+  chatMain.classList.toggle('compact', _compact);
+  compactDot?.classList.toggle('on', _compact);
+}
+applyCompact();
+document.getElementById('btn-compact').addEventListener('click', e => {
+  e.stopPropagation();
+  _compact = !_compact;
+  localStorage.setItem('da-compact', _compact ? '1' : '0');
+  applyCompact();
+});
+
+/* ── export transcript ── */
+function exportSession() {
+  closeDropdowns();
+  const lines = [];
+  for (const node of messages.children) {
+    if (node === typingEl || node === welcomeEl) continue;
+    if (node.classList.contains('msg-u')) {
+      lines.push('**You**\n' + (node.querySelector('.msg-body')?.textContent || '').trim());
+    } else if (node.classList.contains('msg-a')) {
+      lines.push('**Dev Agent**\n' + (node.querySelector('.mab-md')?.innerText || '').trim());
+    } else if (node.classList.contains('diff-card')) {
+      const p = node.querySelector('.diff-path')?.textContent || '';
+      const st = node.querySelector('.diff-stats')?.textContent || '';
+      lines.push('`' + p + '`' + (st ? '  ' + st : ''));
+    } else if (node.classList.contains('done-banner') || node.classList.contains('stop-banner')) {
+      lines.push('---\n' + (node.querySelector('span')?.textContent || '').trim());
+    }
+  }
+  const text = lines.join('\n\n');
+  clipboardWrite(text).then(() => {
+    const btn = document.getElementById('btn-export');
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = orig, 1500); }
+  });
+}
+document.getElementById('btn-export').addEventListener('click', exportSession);
+
+/* ── char count ── */
+const inpChar = document.getElementById('inp-char');
+const inpHint = document.getElementById('inp-hint');
+
 /* ── header bar actions ── */
 document.getElementById('btn-new-chat').addEventListener('click', newChat);
 document.getElementById('btn-sb-proj').addEventListener('click',()=>{
@@ -928,10 +1024,20 @@ prompt.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey) && e.key==='k'){ e.preventDefault(); newChat(); }
 });
 
+function fillPrompt(text) {
+  if (sessionLocked) return;
+  prompt.value = text;
+  prompt.dispatchEvent(new Event('input'));
+  prompt.focus();
+}
+
 prompt.addEventListener('input',()=>{
   _histIdx=-1; // any manual edit exits history mode
   prompt.style.height=''; prompt.style.height=Math.min(prompt.scrollHeight,160)+'px';
   btnSend.disabled=!prompt.value.trim();
+  const len = prompt.value.length;
+  if (inpChar) inpChar.textContent = len > 60 ? len + ' chars' : '';
+  if (inpHint) inpHint.style.display = len > 60 ? 'none' : '';
 });
 btnSend.disabled=true;
 
@@ -1134,7 +1240,8 @@ window.addEventListener('message',e=>{
       hideTyping();
       if(SILENT.has(currentPhase)) break;
       const raw=msg.text||msg.content||'';
-      const preview=raw.length>2400?raw.slice(0,2400)+'…':raw;
+      const cleaned=extractAgentText(raw);
+      const preview=cleaned.length>2400?cleaned.slice(0,2400)+'…':cleaned;
       if(!preview.trim()) break;
       if(currentPhase==='PLANNING') addSpecialCard('plan', preview);
       else if(currentPhase==='REVIEWING') addSpecialCard('review', preview);
@@ -1144,6 +1251,17 @@ window.addEventListener('message',e=>{
 
     case 'task_started':
       _activeTaskId = msg.taskId || null;
+      break;
+
+    case 'session_replay':
+      // Replay buffered session messages — fires when panel is reopened during/after a session
+      if (Array.isArray(msg.messages) && msg.messages.length > 0) {
+        // Ensure we're on the chat screen before replaying
+        if (scrChat.classList.contains('hidden')) show(scrChat);
+        for (const m of msg.messages) {
+          window.dispatchEvent(new MessageEvent('message', { data: m }));
+        }
+      }
       break;
 
     case 'system_message':
