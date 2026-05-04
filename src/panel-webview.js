@@ -20,6 +20,8 @@ const toolChip   = document.getElementById('tool-chip');
 const prompt     = document.getElementById('prompt');
 const btnSend    = document.getElementById('btn-send');
 const btnStop    = document.getElementById('btn-stop');
+const btnAttach  = document.getElementById('btn-attach');
+const attachPreview = document.getElementById('attach-preview');
 const sessionList    = document.getElementById('session-list');
 const sessionsDrop   = document.getElementById('sessions-drop');
 const settingsDrop   = document.getElementById('settings-drop');
@@ -865,6 +867,12 @@ function addUserMsg(text){
     +'<div class="msg-body">'+esc(text)+'</div>';
   ibt(d);
 }
+function addAttachmentMsg(count){
+  const d=document.createElement('div'); d.className='msg-u att-sent';
+  d.innerHTML='<div class="msg-sender">You</div>'
+    +'<div class="msg-body att-body">📎 '+count+' image'+(count!==1?'s':'')+' attached</div>';
+  ibt(d);
+}
 function _addExpandToggle(container, bodyEl) {
   const btn = document.createElement('button');
   btn.className = 'msg-expand-btn';
@@ -1272,20 +1280,91 @@ function histPush(text) {
   _histIdx = -1;
 }
 
+/* ── image attachments ── */
+let _pendingImages = []; // [{data: base64DataUrl, mimeType, name}]
+
+function renderAttachPreviews() {
+  if (!attachPreview) return;
+  attachPreview.innerHTML = '';
+  _pendingImages.forEach((img, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'att-thumb';
+    const im = document.createElement('img');
+    im.src = img.data;
+    im.alt = img.name || 'image';
+    const rm = document.createElement('button');
+    rm.className = 'att-rm';
+    rm.title = 'Remove';
+    rm.textContent = '×';
+    rm.addEventListener('click', () => {
+      _pendingImages.splice(idx, 1);
+      renderAttachPreviews();
+    });
+    wrap.appendChild(im);
+    wrap.appendChild(rm);
+    attachPreview.appendChild(wrap);
+  });
+  attachPreview.classList.toggle('hidden', _pendingImages.length === 0);
+}
+
+function addImageFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const raw = e.target.result; // data:image/png;base64,...
+    _pendingImages.push({ data: raw, mimeType: file.type, name: file.name });
+    renderAttachPreviews();
+  };
+  reader.readAsDataURL(file);
+}
+
+if (btnAttach) {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+  fileInput.addEventListener('change', () => {
+    Array.from(fileInput.files).forEach(addImageFromFile);
+    fileInput.value = '';
+  });
+  btnAttach.addEventListener('click', () => fileInput.click());
+}
+
+// Paste images from clipboard into the input area
+prompt.addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  let hasImage = false;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      hasImage = true;
+      const file = item.getAsFile();
+      if (file) addImageFromFile(file);
+    }
+  }
+  // Don't prevent default — allow text paste to continue normally
+});
+
 /* ── send / stop ── */
 let currentPhase='';
 // PLANNING and REVIEWING show as collapsible special cards; others are silent
 const SILENT=new Set(['ORCHESTRATING','RESEARCHING','SCOPING']);
 
 btnSend.addEventListener('click',()=>{
-  const text=prompt.value.trim(); if(!text) return;
+  const text=prompt.value.trim(); if(!text && !_pendingImages.length) return;
   histPush(text); _histIdx = -1;
   createSession(text); addUserMsg(text); showTyping();
+  if(_pendingImages.length) addAttachmentMsg(_pendingImages.length);
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null; resetDividers();
   stopPhaseTimer();
-  vscode.postMessage({type:'start_task', prompt:text, provider: _selectedProvider || undefined});
+  // Serialize images as {data, mimeType} objects — strip the name field to keep the payload lean
+  const images = _pendingImages.map(i=>({data:i.data, mimeType:i.mimeType}));
+  vscode.postMessage({type:'start_task', prompt:text, provider: _selectedProvider || undefined, ...(images.length?{images}:{})});
   prompt.value=''; prompt.style.height=''; btnSend.disabled=true;
+  _pendingImages=[]; renderAttachPreviews();
   btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
 });
 btnStop.addEventListener('click',()=>{

@@ -4,13 +4,14 @@ const fs = require("fs");
 const path = require("path");
 
 class AgentSession extends EventEmitter {
-  constructor({ workspaceRoot, prompt, provider, onEvent, logger }) {
+  constructor({ workspaceRoot, prompt, provider, onEvent, logger, images }) {
     super();
     this._workspaceRoot = workspaceRoot;
     this._prompt = prompt;
     this._provider = provider;
     this._onEvent = onEvent;
     this._logger = logger;
+    this._images = images || [];
     this._running = false;
     this._abortController = new AbortController();
   }
@@ -111,6 +112,7 @@ class AgentSession extends EventEmitter {
         // when to run tests. Rollback on a missing test script would destroy
         // a perfectly good agent output silently.
         _benchmarkRun: true,
+        ...(this._images.length ? { images: this._images } : {}),
       };
 
       await runCopilotFlow({

@@ -519,7 +519,7 @@ async function handleWebviewMessage(msg, senderPanel) {
         }
       };
 
-      agentSession = new AgentSession({ workspaceRoot: root, prompt: msg.prompt, provider: chosenProvider, onEvent: broadcast, logger });
+      agentSession = new AgentSession({ workspaceRoot: root, prompt: msg.prompt, provider: chosenProvider, onEvent: broadcast, logger, images: Array.isArray(msg.images) ? msg.images : [] });
       agentSession.run().catch((err) => {
         setStatusIdle();
         panel?.postMessage({ type: "system_message", text: `Error: ${err.message}`, level: "error" });

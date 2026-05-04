@@ -1080,8 +1080,40 @@ a{color:var(--acc)}
   border-color:var(--foc);
   box-shadow:0 0 0 2px color-mix(in srgb,var(--foc) 15%,transparent);
 }
+/* ── attachment preview strip ─────────────────────────────────────────── */
+#attach-preview{
+  display:flex;flex-wrap:wrap;gap:6px;padding:6px 2px;
+}
+.att-thumb{
+  position:relative;flex-shrink:0;
+  width:52px;height:52px;border-radius:5px;overflow:hidden;
+  border:1px solid var(--bd);
+  background:var(--panel);
+}
+.att-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.att-rm{
+  position:absolute;top:1px;right:1px;
+  width:16px;height:16px;border-radius:50%;
+  background:color-mix(in srgb,var(--bg) 80%,transparent);
+  border:none;cursor:pointer;font-size:11px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--fg);opacity:.7;
+}
+.att-rm:hover{opacity:1}
+.inp-attach{
+  position:absolute;left:7px;bottom:7px;
+  width:28px;height:28px;border-radius:6px;
+  background:transparent;color:var(--mu);border:none;
+  cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s,background .12s;
+}
+.inp-attach:hover{color:var(--fg);background:color-mix(in srgb,var(--mu) 10%,transparent)}
+.att-body{opacity:.7;font-size:12px}
+/* ── ───────────────────────────────────────────────────────────────────── */
+
 #prompt{
-  width:100%;padding:10px 44px 10px 13px;border:none;background:transparent;
+  width:100%;padding:10px 44px 10px 40px;border:none;background:transparent;
   color:var(--in-fg);font:inherit;font-size:13px;resize:none;outline:none;
   line-height:1.55;min-height:42px;max-height:160px;overflow-y:auto;
   display:block;border-radius:9px;
@@ -1338,7 +1370,9 @@ a{color:var(--acc)}
     </div>
 
     <div class="inp-area">
+      <div id="attach-preview" class="hidden"></div>
       <div class="inp-wrap">
+        <button class="inp-attach" id="btn-attach" title="Attach image (or paste)">📎</button>
         <textarea id="prompt" rows="1" placeholder="Describe what to build…"></textarea>
         <button class="inp-send" id="btn-send" title="Send (Enter)">↑</button>
         <button class="inp-stop hidden" id="btn-stop" title="Stop">■</button>
@@ -1349,7 +1383,7 @@ a{color:var(--acc)}
           <span id="prov-name">No provider</span>
           <span class="prov-chip-caret">▾</span>
         </button>
-        <span class="inp-hint" id="inp-hint">↵ send · ↑ history</span>
+        <span class="inp-hint" id="inp-hint">↵ send · ↑ history · 📎 paste image</span>
         <span class="inp-char" id="inp-char"></span>
       </div>
       <div id="prov-drop" class="hidden"></div>
