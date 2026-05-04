@@ -14,12 +14,12 @@ let port = (() => {
   catch { return 3333; }
 })();
 
-let es = null;
 let remoteW = 1440, remoteH = 900;
 let frameCount = 0, lastFpsTs = Date.now();
-let reconnectTimer = null;
+let pollTimer = null;
 let overlayTimer = null;
 let hasReceivedFrame = false;
+let polling = false;
 let _mouseDown = false;
 
 // ── Scaling ──────────────────────────────────────────────────────────────────
@@ -72,34 +72,57 @@ setInterval(() => {
 
 // ── Screencast connection ─────────────────────────────────────────────────────
 
+function handleFrame(payload) {
+  const img = new Image();
+  img.onload = () => {
+    hideOverlay();
+    if (!hasReceivedFrame) { hasReceivedFrame = true; fitCanvas(); }
+    if (payload.w && payload.h && (payload.w !== remoteW || payload.h !== remoteH)) {
+      remoteW = payload.w; remoteH = payload.h; fitCanvas();
+    }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    frameCount++;
+  };
+  img.src = 'data:image/jpeg;base64,' + payload.f;
+}
+
+// Poll /api/browser/frame at ~150ms instead of SSE streaming.
+// VS Code webviews do not support streaming fetch body readers, so we use
+// simple short-lived requests that definitely work.
+let _pollActive = false;
+
+async function pollFrame() {
+  if (!polling) return;
+  if (_pollActive) { pollTimer = setTimeout(pollFrame, 150); return; }
+  _pollActive = true;
+  try {
+    const r = await fetch(`http://localhost:${port}/api/browser/frame`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.available && d.f) {
+      handleFrame(d);
+    } else if (!hasReceivedFrame) {
+      showOverlay('Waiting for browser…', false);
+    }
+    pollTimer = setTimeout(pollFrame, 150);
+  } catch {
+    if (!hasReceivedFrame) showOverlay('Connecting…', false);
+    pollTimer = setTimeout(pollFrame, 1500);
+  } finally {
+    _pollActive = false;
+  }
+}
+
 function connect() {
-  if (es) { es.close(); es = null; }
-  clearTimeout(reconnectTimer);
+  polling = true;
+  clearTimeout(pollTimer);
   showOverlay('Connecting…', !hasReceivedFrame);
+  pollFrame();
+}
 
-  es = new EventSource(`http://localhost:${port}/api/browser/screencast`);
-
-  es.onmessage = (e) => {
-    let payload;
-    try { payload = JSON.parse(e.data); } catch { return; }
-    const img = new Image();
-    img.onload = () => {
-      hideOverlay();
-      if (!hasReceivedFrame) { hasReceivedFrame = true; fitCanvas(); }
-      if (payload.w && payload.h && (payload.w !== remoteW || payload.h !== remoteH)) {
-        remoteW = payload.w; remoteH = payload.h; fitCanvas();
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      frameCount++;
-    };
-    img.src = 'data:image/jpeg;base64,' + payload.f;
-  };
-
-  es.onerror = () => {
-    if (es) { es.close(); es = null; }
-    showOverlay('Reconnecting…');
-    reconnectTimer = setTimeout(connect, 1500);
-  };
+function disconnect() {
+  polling = false;
+  clearTimeout(pollTimer);
 }
 
 // ── Input forwarding ──────────────────────────────────────────────────────────
@@ -169,7 +192,7 @@ setInterval(async () => {
     const r = await fetch(`http://localhost:${port}/api/browser/info`);
     const d = await r.json();
     urlBar.value = d.available && d.url ? d.url : '';
-    if (!d.available && !es) showOverlay('Waiting for browser…', true);
+    if (!d.available) showOverlay('Waiting for browser…', true);
   } catch {
     urlBar.value = '';
   }
@@ -179,9 +202,10 @@ setInterval(async () => {
 
 window.addEventListener('message', (e) => {
   const msg = e.data;
-  if (msg.type === 'set_port') {
+  if (msg.type === 'set_port' && msg.port !== port) {
     port = msg.port;
     hasReceivedFrame = false;
+    disconnect();
     connect();
   }
 });
