@@ -1140,6 +1140,7 @@ a{color:var(--acc)}
   <div id="chat-main">
 
     <div id="phase-bar" class="hidden">
+      <div id="phase-steps" style="display:none"></div>
       <span class="ph-spinner"></span>
       <span id="phase-lbl">Starting…</span>
       <div class="tool-chip" id="tool-chip"></div>
