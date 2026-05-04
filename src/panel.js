@@ -731,7 +731,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
       <div class="wz-step"><div class="wz-dot">4</div><div class="wz-label">Project</div></div>
     </div>
     <strong>Log in to Chrome</strong>
-    <p>Open the AI in Chrome and make sure you're logged in, then confirm.</p>
+    <p>The browser panel on the right shows the AI site. Log in if needed, then confirm.</p>
   </div>
   <!-- shown while bridge process is starting -->
   <div id="bridge-launch">

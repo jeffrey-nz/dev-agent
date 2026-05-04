@@ -3,7 +3,8 @@ const vscode = acquireVsCodeApi();
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 const wrap = document.getElementById('canvas-wrap');
-const connectingEl = document.getElementById('connecting');
+const overlayEl = document.getElementById('overlay');
+const overlayMsg = document.getElementById('overlay-msg');
 const urlBar = document.getElementById('url-bar');
 const btnRefresh = document.getElementById('btn-refresh');
 const fpsEl = document.getElementById('fps');
@@ -12,10 +13,13 @@ let port = (() => {
   try { return JSON.parse(document.getElementById('init-data')?.textContent || '{}').port || 3333; }
   catch { return 3333; }
 })();
+
 let es = null;
 let remoteW = 1440, remoteH = 900;
 let frameCount = 0, lastFpsTs = Date.now();
 let reconnectTimer = null;
+let overlayTimer = null;
+let hasReceivedFrame = false;
 let _mouseDown = false;
 
 // ── Scaling ──────────────────────────────────────────────────────────────────
@@ -40,11 +44,29 @@ function toRemote(clientX, clientY) {
   };
 }
 
+// ── Overlay helpers ───────────────────────────────────────────────────────────
+
+function showOverlay(msg, immediate) {
+  clearTimeout(overlayTimer);
+  overlayMsg.textContent = msg;
+  if (immediate || !hasReceivedFrame) {
+    overlayEl.classList.remove('hidden');
+  } else {
+    // Delay showing the overlay so brief blips don't flash it
+    overlayTimer = setTimeout(() => overlayEl.classList.remove('hidden'), 1200);
+  }
+}
+
+function hideOverlay() {
+  clearTimeout(overlayTimer);
+  overlayEl.classList.add('hidden');
+}
+
 // ── FPS ticker ────────────────────────────────────────────────────────────────
 
 setInterval(() => {
   const now = Date.now(), elapsed = (now - lastFpsTs) / 1000;
-  if (elapsed > 0) fpsEl.textContent = Math.round(frameCount / elapsed) + ' fps';
+  fpsEl.textContent = elapsed > 0 ? Math.round(frameCount / elapsed) + ' fps' : '';
   frameCount = 0; lastFpsTs = now;
 }, 1000);
 
@@ -53,8 +75,7 @@ setInterval(() => {
 function connect() {
   if (es) { es.close(); es = null; }
   clearTimeout(reconnectTimer);
-  connectingEl.style.display = 'flex';
-  connectingEl.textContent = 'Connecting…';
+  showOverlay('Connecting…', !hasReceivedFrame);
 
   es = new EventSource(`http://localhost:${port}/api/browser/screencast`);
 
@@ -63,10 +84,8 @@ function connect() {
     try { payload = JSON.parse(e.data); } catch { return; }
     const img = new Image();
     img.onload = () => {
-      if (connectingEl.style.display !== 'none') {
-        connectingEl.style.display = 'none';
-        fitCanvas();
-      }
+      hideOverlay();
+      if (!hasReceivedFrame) { hasReceivedFrame = true; fitCanvas(); }
       if (payload.w && payload.h && (payload.w !== remoteW || payload.h !== remoteH)) {
         remoteW = payload.w; remoteH = payload.h; fitCanvas();
       }
@@ -76,15 +95,10 @@ function connect() {
     img.src = 'data:image/jpeg;base64,' + payload.f;
   };
 
-  es.addEventListener('error', () => {
-    // Stream event (not error): ignore
-  });
-
   es.onerror = () => {
     if (es) { es.close(); es = null; }
-    connectingEl.style.display = 'flex';
-    connectingEl.textContent = 'Reconnecting…';
-    reconnectTimer = setTimeout(connect, 3000);
+    showOverlay('Reconnecting…');
+    reconnectTimer = setTimeout(connect, 1500);
   };
 }
 
@@ -131,7 +145,6 @@ canvas.addEventListener('wheel', (e) => {
 
 canvas.addEventListener('keydown', (e) => {
   e.preventDefault();
-  // Printable characters → insertText (handles all unicode correctly)
   if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
     input({ type: 'insertText', text: e.key });
   } else {
@@ -149,15 +162,17 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 
-btnRefresh.addEventListener('click', () => connect());
+btnRefresh.addEventListener('click', () => { hasReceivedFrame = false; connect(); });
 
-// Poll the bridge for current page URL and update the toolbar
 setInterval(async () => {
   try {
     const r = await fetch(`http://localhost:${port}/api/browser/info`);
     const d = await r.json();
-    if (d.available && d.url) urlBar.value = d.url;
-  } catch {}
+    urlBar.value = d.available && d.url ? d.url : '';
+    if (!d.available && !es) showOverlay('Waiting for browser…', true);
+  } catch {
+    urlBar.value = '';
+  }
 }, 2000);
 
 // ── Extension messages ────────────────────────────────────────────────────────
@@ -166,9 +181,8 @@ window.addEventListener('message', (e) => {
   const msg = e.data;
   if (msg.type === 'set_port') {
     port = msg.port;
+    hasReceivedFrame = false;
     connect();
-  } else if (msg.type === 'navigate') {
-    // Could drive navigation if needed in future
   }
 });
 

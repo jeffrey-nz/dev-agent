@@ -99,14 +99,25 @@ html,body{width:100%;height:100vh;overflow:hidden;
 #canvas-wrap{
   position:relative;flex:1;overflow:hidden;
   display:flex;align-items:center;justify-content:center;
-  background:#000;
+  background:#111;
 }
 #screen{display:block;image-rendering:auto}
-#connecting{
-  position:absolute;inset:0;display:flex;
-  align-items:center;justify-content:center;
-  background:rgba(0,0,0,.65);color:#ccc;font-size:13px;letter-spacing:.01em;
+#overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(2px);
+  transition:opacity .2s;
 }
+#overlay.hidden{display:none}
+.ov-spinner{
+  width:22px;height:22px;
+  border:2px solid rgba(255,255,255,.15);
+  border-top-color:rgba(255,255,255,.7);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay-msg{color:rgba(255,255,255,.7);font-size:12px;letter-spacing:.02em}
 </style>
 </head>
 <body>
@@ -117,7 +128,10 @@ html,body{width:100%;height:100vh;overflow:hidden;
 </div>
 <div id="canvas-wrap">
   <canvas id="screen"></canvas>
-  <div id="connecting">Connecting…</div>
+  <div id="overlay">
+    <div class="ov-spinner"></div>
+    <span id="overlay-msg">Connecting…</span>
+  </div>
 </div>
 <script src="${scriptUri}"></script>
 </body>

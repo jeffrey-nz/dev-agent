@@ -591,8 +591,8 @@ function setCardPending(id,det){
   c.el.querySelector('[data-dot]').className='dot pending';
   c.el.querySelector('[data-tag]').textContent='Needs confirmation';
   const b=c.el.querySelector('[data-body]'); b.classList.remove('hidden');
-  b.innerHTML=`<div class="${det?'det-y':'det-n'}">${det?'✓ Interface detected in Chrome':'⚠ Not detected — log in if needed'}</div>
-    <div class="conf-hint">Confirm once the chat interface is visible in Chrome.</div>
+  b.innerHTML=`<div class="${det?'det-y':'det-n'}">${det?'✓ Interface detected':'⚠ Not detected — log in via the browser panel →'}</div>
+    <div class="conf-hint">Log in using the browser panel on the right, then confirm.</div>
     <div class="conf-btns">
       <button class="btn-conf">✓ Confirm Ready</button>
       <button class="btn-skip">Skip</button>
