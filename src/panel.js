@@ -371,6 +371,66 @@ a{color:var(--acc)}
   transition:background .1s,color .1s;flex-shrink:0;
 }
 .hdr-icon-btn:hover{background:var(--hov);color:var(--fg)}
+.hdr-icon-btn.active{background:color-mix(in srgb,var(--cp) 14%,transparent);color:var(--cp)}
+
+/* ── notes drawer ───────────────────────────────────────────────────── */
+#notes-drawer{
+  position:absolute;top:0;right:0;bottom:0;width:260px;
+  background:var(--sidebar);border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;z-index:50;
+  transform:translateX(100%);transition:transform .18s ease;pointer-events:none;
+}
+#notes-drawer.open{transform:translateX(0);pointer-events:auto}
+#notes-hdr{
+  display:flex;align-items:center;padding:0 10px;height:36px;flex-shrink:0;
+  border-bottom:1px solid var(--bd);gap:6px;
+}
+#notes-hdr-lbl{font-size:11px;font-weight:600;color:var(--mu);opacity:.75;flex:1;letter-spacing:.02em}
+#notes-close{background:transparent;border:none;color:var(--mu);cursor:pointer;
+             font-size:14px;padding:2px 5px;border-radius:4px;line-height:1;transition:background .1s}
+#notes-close:hover{background:var(--hov);color:var(--fg)}
+#notes-list{flex:1;overflow-y:auto;padding:8px 10px 16px;
+            display:flex;flex-direction:column;gap:8px}
+#notes-list::-webkit-scrollbar{width:3px}
+#notes-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+#notes-empty{font-size:11px;color:var(--mu);opacity:.45;text-align:center;
+             padding:28px 12px;font-style:italic}
+.note-chip{
+  border:1px solid var(--bd);border-radius:7px;overflow:hidden;
+  animation:msgIn .14s ease;flex-shrink:0;
+}
+.note-chip.plan{border-left:2px solid var(--cp)}
+.note-chip.review{border-left:2px solid var(--cv)}
+.note-chip-hdr{
+  display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;
+  user-select:none;transition:background .1s;
+}
+.note-chip.plan  .note-chip-hdr{background:color-mix(in srgb,var(--cp) 7%,transparent)}
+.note-chip.review .note-chip-hdr{background:color-mix(in srgb,var(--cv) 8%,transparent)}
+.note-chip.plan  .note-chip-hdr:hover{background:color-mix(in srgb,var(--cp) 12%,transparent)}
+.note-chip.review .note-chip-hdr:hover{background:color-mix(in srgb,var(--cv) 13%,transparent)}
+.note-chip.open .note-chip-hdr{border-bottom:1px solid var(--bd)}
+.note-chip-icon{font-size:11px;flex-shrink:0}
+.note-chip.plan  .note-chip-icon{color:var(--cp)}
+.note-chip.review .note-chip-icon{color:var(--cv)}
+.note-chip-label{font-size:10px;font-weight:700;flex:1;letter-spacing:.03em}
+.note-chip.plan  .note-chip-label{color:var(--cp)}
+.note-chip.review .note-chip-label{color:var(--cv)}
+.note-chip-seq{font-size:9px;font-family:var(--mono);color:var(--mu);opacity:.4}
+.note-chip-caret{font-size:8px;color:var(--mu);opacity:.4;transition:transform .15s;flex-shrink:0}
+.note-chip.open .note-chip-caret{transform:rotate(180deg)}
+.note-chip-body{display:none;padding:8px 10px;font-size:11px;line-height:1.6;
+                color:var(--fg);overflow-x:auto;max-height:320px;overflow-y:auto}
+.note-chip.open .note-chip-body{display:block}
+.note-chip-body::-webkit-scrollbar{width:3px;height:3px}
+.note-chip-body::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+#notes-badge{
+  font-size:9px;font-weight:700;padding:1px 4px;border-radius:8px;
+  background:color-mix(in srgb,var(--cp) 20%,transparent);color:var(--cp);
+  min-width:14px;text-align:center;line-height:1.4;display:none;
+}
+#notes-badge.show{display:inline-block}
+
 .hdr-new-btn{
   background:transparent;border:1px solid var(--bd);color:var(--mu);
   padding:3px 8px;border-radius:var(--r);cursor:pointer;
@@ -1113,6 +1173,7 @@ a{color:var(--acc)}
       </button>
     </div>
     <div class="hdr-right">
+      <button class="hdr-icon-btn" id="btn-notes" title="Plans &amp; reviews">≡ <span id="notes-badge"></span></button>
       <button class="hdr-new-btn" id="btn-new-chat" title="New session (⌘K)">+ New</button>
       <button class="hdr-icon-btn" id="btn-settings" title="Settings">⋮</button>
     </div>
@@ -1186,6 +1247,16 @@ a{color:var(--acc)}
     </div>
 
     <button id="scroll-btn" title="Scroll to bottom">↓</button>
+
+    <div id="notes-drawer">
+      <div id="notes-hdr">
+        <span id="notes-hdr-lbl">Plans &amp; Reviews</span>
+        <button id="notes-close" title="Close">✕</button>
+      </div>
+      <div id="notes-list">
+        <div id="notes-empty">No plans or reviews yet</div>
+      </div>
+    </div>
 
     <div class="inp-area">
       <div class="inp-wrap">

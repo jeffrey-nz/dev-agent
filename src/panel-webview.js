@@ -27,6 +27,11 @@ const hdrProj    = document.getElementById('hdr-proj');
 const btnSessions    = document.getElementById('btn-sessions');
 const btnSettingsBtn = document.getElementById('btn-settings');
 const btnNewChat     = document.getElementById('btn-new-chat');
+const btnNotes       = document.getElementById('btn-notes');
+const notesDrawer    = document.getElementById('notes-drawer');
+const notesList      = document.getElementById('notes-list');
+const notesEmpty     = document.getElementById('notes-empty');
+const notesBadge     = document.getElementById('notes-badge');
 const ALL_SCRS   = [scrConnect, scrConfirm, scrProvider, scrProject, scrChat];
 
 /* ── screen helpers ── */
@@ -63,6 +68,19 @@ btnSettingsBtn.addEventListener('click', e=>{
 document.addEventListener('click', closeDropdowns);
 sessionsDrop.addEventListener('click', e=>e.stopPropagation());
 settingsDrop.addEventListener('click', e=>e.stopPropagation());
+
+// notes drawer
+btnNotes.addEventListener('click', e=>{
+  e.stopPropagation();
+  closeDropdowns();
+  const open = notesDrawer.classList.toggle('open');
+  btnNotes.classList.toggle('active', open);
+});
+document.getElementById('notes-close').addEventListener('click', ()=>{
+  notesDrawer.classList.remove('open');
+  btnNotes.classList.remove('active');
+});
+notesDrawer.addEventListener('click', e=>e.stopPropagation());
 
 /* ══════════════════════════════════════
    MARKDOWN RENDERER
@@ -291,6 +309,7 @@ let _hiddenChipsCount = 0;
 let _totalAdded = 0, _totalRemoved = 0;
 let _lastRunSummary = null;
 const MAX_CHIPS = 7;
+let _notesSeq = 0;
 
 const progressFill   = document.getElementById('progress-fill');
 const phaseStats     = document.getElementById('phase-stats');
@@ -340,6 +359,31 @@ function resetSessionTracking() {
   _stepTimes = [];
   phasePillsEl?.classList.add('hidden');
   phaseStats.innerHTML = ''; resetProgress();
+}
+
+/* ── notes drawer ─────────────────────────────────────────────────── */
+function clearNotes() {
+  _notesSeq = 0;
+  if (notesList) { notesList.innerHTML = ''; notesList.appendChild(notesEmpty); }
+  notesBadge?.classList.remove('show');
+}
+
+function addNoteChip(type, html) {
+  _notesSeq++;
+  notesEmpty?.remove();
+  const cfg = { plan:{ label:'Plan', icon:'≡' }, review:{ label:'Review', icon:'◎' } }[type]
+    || { label: type, icon: '·' };
+  const chip = document.createElement('div');
+  chip.className = 'note-chip ' + type + ' open';
+  chip.innerHTML = '<div class="note-chip-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
+    + '<span class="note-chip-icon">' + cfg.icon + '</span>'
+    + '<span class="note-chip-label">' + cfg.label + '</span>'
+    + '<span class="note-chip-seq">#' + _notesSeq + '</span>'
+    + '<span class="note-chip-caret">▾</span>'
+    + '</div>'
+    + '<div class="note-chip-body mab-md">' + html + '</div>';
+  notesList?.appendChild(chip);
+  if (notesBadge) { notesBadge.textContent = _notesSeq; notesBadge.classList.add('show'); }
 }
 
 /* ── phase timeline helpers ── */
@@ -473,18 +517,20 @@ function addSpecialCard(type, text) {
     plan:   { label:'Plan',   color:'var(--cp)', icon:'≡' },
     review: { label:'Review', color:'var(--cv)', icon:'◎' },
   }[type] || { label: type, color: 'var(--mu)', icon:'·' };
+  const renderedHtml = renderMarkdown(text);
   const d = document.createElement('div'); d.className = 'sc-card ' + type + ' open';
   d.innerHTML = '<div class="sc-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
     + '<span class="sc-icon" style="color:'+cfg.color+'">'+cfg.icon+'</span>'
     + '<span class="sc-label">'+cfg.label+'</span>'
     + '<span class="sc-caret">▾</span>'
     + '</div>'
-    + '<div class="sc-body mab-md">'+renderMarkdown(text)+'</div>';
+    + '<div class="sc-body mab-md">'+renderedHtml+'</div>';
   ibt(d);
   requestAnimationFrame(()=>{
     const body=d.querySelector('.sc-body');
     if(body && body.scrollHeight>320){ d.classList.add('collapsible'); _addExpandToggle(d, body); }
   });
+  addNoteChip(type, renderedHtml);
 }
 
 function addChangesSummary() {
@@ -524,8 +570,8 @@ function createSession(promptText){
   const id = ++sidSeq;
   _sessionStartTs = Date.now();
   _stoppedByUser = false; _hadError = false;
-  resetSessionTracking();
-  sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:'', tools:0});
+  resetSessionTracking(); clearNotes();
+  sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:'', notes:[], tools:0});
   activeSid = id; runningSid = id; sessionLocked = true;
   clearMsgs(); hideWelcome();
   renderSessions();
@@ -540,13 +586,14 @@ function finishSession(status){
 }
 function switchSession(id){
   if(sessionLocked||id===activeSid) return;
-  saveSession(activeSid); activeSid=id; clearMsgs();
+  saveSession(activeSid); activeSid=id; clearMsgs(); clearNotes();
   const s=sessions.find(x=>x.id===id);
   if(s?.html){
     const tmp=document.createElement('div'); tmp.innerHTML=s.html;
     while(tmp.firstChild) messages.insertBefore(tmp.firstChild, typingEl);
     hideWelcome();
   } else { showWelcome(); }
+  if(s?.notes?.length) s.notes.forEach(n=>addNoteChip(n.type, n.html));
   scrollMsgs(); renderSessions(); closeDropdowns();
 }
 function newChat(){
@@ -567,6 +614,7 @@ function newChat(){
   activityOverflow?.classList.add('hidden');
   resetDividers();
   _histIdx=-1;
+  clearNotes();
   btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
   renderSessions(); closeDropdowns(); prompt.focus();
 }
@@ -578,6 +626,11 @@ function saveSession(id){
     parts.push(n.outerHTML);
   }
   s.html=parts.join('');
+  // save notes for this session
+  s.notes = notesList ? Array.from(notesList.querySelectorAll('.note-chip')).map(c=>({
+    type: c.classList.contains('plan') ? 'plan' : 'review',
+    html: c.querySelector('.note-chip-body')?.innerHTML || '',
+  })) : [];
 }
 function clearMsgs(){
   Array.from(messages.children).forEach(n=>{ if(n!==typingEl&&n!==welcomeEl) n.remove(); });
