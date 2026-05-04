@@ -367,16 +367,29 @@ a{color:var(--acc)}
 
 /* ── phase bar ────────────────────────────────────────────────────────── */
 #phase-bar{
-  flex-shrink:0;padding:5px 16px;border-bottom:1px solid var(--bd);
+  flex-shrink:0;padding:5px 14px;border-bottom:1px solid var(--bd);
   display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mu);
   background:color-mix(in srgb,var(--bg) 96%,var(--acc) 4%);
 }
 .ph-spinner{width:10px;height:10px;border:1.5px solid var(--bd);border-top-color:var(--mu);
             border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
-#phase-lbl{flex:1;font-family:var(--mono);font-size:11px}
+#phase-lbl{font-family:var(--mono);font-size:11px}
+.phase-elapsed{font-family:var(--mono);font-size:10px;opacity:.4}
 .tool-chip{display:none;align-items:center;font-family:var(--mono);font-size:11px;
-           color:var(--mu);max-width:220px;overflow:hidden;text-overflow:ellipsis;
+           color:var(--mu);max-width:180px;overflow:hidden;text-overflow:ellipsis;
            white-space:nowrap;flex-shrink:0}
+.phase-gap{flex:1}
+#phase-stats{
+  display:flex;align-items:center;gap:9px;flex-shrink:0;
+  font-family:var(--mono);font-size:10px;color:var(--mu);opacity:.55;
+}
+.pstat{display:flex;align-items:center;gap:3px}
+.pstat-val{font-weight:700}
+
+/* ── session progress bar ─────────────────────────────────────────────── */
+#progress-bar{height:2px;background:transparent;flex-shrink:0;overflow:hidden}
+#progress-fill{height:100%;background:var(--acc);width:0;
+               transition:width .55s cubic-bezier(.4,0,.2,1),background .35s}
 
 /* ── chat main area ───────────────────────────────────────────────────── */
 #chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
@@ -500,6 +513,50 @@ a{color:var(--acc)}
 
 /* tool-group spacing */
 .msg-tools{margin:4px 0 2px;padding-left:2px}
+
+/* pending tool prefix blinks */
+.tcrd.pending .tc-pfx{animation:blink .9s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* plan / review special cards */
+.sc-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:10px 0}
+.sc-card.plan{border-left:2px solid var(--cp)}
+.sc-card.review{border-left:2px solid var(--cv)}
+.sc-hdr{display:flex;align-items:center;gap:7px;padding:6px 10px;cursor:pointer;
+        user-select:none;border-bottom:1px solid transparent;transition:background .1s}
+.sc-card.plan  .sc-hdr{background:color-mix(in srgb,var(--cp) 7%,transparent)}
+.sc-card.review .sc-hdr{background:color-mix(in srgb,var(--cv) 7%,transparent)}
+.sc-card.open .sc-hdr{border-bottom-color:var(--bd)}
+.sc-hdr:hover{filter:brightness(1.1)}
+.sc-icon{font-size:12px;flex-shrink:0}
+.sc-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;flex:1}
+.sc-card.plan  .sc-label{color:var(--cp)}
+.sc-card.review .sc-label{color:var(--cv)}
+.sc-caret{font-size:9px;color:var(--mu);opacity:.5;transition:transform .2s;flex-shrink:0}
+.sc-card.open .sc-caret{transform:rotate(180deg)}
+.sc-body{display:none;padding:10px 12px;font-size:12px;line-height:1.65}
+.sc-card.open .sc-body{display:block}
+
+/* file changes summary card */
+.changes-card{border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);
+              border-left:2px solid var(--ok);border-radius:var(--r);
+              overflow:hidden;margin:8px 0;font-family:var(--mono);font-size:12px}
+.changes-hdr{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;
+             user-select:none;background:color-mix(in srgb,var(--ok) 7%,transparent)}
+.changes-card.open .changes-hdr{border-bottom:1px solid color-mix(in srgb,var(--ok) 20%,transparent)}
+.changes-title{font-size:11px;font-weight:700;color:var(--ok);flex:1}
+.changes-count{font-size:10px;color:var(--mu);flex-shrink:0}
+.changes-caret{font-size:9px;color:var(--mu);opacity:.5;transition:transform .2s;flex-shrink:0}
+.changes-card.open .changes-caret{transform:rotate(180deg)}
+.changes-list{display:none;padding:6px 10px 8px;display:flex;flex-direction:column;gap:2px}
+.changes-card:not(.open) .changes-list{display:none}
+.change-item{display:flex;align-items:baseline;gap:8px;padding:1px 0}
+.change-sym{flex-shrink:0;width:12px;text-align:center;font-size:11px}
+.change-sym.mod{color:var(--warn)}
+.change-sym.new{color:var(--acc)}
+.change-sym.run{color:var(--cv)}
+.change-path{color:var(--fg);opacity:.85;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.change-tag{font-size:10px;opacity:.5;flex-shrink:0}
 
 /* file preview */
 .fp-card{border:1px solid var(--bd);border-left:2px solid var(--ok);
@@ -739,7 +796,10 @@ a{color:var(--acc)}
       <span class="ph-spinner"></span>
       <span id="phase-lbl">Starting…</span>
       <div class="tool-chip" id="tool-chip"></div>
+      <span class="phase-gap"></span>
+      <div id="phase-stats"></div>
     </div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
 
     <div id="messages">
       <div id="welcome">

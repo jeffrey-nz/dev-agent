@@ -206,10 +206,101 @@ const sessions = [];
 let activeSid = null, runningSid = null, sessionLocked = false, sidSeq = 0;
 let _sessionStartTs = null; // wall-clock start of current task run
 
+/* ── session activity tracking ── */
+let _writesThisSession = []; // {path, isNew}
+let _readsThisSession  = new Set();
+let _runsThisSession   = 0;
+
+const progressFill = document.getElementById('progress-fill');
+const phaseStats   = document.getElementById('phase-stats');
+
+const PHASE_PROGRESS = {
+  PLANNING:12, ORCHESTRATING:18,
+  RESEARCHING:28, SCOPING:35,
+  EXECUTION:55, WRITING:60,
+  VERIFYING:78, REVIEWING:84,
+  DEBUGGING:70,
+};
+
+function setProgress(pct, color) {
+  progressFill.style.width = pct + '%';
+  if (color) progressFill.style.background = color;
+}
+
+function resetProgress() {
+  progressFill.style.transition = 'none';
+  progressFill.style.width = '0';
+  progressFill.style.background = '';
+  requestAnimationFrame(() => { progressFill.style.transition = ''; });
+}
+
+function updatePhaseStats() {
+  const r = _readsThisSession.size, w = _writesThisSession.length, x = _runsThisSession;
+  const parts = [];
+  if (r) parts.push(`<span class="pstat"><span class="pstat-val">${r}</span>r</span>`);
+  if (w) parts.push(`<span class="pstat"><span class="pstat-val">${w}</span>w</span>`);
+  if (x) parts.push(`<span class="pstat"><span class="pstat-val">${x}</span>!</span>`);
+  phaseStats.innerHTML = parts.join('');
+}
+
+function resetSessionTracking() {
+  _writesThisSession = []; _readsThisSession = new Set(); _runsThisSession = 0;
+  phaseStats.innerHTML = ''; resetProgress();
+}
+
+function addSpecialCard(type, text) {
+  if (!text?.trim()) return;
+  const cfg = {
+    plan:   { label:'Plan',   color:'var(--cp)', icon:'≡' },
+    review: { label:'Review', color:'var(--cv)', icon:'◎' },
+  }[type] || { label: type, color: 'var(--mu)', icon:'·' };
+  const d = document.createElement('div'); d.className = 'sc-card ' + type + ' open';
+  d.innerHTML = '<div class="sc-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
+    + '<span class="sc-icon" style="color:'+cfg.color+'">'+cfg.icon+'</span>'
+    + '<span class="sc-label">'+cfg.label+'</span>'
+    + '<span class="sc-caret">▾</span>'
+    + '</div>'
+    + '<div class="sc-body mab-md">'+renderMarkdown(text)+'</div>';
+  ibt(d);
+}
+
+function addChangesSummary() {
+  if (!_writesThisSession.length && !_runsThisSession) return;
+  const d = document.createElement('div'); d.className = 'changes-card open';
+  const wLabel = _writesThisSession.length
+    ? _writesThisSession.length + ' file' + (_writesThisSession.length > 1 ? 's' : '') + ' written'
+    : '';
+  const rLabel = _runsThisSession
+    ? _runsThisSession + ' command' + (_runsThisSession > 1 ? 's' : '') + ' run'
+    : '';
+  const title = [wLabel, rLabel].filter(Boolean).join(' · ');
+  const items = _writesThisSession.map(f => {
+    const sym = f.isNew ? 'new' : 'mod', glyph = f.isNew ? '+' : '✎', tag = f.isNew ? 'new' : '';
+    return '<div class="change-item">'
+      + '<span class="change-sym '+sym+'">'+glyph+'</span>'
+      + '<span class="change-path">'+esc(f.path)+'</span>'
+      + (tag ? '<span class="change-tag">'+tag+'</span>' : '')
+      + '</div>';
+  });
+  if (_runsThisSession) {
+    items.push('<div class="change-item">'
+      + '<span class="change-sym run">⚡</span>'
+      + '<span class="change-path">'+_runsThisSession+' shell command'+ (_runsThisSession>1?'s ran':'ran')+'</span>'
+      + '</div>');
+  }
+  d.innerHTML = '<div class="changes-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
+    + '<span class="changes-title">'+title+'</span>'
+    + '<span class="changes-caret">▾</span>'
+    + '</div>'
+    + '<div class="changes-list">'+items.join('')+'</div>';
+  ibt(d);
+}
+
 function createSession(promptText){
   if(activeSid !== null) saveSession(activeSid);
   const id = ++sidSeq;
   _sessionStartTs = Date.now();
+  resetSessionTracking();
   sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:'', tools:0});
   activeSid = id; runningSid = id; sessionLocked = true;
   clearMsgs(); hideWelcome();
@@ -732,7 +823,8 @@ function histPush(text) {
 
 /* ── send / stop ── */
 let currentPhase='';
-const SILENT=new Set(['PLANNING','ORCHESTRATING','RESEARCHING','SCOPING','REVIEWING']);
+// PLANNING and REVIEWING show as collapsible special cards; others are silent
+const SILENT=new Set(['ORCHESTRATING','RESEARCHING','SCOPING']);
 
 btnSend.addEventListener('click',()=>{
   const text=prompt.value.trim(); if(!text) return;
@@ -930,6 +1022,7 @@ window.addEventListener('message',e=>{
       const label=(L[ph]||msg.label||ph)+'…';
       phaseLbl.textContent=label;
       startPhaseTimer(label);
+      const pct=PHASE_PROGRESS[ph]; if(pct) setProgress(pct);
       const si=phaseToStep(ph); if(si>=0) setStep(si,ph==='DEBUGGING');
       addPhaseDivider(ph);
       break;
@@ -939,12 +1032,26 @@ window.addEventListener('message',e=>{
       if(msg.tool){
         const ts_=toolStyle(msg.tool);
         if(ts_.label==='read'){
+          if(msg.paramsSummary) _readsThisSession.add(msg.paramsSummary.split('\n')[0].trim());
           readBuf.push({n:msg.tool,s:msg.paramsSummary||''});
+          toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
+        } else if(ts_.label==='write'){
+          if(msg.paramsSummary){
+            const p=msg.paramsSummary.split('\n')[0].trim();
+            if(!_writesThisSession.find(f=>f.path===p))
+              _writesThisSession.push({path:p, isNew:!_readsThisSession.has(p)});
+          }
+          hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
+          toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
+        } else if(ts_.label==='run'){
+          _runsThisSession++;
+          hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else {
           hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         }
+        updatePhaseStats();
       }
       break;
 
@@ -969,7 +1076,10 @@ window.addEventListener('message',e=>{
       if(SILENT.has(currentPhase)) break;
       const raw=msg.text||msg.content||'';
       const preview=raw.length>2400?raw.slice(0,2400)+'…':raw;
-      if(preview.trim()) addAgentMsg(preview);
+      if(!preview.trim()) break;
+      if(currentPhase==='PLANNING') addSpecialCard('plan', preview);
+      else if(currentPhase==='REVIEWING') addSpecialCard('review', preview);
+      else addAgentMsg(preview);
       break;
     }
 
@@ -982,9 +1092,15 @@ window.addEventListener('message',e=>{
     case 'task_complete':
       flushReads(); hideTyping(); toolChip.style.display='none';
       stopPhaseTimer();
-      setStep(4); addDoneBanner(); finishSession('done');
+      setProgress(100, 'var(--ok)');
+      setTimeout(()=>{ document.getElementById('progress-bar').style.opacity='0'; }, 1200);
+      setStep(4); addDoneBanner(); addChangesSummary(); finishSession('done');
       btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
-      setTimeout(()=>{ phaseBar.classList.add('hidden'); currentStepIdx=-1; },1400);
+      setTimeout(()=>{
+        phaseBar.classList.add('hidden'); currentStepIdx=-1;
+        document.getElementById('progress-bar').style.opacity='';
+        resetProgress();
+      }, 1400);
       break;
   }
 });
