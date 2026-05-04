@@ -496,6 +496,23 @@ a{color:var(--acc)}
 .msg-a:hover .msg-copy{opacity:1}
 .msg-copy:hover{background:var(--hov);color:var(--fg)}
 
+/* ── collapsible long messages ── */
+.msg-a.collapsible .mab-md,.sc-card.collapsible .sc-body{
+  max-height:280px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);
+  mask-image:linear-gradient(to bottom,black 50%,transparent 100%);
+}
+.msg-a.collapsible.expanded .mab-md,.sc-card.collapsible.expanded .sc-body{
+  max-height:none;-webkit-mask-image:none;mask-image:none;
+}
+.msg-expand-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  background:transparent;border:none;color:var(--acc);
+  font:inherit;font-size:11px;font-family:var(--mono);
+  cursor:pointer;padding:4px 0 2px;opacity:.7;transition:opacity .1s;
+}
+.msg-expand-btn:hover{opacity:1}
+
 /* scroll-to-bottom button */
 #scroll-btn{
   position:absolute;bottom:82px;right:16px;
@@ -536,6 +553,9 @@ a{color:var(--acc)}
 .sc-card.open .sc-caret{transform:rotate(180deg)}
 .sc-body{display:none;padding:10px 12px;font-size:12px;line-height:1.65}
 .sc-card.open .sc-body{display:block}
+/* expand button inside sc-card sits below the body */
+.sc-card .msg-expand-btn{display:none;padding:4px 12px 8px}
+.sc-card.open .msg-expand-btn{display:inline-flex}
 
 /* file changes summary card */
 .changes-card{border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);

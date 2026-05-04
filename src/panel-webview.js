@@ -262,6 +262,10 @@ function addSpecialCard(type, text) {
     + '</div>'
     + '<div class="sc-body mab-md">'+renderMarkdown(text)+'</div>';
   ibt(d);
+  requestAnimationFrame(()=>{
+    const body=d.querySelector('.sc-body');
+    if(body && body.scrollHeight>320){ d.classList.add('collapsible'); _addExpandToggle(d, body); }
+  });
 }
 
 function addChangesSummary() {
@@ -513,6 +517,18 @@ function addUserMsg(text){
     +'<div class="msg-body">'+esc(text)+'</div>';
   ibt(d);
 }
+function _addExpandToggle(container, bodyEl) {
+  const btn = document.createElement('button');
+  btn.className = 'msg-expand-btn';
+  btn.textContent = 'Show more ▾';
+  btn.addEventListener('click', () => {
+    const expanded = container.classList.toggle('expanded');
+    btn.textContent = expanded ? 'Show less ▴' : 'Show more ▾';
+    if (expanded) scrollMsgs();
+  });
+  container.appendChild(btn);
+}
+
 function addAgentMsg(text){
   if(!text?.trim()) return;
   const d=document.createElement('div'); d.className='msg-a';
@@ -520,6 +536,10 @@ function addAgentMsg(text){
     +'<div class="mab-md">'+renderMarkdown(text)+'</div>'
     +'<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
   ibt(d);
+  requestAnimationFrame(()=>{
+    const body=d.querySelector('.mab-md');
+    if(body && body.scrollHeight>320){ d.classList.add('collapsible'); _addExpandToggle(d, body); }
+  });
 }
 function addSysMsg(text,isErr){
   if(!text) return;
