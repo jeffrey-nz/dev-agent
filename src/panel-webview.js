@@ -851,10 +851,13 @@ function addAgentMsg(text){
     if(body && body.scrollHeight>320){ d.classList.add('collapsible'); _addExpandToggle(d, body); }
   });
 }
-function addSysMsg(text,isErr){
+function addSysMsg(text,isErr,isWarn){
   if(!text) return;
-  const d=document.createElement('div'); d.className=isErr?'msg-err':'msg-sys';
-  d.textContent=isErr?'✗ '+text:text; ibt(d);
+  const d=document.createElement('div');
+  if(isErr){ d.className='msg-err'; d.textContent='✗ '+text; }
+  else if(isWarn){ d.className='msg-warn'; d.textContent=text; }
+  else { d.className='msg-sys'; d.textContent=text; }
+  ibt(d);
 }
 function _bannerTime() {
   if (!_sessionStartTs) return '';
@@ -1527,6 +1530,12 @@ window.addEventListener('message',e=>{
       hideTyping();
       if(SILENT.has(currentPhase)) break;
       const raw=msg.text||msg.content||'';
+      // EMPTY_RESPONSE is a pipeline sentinel injected when the AI returns nothing
+      // (context overflow). Show it as a warning chip, never as an AI message.
+      if(raw.includes('[EMPTY_RESPONSE]')){
+        addSysMsg('⚠ AI returned empty response — resetting session', false, true);
+        break;
+      }
       const cleaned=extractAgentText(raw);
       const preview=cleaned.length>2400?cleaned.slice(0,2400)+'…':cleaned;
       if(!preview.trim()) break;
@@ -1551,11 +1560,14 @@ window.addEventListener('message',e=>{
       }
       break;
 
-    case 'system_message':
-      hideTyping(); addSysMsg(msg.text, msg.level==='error');
-      if(msg.level==='error') _hadError=true;
-      else { btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
+    case 'system_message': {
+      const isErr = msg.level==='error';
+      const isWarn = msg.level==='warning' || msg.level==='warn';
+      hideTyping(); addSysMsg(msg.text, isErr, isWarn);
+      if(isErr) _hadError=true;
+      else if(!sessionLocked){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
+    }
 
     case 'session_end':
     case 'task_complete': {

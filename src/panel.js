@@ -934,6 +934,12 @@ a{color:var(--acc)}
 
 /* system / error messages */
 .msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:3px 2px;opacity:.45}
+.msg-warn{
+  font-size:11px;color:var(--warn);font-style:italic;
+  padding:4px 8px;background:color-mix(in srgb,var(--warn) 8%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--warn) 50%,transparent);
+  border-radius:4px;margin:3px 0;opacity:.85;
+}
 .msg-err{
   font-size:12px;color:var(--err);display:flex;align-items:center;gap:6px;
   padding:7px 11px;background:color-mix(in srgb,var(--err) 6%,transparent);

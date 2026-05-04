@@ -70,6 +70,12 @@ class AgentSession extends EventEmitter {
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {
           const cleaned = { ...d, type: t };
+          // For system_message, preserve the original severity so the UI can style
+          // warnings differently from errors. The event payload uses 'type' for severity
+          // (e.g. "warning", "error") but spread above overwrites 'type' with the event name.
+          if (t === "system_message" && d.type && d.type !== t) {
+            cleaned.level = d.type; // "warning", "error", "info"
+          }
           if (cleaned.text) cleaned.text = stripAnsi(cleaned.text);
           if (cleaned.content) cleaned.content = stripAnsi(cleaned.content);
           emit(cleaned);
