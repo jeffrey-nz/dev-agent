@@ -84,20 +84,15 @@ async function broadcastBridgeStatus(status, targetPanel) {
         path: workspaceRoot,
       });
     }
-    // Open browser panel so user can watch the AI work; clear any setup hint
     if (extensionCtx) {
-      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
-      bp?.postMessage({ type: "clear_hint" });
+      BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
     }
   } else {
     panel?.postMessage({ type: "bridge_starting", providers: [] });
     panel?.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
     sidebarProvider?.postMessage({ type: "bridge_starting" });
-    // Open browser panel during waiting_confirm so user can see the login screen
     if (extensionCtx && status.phase === "waiting_confirm") {
-      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
-      const provName = status.data?.provider?.name || "your AI provider";
-      bp?.postMessage({ type: "set_hint", text: `Log in to ${provName}`, sub: `Once you're signed in, click Confirm Ready to start` });
+      BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
     }
   }
 }

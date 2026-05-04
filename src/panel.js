@@ -549,8 +549,9 @@ a{color:var(--acc)}
 #chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 
 /* ── messages ─────────────────────────────────────────────────────────── */
-#messages{flex:1;overflow-y:auto;padding:0 12px 16px;
+#messages{flex:1;overflow-y:auto;padding:8px 14px 20px;
           display:flex;flex-direction:column;scroll-behavior:smooth}
+#messages > *{flex-shrink:0}
 #messages::-webkit-scrollbar{width:4px}
 #messages::-webkit-scrollbar-track{background:transparent}
 #messages::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
@@ -728,7 +729,7 @@ a{color:var(--acc)}
 @keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
 
 /* plan / review special cards */
-.sc-card{border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin:8px -12px}
+.sc-card{border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin:8px 0}
 .sc-card.plan{border-color:color-mix(in srgb,var(--cp) 25%,var(--bd));border-left:2px solid var(--cp)}
 .sc-card.review{border-color:color-mix(in srgb,var(--cv) 25%,var(--bd));border-left:2px solid var(--cv)}
 .sc-hdr{display:flex;align-items:center;gap:7px;padding:7px 11px;cursor:pointer;
@@ -772,10 +773,9 @@ a{color:var(--acc)}
 .change-path{color:var(--fg);opacity:.8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 .change-tag{font-size:10px;opacity:.45;flex-shrink:0}
 
-/* ── diff card — edge-to-edge (negative margins cancel the #messages 12px padding) ── */
 .diff-card{
   border:1px solid var(--bd);border-left:2px solid var(--ok);border-radius:8px;overflow:hidden;
-  margin:2px -12px 6px;font-family:var(--mono);
+  margin:2px 0 6px;font-family:var(--mono);
   transition:border-color .15s;
   animation:msgIn .14s ease;
 }
@@ -854,8 +854,8 @@ a{color:var(--acc)}
 }
 
 /* phase dividers */
-.pdiv{display:flex;align-items:center;gap:8px;margin:12px -12px 6px;padding:0 12px}
-.pdiv.repeat{opacity:.18;margin:2px -12px 2px;padding:0 12px}
+.pdiv{display:flex;align-items:center;gap:8px;margin:12px 0 6px;padding:0}
+.pdiv.repeat{opacity:.18;margin:2px 0 2px;padding:0}
 .pdiv.repeat .pdlabel{font-size:9px;padding:1px 8px}
 .pdline{flex:1;height:1px;background:var(--bd);opacity:.7}
 .pdlabel{
