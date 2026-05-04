@@ -209,6 +209,9 @@ function addFileDiff(data) {
 const sessions = [];
 let activeSid = null, runningSid = null, sessionLocked = false, sidSeq = 0;
 let _sessionStartTs = null; // wall-clock start of current task run
+let _stoppedByUser = false; // user clicked Stop — suppress session_end done-banner
+let _hadError      = false; // session ended with an error
+let _activeTaskId  = null;  // tag from extension; stale session_ends are ignored
 
 /* ── session activity tracking ── */
 let _writesThisSession = []; // {path, isNew}
@@ -308,6 +311,7 @@ function createSession(promptText){
   if(activeSid !== null) saveSession(activeSid);
   const id = ++sidSeq;
   _sessionStartTs = Date.now();
+  _stoppedByUser = false; _hadError = false;
   resetSessionTracking();
   sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:'', tools:0});
   activeSid = id; runningSid = id; sessionLocked = true;
@@ -339,6 +343,7 @@ function newChat(){
   activeSid=null; clearMsgs(); showWelcome(); hideTyping();
   phaseBar.classList.add('hidden');
   stopPhaseTimer();
+  _stoppedByUser=false; _hadError=false;
   _userScrolled=false; scrollBtn.classList.remove('show');
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null;
   resetDividers();
@@ -560,6 +565,16 @@ function addDoneBanner(){
   const sess=sessions.find(x=>x.id===runningSid||x.id===activeSid);
   if(sess?.tools) label+=' · '+sess.tools+' tools';
   d.innerHTML='<div class="done-line"></div><span>'+label+'</span><div class="done-line"></div>';
+  ibt(d);
+}
+function addStopBanner(){
+  const d=document.createElement('div'); d.className='stop-banner';
+  let label='✗ Stopped';
+  if(_sessionStartTs){
+    const s=Math.round((Date.now()-_sessionStartTs)/1000);
+    label += ' · '+(s>=60?Math.floor(s/60)+'m '+s%60+'s':s+'s');
+  }
+  d.innerHTML='<div class="stop-line"></div><span>'+label+'</span><div class="stop-line"></div>';
   ibt(d);
 }
 
@@ -858,17 +873,31 @@ btnSend.addEventListener('click',()=>{
   histPush(text); _histIdx = -1;
   createSession(text); addUserMsg(text); showTyping();
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
-  currentStepIdx=-1; lastPhase=''; readBuf=[]; pendingCard=null; resetDividers();
+  currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null; resetDividers();
   stopPhaseTimer();
   vscode.postMessage({type:'start_task', prompt:text, provider: _selectedProvider || undefined});
   prompt.value=''; prompt.style.height=''; btnSend.disabled=true;
   btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
 });
 btnStop.addEventListener('click',()=>{
-  hideTyping(); phaseBar.classList.add('hidden');
-  stopPhaseTimer();
-  btnStop.classList.add('hidden'); btnSend.classList.remove('hidden');
-  finishSession('stopped'); vscode.postMessage({type:'stop'});
+  if(btnStop.disabled) return;
+  btnStop.disabled=true;
+  _stoppedByUser=true;
+  // Show "Stopping…" feedback in the phase bar
+  phaseLbl.textContent='Stopping…';
+  const elapsed=phaseLbl.querySelector('.phase-elapsed'); if(elapsed) elapsed.remove();
+  toolChip.style.display='none';
+  // Signal extension immediately
+  vscode.postMessage({type:'stop'});
+  // Brief delay so user sees the feedback, then clean up
+  setTimeout(()=>{
+    flushReads(); hideTyping(); stopPhaseTimer();
+    addStopBanner();
+    finishSession('stopped');
+    btnStop.classList.add('hidden'); btnStop.disabled=false;
+    btnSend.classList.remove('hidden');
+    setTimeout(()=>{ phaseBar.classList.add('hidden'); currentStepIdx=-1; resetProgress(); },300);
+  }, 300);
 });
 
 prompt.addEventListener('keydown',e=>{
@@ -1113,25 +1142,55 @@ window.addEventListener('message',e=>{
       break;
     }
 
+    case 'task_started':
+      _activeTaskId = msg.taskId || null;
+      break;
+
     case 'system_message':
-      hideTyping(); addSysMsg(msg.text,msg.level==='error');
-      if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
+      hideTyping(); addSysMsg(msg.text, msg.level==='error');
+      if(msg.level==='error') _hadError=true;
+      else { btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
 
     case 'session_end':
-    case 'task_complete':
+    case 'task_complete': {
+      // Drop stale events from a previous session that was aborted/replaced
+      if(msg._taskId && _activeTaskId && msg._taskId !== _activeTaskId) break;
       flushReads(); hideTyping(); toolChip.style.display='none';
       stopPhaseTimer();
-      setProgress(100, 'var(--ok)');
-      setTimeout(()=>{ document.getElementById('progress-bar').style.opacity='0'; }, 1200);
+
+      if(_stoppedByUser){
+        // Stop banner already shown in btnStop handler — just confirm cleanup
+        _stoppedByUser=false;
+        btnStop.classList.add('hidden'); btnStop.disabled=false;
+        btnSend.classList.remove('hidden');
+        // Phase bar may still be visible if session_end fires before the 300ms timeout
+        setTimeout(()=>{ phaseBar.classList.add('hidden'); currentStepIdx=-1; resetProgress(); },50);
+        break;
+      }
+
+      if(_hadError){
+        // Error message already shown — don't overlay a false "done"
+        _hadError=false;
+        finishSession('error');
+        btnStop.classList.add('hidden'); btnStop.disabled=false;
+        btnSend.classList.remove('hidden');
+        phaseBar.classList.add('hidden'); currentStepIdx=-1; resetProgress();
+        break;
+      }
+
+      // Natural completion
+      setProgress(100,'var(--ok)');
+      setTimeout(()=>{ document.getElementById('progress-bar').style.opacity='0'; },1200);
       setStep(4); addDoneBanner(); addChangesSummary(); finishSession('done');
-      btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
+      btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); btnStop.disabled=false;
       setTimeout(()=>{
         phaseBar.classList.add('hidden'); currentStepIdx=-1;
         document.getElementById('progress-bar').style.opacity='';
         resetProgress();
-      }, 1400);
+      },1400);
       break;
+    }
   }
 });
 

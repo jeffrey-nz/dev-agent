@@ -467,11 +467,19 @@ async function handleWebviewMessage(msg, senderPanel) {
       const root = workspaceRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
       const chosenProvider = msg.provider || selectedProviders[0] || "copilot";
 
+      // Unique tag so the webview can discard session_end events from aborted sessions
+      const taskId = `task-${Date.now()}`;
+      panel?.postMessage({ type: "task_started", taskId });
+
       let lastWritePath = null;
       let lastWriteOldContent = undefined; // content before the write (null = new file)
       const broadcast = (e) => {
+        // Tag session_end/task_complete so stale events from aborted sessions are ignored
+        const msg2 = (e.type === "session_end" || e.type === "task_complete")
+          ? { ...e, _taskId: taskId }
+          : e;
         // Use currentPanel (not captured panel) so events reach a reopened panel
-        (DevAgentPanel.currentPanel ?? panel)?.postMessage(e);
+        (DevAgentPanel.currentPanel ?? panel)?.postMessage(msg2);
         sidebarProvider?.postMessage(e);
 
         if (e.type === "phase_change") setStatusPhase(e.phase);

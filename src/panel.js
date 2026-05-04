@@ -645,10 +645,15 @@ a{color:var(--acc)}
 .tdots span:nth-child(3){animation-delay:.36s}
 @keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.25}30%{transform:translateY(-4px);opacity:.9}}
 
-/* done banner */
-.done-banner{display:flex;align-items:center;gap:10px;padding:10px 0;margin:8px 0;
-             font-size:11px;color:var(--ok);font-family:var(--mono)}
+/* done / stopped banners */
+.done-banner,.stop-banner{display:flex;align-items:center;gap:10px;padding:10px 0;margin:8px 0;
+             font-size:11px;font-family:var(--mono)}
+.done-banner{color:var(--ok)}
+.stop-banner{color:var(--err)}
 .done-line{flex:1;height:1px;background:color-mix(in srgb,var(--ok) 25%,transparent)}
+.stop-line{flex:1;height:1px;background:color-mix(in srgb,var(--err) 22%,transparent)}
+/* stop button disabled during stopping */
+.inp-stop:disabled{opacity:.45;cursor:not-allowed}
 
 /* ── input area ───────────────────────────────────────────────────────── */
 .inp-area{padding:8px 14px 11px;border-top:1px solid var(--bd);flex-shrink:0;position:relative}
