@@ -577,39 +577,39 @@ a{color:var(--acc)}
 .pp-dur.pp-live{opacity:.85}
 
 /* ── activity strip (file/command chips) ─────────────────────────────── */
+/* activity sidebar — left column showing changed files */
+#chat-body{display:flex;flex:1;overflow:hidden;min-width:0}
 #activity-strip{
-  display:flex;align-items:center;gap:6px;
-  padding:5px 12px;min-height:32px;flex-shrink:0;
-  border-bottom:1px solid var(--bd);
+  display:flex;flex-direction:column;gap:3px;
+  width:116px;flex-shrink:0;
+  padding:8px 7px 12px;
+  border-right:1px solid var(--bd);
+  overflow-y:auto;overflow-x:hidden;
   background:color-mix(in srgb,var(--bg) 98%,var(--ok) 2%);
-  overflow:hidden;
 }
+#activity-strip.hidden{display:none}
+#activity-strip::-webkit-scrollbar{width:3px}
+#activity-strip::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
 .as-label{
   font-size:10px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.07em;color:var(--mu);opacity:.4;
-  flex-shrink:0;font-family:var(--mono);
+  letter-spacing:.07em;color:var(--mu);opacity:.35;
+  font-family:var(--mono);padding:0 2px;margin-bottom:2px;flex-shrink:0;
 }
-#activity-chips{display:flex;gap:4px;flex:1;overflow:hidden}
+#activity-chips{display:flex;flex-direction:column;gap:3px}
 .ac-chip{
   display:flex;align-items:center;gap:5px;
-  padding:2px 8px 2px 6px;border-radius:5px;
+  padding:3px 7px 3px 6px;border-radius:5px;
   background:color-mix(in srgb,var(--fg) 5%,transparent);
   border:1px solid var(--bd);
   font-family:var(--mono);font-size:11px;
-  white-space:nowrap;cursor:pointer;flex-shrink:0;
+  white-space:nowrap;cursor:pointer;
   transition:background .1s,border-color .12s;
   animation:chipIn .18s ease;
 }
 .ac-chip:hover{background:var(--hov);border-color:color-mix(in srgb,var(--mu) 45%,transparent)}
-.ac-chip.ac-run{
-  background:color-mix(in srgb,var(--cv) 7%,transparent);
-  border-color:color-mix(in srgb,var(--cv) 22%,transparent);
-}
-.ac-chip.ac-run:hover{background:color-mix(in srgb,var(--cv) 14%,transparent)}
 .ac-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;opacity:.85}
-.ac-run-dot{font-size:9px;color:var(--cv);flex-shrink:0;line-height:1}
 .ac-name{
-  color:var(--fg);opacity:.8;max-width:88px;
+  color:var(--fg);opacity:.8;max-width:60px;
   overflow:hidden;text-overflow:ellipsis;font-size:11px;
 }
 .ac-stats{display:flex;align-items:center;gap:2px;flex-shrink:0}
@@ -620,7 +620,7 @@ a{color:var(--acc)}
   background:color-mix(in srgb,var(--acc) 12%,transparent);
   padding:0 4px;border-radius:3px;
 }
-.as-more{font-size:10px;color:var(--mu);opacity:.55;flex-shrink:0;white-space:nowrap;font-family:var(--mono)}
+.as-more{font-size:10px;color:var(--mu);opacity:.55;white-space:nowrap;font-family:var(--mono);padding:2px}
 @keyframes chipIn{from{opacity:0;transform:scale(.88) translateY(2px)}to{opacity:1;transform:none}}
 
 /* diff flash when chip clicked */
@@ -1250,6 +1250,7 @@ a{color:var(--acc)}
     </div>
     <div id="phase-pills" class="hidden"></div>
     <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="chat-body">
     <div id="activity-strip" class="hidden">
       <span class="as-label">Changed</span>
       <div id="activity-chips"></div>
@@ -1284,6 +1285,7 @@ a{color:var(--acc)}
         <div class="tdots"><span></span><span></span><span></span></div>
       </div>
     </div>
+    </div><!-- #chat-body -->
 
     <button id="scroll-btn" title="Scroll to bottom">↓</button>
 

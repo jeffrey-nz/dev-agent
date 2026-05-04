@@ -471,17 +471,6 @@ function addActivityChip(data, diffEl) {
   _chipMap.set(relPath, { chip, added, removed });
 }
 
-function addCommandChip(summary) {
-  if (!activityStrip || !summary) return;
-  activityStrip.classList.remove('hidden');
-  const chip = document.createElement('div');
-  chip.className = 'ac-chip ac-run';
-  const label = summary.length > 28 ? summary.slice(0, 28) + '…' : summary;
-  chip.title = summary;
-  chip.innerHTML = '<span class="ac-run-dot">▷</span>'
-    + '<span class="ac-name">' + esc(label) + '</span>';
-  _placeChip(chip);
-}
 
 function _placeChip(chip) {
   const visible = activityChips.querySelectorAll('.ac-chip').length;
@@ -1509,11 +1498,6 @@ window.addEventListener('message',e=>{
         // Write tools: suppress typing — the file_diff card follows immediately
         if(!isWrite || msg.isError) showTyping();
         if(msg.isError) addSysMsg('Tool error: '+msg.tool,true);
-        // Command chip: add to activity strip when run tool completes cleanly
-        if(isRun && !msg.isError && _lastRunSummary) {
-          addCommandChip(_lastRunSummary);
-          _lastRunSummary = null;
-        }
       }
       break;
     }
