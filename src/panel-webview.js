@@ -165,39 +165,43 @@ function copyCode(btn) {
 }
 
 /* ══════════════════════════════════════
-   FILE PREVIEW
+   FILE DIFF (Claude Code style)
 ══════════════════════════════════════ */
-const EXT_ICON = {
-  js:'🟨',ts:'🔷',jsx:'🟨',tsx:'🔷',py:'🐍',json:'📋',html:'🌐',
-  css:'🎨',md:'📝',sh:'⚡',yml:'⚙',yaml:'⚙',rs:'🦀',go:'🐹',
-  java:'☕',rb:'💎',c:'⚙',cpp:'⚙',cs:'💜',php:'🐘',swift:'🍎',
-};
+function openFile(p) { vscode.postMessage({type:'open_file', path:p}); }
 
-function addFilePreview(data) {
-  const icon = EXT_ICON[(data.ext||'').toLowerCase()] || '📄';
-  const escaped = (data.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const d = document.createElement('div'); d.className = 'fp-card';
-  d.innerHTML = '<div class="fp-hdr">'
-    + '<span class="fp-icon">'+icon+'</span>'
-    + '<span class="fp-path">'+esc(data.relPath||data.filePath)+'</span>'
-    + (data.lines ? '<span class="fp-meta">'+data.lines+' lines</span>' : '')
-    + '<div class="fp-actions">'
-    + '<button class="fp-btn" onclick="copyFpCode(this)">Copy</button>'
-    + '<button class="fp-btn" data-fp="'+esc(data.filePath)+'" onclick="openFile(this.dataset.fp)">Open ↗</button>'
-    + '</div></div>'
-    + '<div class="fp-body"><pre class="fp-pre"><code>'+escaped+'</code></pre></div>'
-    + (data.truncated ? '<div class="fp-trunc">Showing first 8 000 chars…</div>' : '');
+function addFileDiff(data) {
+  const isNew = data.isNew;
+  const badge = isNew ? '+ new file' : '✎ edited';
+  const badgeCls = isNew ? 'new' : 'mod';
+  const addTxt = data.added   ? `<span class="ds-add">+${data.added}</span>`   : '';
+  const remTxt = data.removed ? `<span class="ds-rem">-${data.removed}</span>` : '';
+
+  let bodyHtml = '';
+  const hunks = data.hunks || [];
+  hunks.forEach((hunk, hi) => {
+    if (hi > 0) bodyHtml += '<hr class="diff-sep"/>';
+    for (const line of hunk) {
+      const cls  = line.t === 'a' ? 'add' : line.t === 'r' ? 'rem' : 'ctx';
+      const sym  = line.t === 'a' ? '+'  : line.t === 'r' ? '−'  : ' ';
+      const ln   = line.t === 'r' ? (line.o || '') : (line.n || '');
+      const code = esc(line.s ?? '');
+      bodyHtml += `<div class="dl ${cls}"><span class="dl-ln">${ln}</span><span class="dl-sym">${sym}</span><span class="dl-code">${code}</span></div>`;
+    }
+  });
+  if (!bodyHtml) {
+    bodyHtml = '<div class="dl ctx"><span class="dl-ln"></span><span class="dl-sym"> </span><span class="dl-code" style="font-style:italic;opacity:.5">no changes detected</span></div>';
+  }
+
+  const d = document.createElement('div'); d.className = 'diff-card';
+  d.innerHTML = `<div class="diff-hdr">
+    <span class="diff-badge ${badgeCls}">${badge}</span>
+    <span class="diff-path">${esc(data.relPath || '')}</span>
+    <div class="diff-stats">${addTxt}${remTxt}</div>
+    ${data.filePath ? `<button class="diff-open" data-fp="${esc(data.filePath)}" onclick="openFile(this.dataset.fp)">Open ↗</button>` : ''}
+  </div>
+  <div class="diff-body">${bodyHtml}</div>`;
   ibt(d);
 }
-
-function copyFpCode(btn) {
-  const code = btn.closest('.fp-card').querySelector('pre code').textContent;
-  clipboardWrite(code).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓';
-    setTimeout(() => { btn.textContent = orig; }, 1500);
-  });
-}
-function openFile(p) { vscode.postMessage({type:'open_file', path:p}); }
 
 /* ══════════════════════════════════════
    SESSION MANAGEMENT
@@ -1094,8 +1098,8 @@ window.addEventListener('message',e=>{
       break;
     }
 
-    case 'file_preview':
-      addFilePreview(msg); break;
+    case 'file_diff':
+      addFileDiff(msg); break;
 
     case 'message_complete': {
       hideTyping();

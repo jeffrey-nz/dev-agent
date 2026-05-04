@@ -578,24 +578,47 @@ a{color:var(--acc)}
 .change-path{color:var(--fg);opacity:.85;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .change-tag{font-size:10px;opacity:.5;flex-shrink:0}
 
-/* file preview */
-.fp-card{border:1px solid var(--bd);border-left:2px solid var(--ok);
-         border-radius:var(--r);overflow:hidden;margin:8px 0;max-width:640px}
-.fp-hdr{display:flex;align-items:center;gap:8px;padding:6px 10px;
-        background:color-mix(in srgb,var(--ok) 5%,transparent);border-bottom:1px solid var(--bd)}
-.fp-icon{font-size:13px;flex-shrink:0}
-.fp-path{font-family:var(--mono);font-size:12px;font-weight:500;flex:1;
-         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fp-meta{font-size:10px;color:var(--mu);flex-shrink:0}
-.fp-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
-.fp-btn{background:transparent;color:var(--mu);border:1px solid var(--bd);
-        padding:2px 8px;border-radius:3px;font-size:11px;cursor:pointer}
-.fp-btn:hover{background:var(--hov);color:var(--fg)}
-.fp-body{overflow-x:auto;max-height:220px;overflow-y:auto}
-.fp-pre{padding:8px 12px;margin:0}
-.fp-pre code{font-family:var(--mono);font-size:11px;white-space:pre;color:var(--fg);line-height:1.5}
-.fp-trunc{font-size:10px;color:var(--mu);padding:3px 12px 6px;font-style:italic;
-          border-top:1px solid var(--bd)}
+/* ── diff card (file changes, Claude Code style) ── */
+.diff-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:6px 0;font-family:var(--mono)}
+.diff-hdr{
+  display:flex;align-items:center;gap:8px;padding:5px 10px;
+  background:color-mix(in srgb,var(--fg) 3%,transparent);
+  border-bottom:1px solid var(--bd);
+}
+.diff-badge{font-size:11px;font-weight:700;flex-shrink:0}
+.diff-badge.new{color:var(--ok)}
+.diff-badge.mod{color:var(--warn)}
+.diff-path{font-size:12px;font-weight:500;flex:1;
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}
+.diff-stats{display:flex;gap:5px;flex-shrink:0}
+.ds-add{font-size:11px;color:var(--ok)}
+.ds-rem{font-size:11px;color:var(--err)}
+.diff-open{background:transparent;color:var(--mu);border:1px solid var(--bd);
+           padding:2px 8px;border-radius:3px;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0}
+.diff-open:hover{background:var(--hov);color:var(--fg)}
+.diff-body{overflow-x:auto;max-height:320px;overflow-y:auto;
+           background:var(--vscode-textCodeBlock-background,color-mix(in srgb,var(--fg) 2%,var(--bg)))}
+.diff-sep{height:1px;background:var(--bd);border:none;margin:0;opacity:.4}
+/* individual diff lines */
+.dl{display:flex;align-items:stretch;font-size:12px;line-height:1.6;min-width:0}
+.dl.add{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.dl.rem{background:color-mix(in srgb,var(--err) 10%,transparent)}
+.dl.ctx{opacity:.45}
+.dl-ln{
+  min-width:38px;padding:0 6px;text-align:right;color:var(--mu);
+  user-select:none;flex-shrink:0;font-size:10px;
+  border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:flex-end;
+}
+.dl.add .dl-ln{color:color-mix(in srgb,var(--ok) 60%,var(--mu))}
+.dl.rem .dl-ln{color:color-mix(in srgb,var(--err) 60%,var(--mu))}
+.dl-sym{
+  width:18px;text-align:center;flex-shrink:0;
+  color:var(--mu);font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+}
+.dl.add .dl-sym{color:var(--ok);font-weight:700}
+.dl.rem .dl-sym{color:var(--err);font-weight:700}
+.dl-code{flex:1;padding:0 10px;white-space:pre;color:var(--fg);word-break:normal;min-width:0;overflow:hidden}
 
 /* system / error messages */
 .msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:4px 0;opacity:.65}

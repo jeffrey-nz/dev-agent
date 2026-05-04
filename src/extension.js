@@ -5,6 +5,7 @@ const { AgentSession } = require("./agentSession");
 const { DevAgentViewProvider, DevAgentPanel } = require("./panel");
 const { BrowserViewPanel } = require("./browserPanel");
 const { SessionLogger } = require("./logger");
+const { computeFileDiff } = require("./diffUtils");
 const bridge = require("./bridgeLauncher");
 
 function isWriteTool(name) {
@@ -467,6 +468,7 @@ async function handleWebviewMessage(msg, senderPanel) {
       const chosenProvider = msg.provider || selectedProviders[0] || "copilot";
 
       let lastWritePath = null;
+      let lastWriteOldContent = undefined; // content before the write (null = new file)
       const broadcast = (e) => {
         // Use currentPanel (not captured panel) so events reach a reopened panel
         (DevAgentPanel.currentPanel ?? panel)?.postMessage(e);
@@ -477,24 +479,24 @@ async function handleWebviewMessage(msg, senderPanel) {
 
         if (e.type === "tool_call_start" && isWriteTool(e.tool)) {
           lastWritePath = resolveToolPath(e.paramsSummary, root);
+          if (lastWritePath) {
+            try { lastWriteOldContent = fs.readFileSync(lastWritePath, "utf8"); }
+            catch { lastWriteOldContent = null; } // null = file didn't exist (new file)
+          }
         } else if (e.type === "tool_call_start") {
           lastWritePath = null;
+          lastWriteOldContent = undefined;
         }
         if (e.type === "tool_call_end" && !e.isError && lastWritePath) {
           try {
-            const raw = fs.readFileSync(lastWritePath, "utf8");
-            const truncated = raw.length > 8000;
-            panel?.postMessage({
-              type: "file_preview",
-              filePath: lastWritePath,
-              relPath: path.relative(root, lastWritePath),
-              ext: path.extname(lastWritePath).slice(1),
-              content: truncated ? raw.slice(0, 8000) : raw,
-              truncated,
-              lines: raw.split("\n").length,
-            });
+            const newContent = fs.readFileSync(lastWritePath, "utf8");
+            const relPath = path.relative(root, lastWritePath);
+            const ext = path.extname(lastWritePath).slice(1);
+            const diff = computeFileDiff(lastWriteOldContent, newContent, lastWritePath, relPath, ext);
+            (DevAgentPanel.currentPanel ?? panel)?.postMessage({ type: "file_diff", ...diff });
           } catch {}
           lastWritePath = null;
+          lastWriteOldContent = undefined;
         }
       };
 
