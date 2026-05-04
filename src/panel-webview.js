@@ -515,16 +515,65 @@ function updateCtxMeter(messageCount, threshold) {
   ctxMeter.classList.add('show');
 }
 
-function addSessionRotateBanner(segmentIndex, previousMessageCount, providerName) {
+function addHandoffCard(msg) {
   const d = document.createElement('div');
-  d.className = 'session-rotate';
-  const provLabel = providerName ? providerName.replace('copilot365','Copilot').replace('deepseek','DeepSeek') : 'Browser';
-  d.innerHTML = '<span class="sr-icon">↻</span>'
-    + '<div class="sr-body">'
-    + '<div class="sr-title">New browser session · ' + provLabel + '</div>'
-    + '<div class="sr-meta">Segment ' + segmentIndex + ' — previous session had ' + previousMessageCount + ' messages</div>'
-    + '</div>';
+  d.className = 'handoff-card';
+
+  const provLabel = (msg.providerName || 'Browser')
+    .replace('copilot365','Copilot').replace('deepseek','DeepSeek').replace('claude','Claude');
+  const sessionNum = msg.segmentIndex ?? 1;
+
+  // Progress fraction
+  const subtasks = msg.subtasks || [];
+  const currentIdx = msg.currentSubtaskIndex ?? 0;
+  const completedCount = subtasks.filter((_, i) => i < currentIdx).length;
+  const totalCount = subtasks.length;
+  const currentTask = subtasks[currentIdx]?.task || '';
+  const modCount = (msg.allModifiedFiles || []).length;
+
+  // Progress bar segments
+  let progressBar = '';
+  if (totalCount > 0) {
+    const pct = Math.round((completedCount / totalCount) * 100);
+    progressBar = '<div class="hc-progress-wrap">'
+      + '<div class="hc-progress-bar"><div class="hc-progress-fill" style="width:' + pct + '%"></div></div>'
+      + '<span class="hc-progress-label">' + completedCount + '/' + totalCount + ' subtasks</span>'
+      + '</div>';
+  }
+
+  // Subtask list (collapsible)
+  let taskList = '';
+  if (subtasks.length > 0) {
+    const rows = subtasks.map((s, i) => {
+      const marker = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'pending';
+      const glyph = i < currentIdx ? '✓' : i === currentIdx ? '→' : '○';
+      const filesNote = s.files?.length > 0 ? '<span class="hc-task-files">' + esc(s.files.join(', ')) + '</span>' : '';
+      return '<div class="hc-task ' + marker + '">'
+        + '<span class="hc-task-marker">' + glyph + '</span>'
+        + '<span class="hc-task-label">' + esc(s.task) + '</span>'
+        + filesNote
+        + '</div>';
+    }).join('');
+    taskList = '<div class="hc-tasks hidden">' + rows + '</div>';
+  }
+
+  d.innerHTML =
+    '<div class="hc-header" onclick="this.nextElementSibling?.classList.toggle(\'hidden\');this.querySelector(\'.hc-caret\').classList.toggle(\'open\')">'
+    + '<span class="hc-icon">↻</span>'
+    + '<div class="hc-header-body">'
+    + '<div class="hc-title">Session ' + sessionNum + ' · ' + provLabel + '</div>'
+    + '<div class="hc-subtitle">'
+    + (currentTask ? 'Continuing: <em>' + esc(currentTask.slice(0, 60)) + (currentTask.length > 60 ? '…' : '') + '</em>' : 'Context handed off to new session')
+    + (modCount > 0 ? ' · ' + modCount + ' file' + (modCount !== 1 ? 's' : '') + ' carried over' : '')
+    + '</div>'
+    + progressBar
+    + '</div>'
+    + (subtasks.length > 0 ? '<span class="hc-caret">▾</span>' : '')
+    + '</div>'
+    + taskList;
+
   ibt(d);
+  updateCtxMeter(0, msg.threshold ?? null);
 }
 
 function addSpecialCard(type, text) {
@@ -1603,9 +1652,13 @@ window.addEventListener('message',e=>{
       updateCtxMeter(msg.messageCount, msg.threshold);
       break;
 
+    case 'session_handoff':
+      addHandoffCard(msg);
+      break;
+
     case 'copilot365_segment_boundary':
-      addSessionRotateBanner(msg.segmentIndex, msg.previousMessageCount, msg.providerName || 'copilot365');
-      updateCtxMeter(0, msg.threshold ?? null);
+      // Only show banner if session_handoff wasn't already shown for this rotation
+      if (!msg._suppressBanner) addHandoffCard(msg);
       break;
   }
 });

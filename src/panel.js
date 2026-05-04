@@ -531,6 +531,44 @@ a{color:var(--acc)}
 .ctx-lbl{font-size:10px;opacity:.7;white-space:nowrap}
 
 /* ── browser session rotation banner ── */
+/* ── session handoff card ─────────────────────────────────────────────── */
+.handoff-card{
+  margin:12px 0 6px;border-radius:8px;flex-shrink:0;overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--acc) 22%,var(--bd));
+  background:color-mix(in srgb,var(--acc) 5%,var(--bg));
+}
+.hc-header{
+  display:flex;align-items:flex-start;gap:9px;padding:9px 11px;cursor:pointer;
+  user-select:none;
+}
+.hc-header:hover{background:color-mix(in srgb,var(--acc) 8%,transparent)}
+.hc-icon{font-size:14px;color:var(--acc);flex-shrink:0;margin-top:1px;
+  animation:hc-spin 1s ease-out 1}
+@keyframes hc-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.hc-header-body{flex:1;min-width:0}
+.hc-title{font-size:11px;font-weight:600;color:var(--fg);opacity:.85}
+.hc-subtitle{font-size:10.5px;color:var(--mu);margin-top:1px;line-height:1.4}
+.hc-subtitle em{font-style:normal;color:var(--fg);opacity:.75}
+.hc-caret{font-size:10px;color:var(--mu);flex-shrink:0;margin-top:3px;transition:transform .15s}
+.hc-caret.open{transform:rotate(180deg)}
+.hc-progress-wrap{display:flex;align-items:center;gap:6px;margin-top:5px}
+.hc-progress-bar{flex:1;height:4px;background:color-mix(in srgb,var(--acc) 15%,var(--bd));
+  border-radius:2px;overflow:hidden}
+.hc-progress-fill{height:100%;background:var(--acc);border-radius:2px;
+  transition:width .4s ease}
+.hc-progress-label{font-size:10px;color:var(--mu);white-space:nowrap;font-family:var(--mono)}
+.hc-tasks{padding:0 11px 9px;display:flex;flex-direction:column;gap:3px}
+.hc-task{display:flex;align-items:baseline;gap:6px;font-size:10.5px;
+  padding:2px 0;color:var(--mu)}
+.hc-task.done{color:var(--ok);opacity:.7}
+.hc-task.current{color:var(--fg);font-weight:500}
+.hc-task.pending{opacity:.45}
+.hc-task-marker{font-size:10px;flex-shrink:0;width:10px;text-align:center}
+.hc-task-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-task-files{font-size:9.5px;color:var(--mu);opacity:.6;font-family:var(--mono);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+/* keep legacy banner style for any stragglers */
 .session-rotate{
   display:flex;align-items:center;gap:8px;padding:7px 10px;
   margin:10px 0 4px;border-radius:7px;

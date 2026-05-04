@@ -66,6 +66,7 @@ class AgentSession extends EventEmitter {
         "system_message", "message_complete",
         "phase_change", "tool_call_start", "tool_call_end",
         "browser_context_update", "copilot365_segment_boundary",
+        "session_handoff",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {
