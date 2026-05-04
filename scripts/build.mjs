@@ -30,9 +30,11 @@ const ctx = await build({
   logLevel: "info",
 });
 
-// Copy webview script to dist (loaded by webview.asWebviewUri, not bundled)
+// Copy webview scripts to dist (loaded by webview.asWebviewUri, not bundled)
 copyFileSync("src/panel-webview.js", "dist/panel-webview.js");
 console.log("Copied panel-webview.js to dist/");
+copyFileSync("src/browser-panel-webview.js", "dist/browser-panel-webview.js");
+console.log("Copied browser-panel-webview.js to dist/");
 
 if (watch) {
   console.log("Watching for changes...");

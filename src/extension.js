@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { AgentSession } = require("./agentSession");
 const { DevAgentViewProvider, DevAgentPanel } = require("./panel");
+const { BrowserViewPanel } = require("./browserPanel");
 const { SessionLogger } = require("./logger");
 const bridge = require("./bridgeLauncher");
 
@@ -55,13 +56,13 @@ let _lastBridgeKey = null; // tracks last broadcast so we don't repeat
 
 async function broadcastBridgeStatus(status, targetPanel) {
   const panel = targetPanel ?? DevAgentPanel.currentPanel;
-  if (!panel) return;
 
   if (!status.running) {
     const { binPath } = bridge.checkInstall();
-    panel.postMessage({ type: "bridge_offline" });
-    panel.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
+    panel?.postMessage({ type: "bridge_offline" });
+    panel?.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
     sidebarProvider?.postMessage({ type: "bridge_offline" });
+    BrowserViewPanel.dispose();
   } else if (status.phase === "ready") {
     // Sync selectedProviders from the bridge's actual active providers
     if (selectedProviders.length === 0) {
@@ -70,19 +71,25 @@ async function broadcastBridgeStatus(status, targetPanel) {
     }
     const providerList = selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id }));
     const label = providerList.map((p) => p.label).join(", ") || "bridge";
-    panel.postMessage({ type: "bridge_ready", providerLabel: label, providers: providerList, alreadyRunning: true });
+    panel?.postMessage({ type: "bridge_ready", providerLabel: label, providers: providerList, alreadyRunning: true });
     sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
     if (workspaceRoot) {
-      panel.postMessage({
+      panel?.postMessage({
         type: "workspace_confirmed",
         name: path.basename(workspaceRoot),
         path: workspaceRoot,
       });
     }
+    // Open browser panel so user can watch the AI work
+    if (extensionCtx) BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort());
   } else {
-    panel.postMessage({ type: "bridge_starting", providers: [] });
-    panel.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
+    panel?.postMessage({ type: "bridge_starting", providers: [] });
+    panel?.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
     sidebarProvider?.postMessage({ type: "bridge_starting" });
+    // Open browser panel during waiting_confirm so user can see the login screen
+    if (extensionCtx && status.phase === "waiting_confirm") {
+      BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort());
+    }
   }
 }
 
