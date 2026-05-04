@@ -242,8 +242,11 @@ function addFileDiff(data) {
     ? `<button class="diff-open" title="Open in editor" onclick="event.stopPropagation();openFile(this.dataset.fp)" data-fp="${esc(data.filePath)}">↗</button>`
     : '';
 
+  // Only auto-open if there are actual changes (skip "no changes detected" cards)
+  const hasChanges = (data.added || 0) + (data.removed || 0) > 0 || data.isNew;
+
   const d = document.createElement('div');
-  d.className = 'diff-card'; // collapsed by default — click header to expand
+  d.className = 'diff-card' + (hasChanges ? ' open' : ''); // open by default when there are changes
   d.innerHTML = `<div class="diff-hdr">
     <span class="diff-chevron">▶</span>
     <span class="diff-lang-dot" style="background:${langColor(ext)}"></span>
@@ -423,7 +426,8 @@ function hideWelcome(){ welcomeEl.style.display='none'; }
 
 function renderSessions(){
   const count = sessions.length;
-  btnSessions.textContent = count ? `Sessions (${count}) ▾` : 'Sessions ▾';
+  const badge = document.getElementById('session-count');
+  if (badge) badge.textContent = count > 1 ? count : '';
   if(!count){
     sessionList.innerHTML='<div class="sb-empty">No sessions yet</div>';
     return;
