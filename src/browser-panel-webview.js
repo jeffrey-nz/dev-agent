@@ -112,7 +112,10 @@ function connectWs() {
 
   _ws.onclose = () => {
     _ws = null;
-    if (!_reconnecting) showOverlay('Waiting for browser…', false);
+    if (!_reconnecting) {
+      const isSetup = hintBar && !hintBar.classList.contains('hidden');
+      showOverlay(isSetup ? 'Browser loading…' : 'Waiting for browser…', false);
+    }
     _reconnectTimer = setTimeout(connectWs, 1500);
   };
 
@@ -213,13 +216,19 @@ setInterval(async () => {
     const r = await fetch(`http://localhost:${port}/api/browser/info`);
     const d = await r.json();
     urlBar.value = d.available && d.url ? d.url : '';
-    if (!d.available) showOverlay('Waiting for browser…', true);
+    if (!d.available) {
+      const isSetup = !hintBar?.classList.contains('hidden');
+      showOverlay(isSetup ? 'Browser loading…' : 'Waiting for browser…', true);
+    }
   } catch {
     urlBar.value = '';
   }
 }, 2000);
 
 // ── Extension messages ────────────────────────────────────────────────────────
+
+const hintBar  = document.getElementById('hint-bar');
+const hintText = document.getElementById('hint-text');
 
 window.addEventListener('message', (e) => {
   const msg = e.data;
@@ -228,6 +237,13 @@ window.addEventListener('message', (e) => {
     hasReceivedFrame = false;
     disconnect();
     connect();
+  }
+  if (msg.type === 'set_hint') {
+    if (hintText) hintText.textContent = msg.text || 'Log in here, then click Confirm Ready in the Dev Agent panel';
+    hintBar?.classList.remove('hidden');
+  }
+  if (msg.type === 'clear_hint') {
+    hintBar?.classList.add('hidden');
   }
 });
 

@@ -44,6 +44,10 @@ class BrowserViewPanel {
     this._panel.webview.postMessage({ type: "set_port", port });
   }
 
+  postMessage(msg) {
+    this._panel.webview.postMessage(msg);
+  }
+
   dispose() {
     this._panel.dispose();
   }
@@ -118,6 +122,18 @@ html,body{width:100%;height:100vh;overflow:hidden;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 #overlay-msg{color:rgba(255,255,255,.7);font-size:12px;letter-spacing:.02em}
+#hint-bar{
+  position:absolute;bottom:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;gap:8px;padding:9px 14px;
+  background:rgba(0,80,200,.82);backdrop-filter:blur(4px);
+  border-top:1px solid rgba(255,255,255,.12);
+  font-size:11px;color:rgba(255,255,255,.92);letter-spacing:.01em;
+  animation:slideUp .22s ease;
+}
+#hint-bar.hidden{display:none}
+.hint-arrow{font-size:14px;animation:nudge .9s ease-in-out infinite alternate;flex-shrink:0}
+@keyframes nudge{from{transform:translateX(-4px)}to{transform:translateX(0)}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -131,6 +147,10 @@ html,body{width:100%;height:100vh;overflow:hidden;
   <div id="overlay">
     <div class="ov-spinner"></div>
     <span id="overlay-msg">Connecting…</span>
+  </div>
+  <div id="hint-bar" class="hidden">
+    <span class="hint-arrow">←</span>
+    <span id="hint-text">Log in here, then click Confirm Ready in the Dev Agent panel</span>
   </div>
 </div>
 <script src="${scriptUri}"></script>

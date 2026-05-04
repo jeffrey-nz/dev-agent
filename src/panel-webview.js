@@ -693,10 +693,13 @@ async function _cncTick() {
       }
       if (data.provider) {
         const pid = data.provider.id;
-        if (!pcards[pid]) buildCards([{ id: pid, label: data.provider.name || pid }]);
+        const provLabel = data.provider.name || pid;
+        if (!pcards[pid]) buildCards([{ id: pid, label: provLabel }]);
         document.getElementById('bridge-launch').style.display = 'none';
         document.getElementById('pcard-list').classList.remove('hidden');
         setCardPending(pid, data.provider.detected);
+        const titleEl = scrConfirm.querySelector('.sh-title');
+        if (titleEl) titleEl.textContent = 'Log in to ' + provLabel;
       }
       vscode.postMessage({type:'bridge_connected_direct'});
     } else if (data.phase === 'starting') {
@@ -948,7 +951,7 @@ window.addEventListener('message',e=>{
       } else if (st.phase === 'waiting_for_server') {
         blLaunch.classList.remove('error');
         blStage.textContent  = 'Launching browser process…';
-        blDetail.textContent = 'Starting Chrome and the automation server';
+        blDetail.textContent = 'Starting the browser and automation server';
         pcardList.classList.add('hidden'); blLaunch.style.display = '';
       } else if (st.phase === 'starting') {
         blLaunch.classList.remove('error');
@@ -960,8 +963,11 @@ window.addEventListener('message',e=>{
         blLaunch.style.display = 'none'; pcardList.classList.remove('hidden');
         if (st.provider) {
           const pid = st.provider.id;
-          if (!pcards[pid]) buildCards([{ id: pid, label: st.provider.name || pid }]);
+          const provLabel = st.provider.name || pid;
+          if (!pcards[pid]) buildCards([{ id: pid, label: provLabel }]);
           setCardPending(pid, st.provider.detected);
+          const titleEl = scrConfirm.querySelector('.sh-title');
+          if (titleEl) titleEl.textContent = 'Log in to ' + provLabel;
         }
       } else if (st.phase === 'lost_connection') {
         blLaunch.classList.add('error');
