@@ -53,7 +53,7 @@ let statusBar = null;
 
 let _lastBridgeKey = null; // tracks last broadcast so we don't repeat
 
-function broadcastBridgeStatus(status, targetPanel) {
+async function broadcastBridgeStatus(status, targetPanel) {
   const panel = targetPanel ?? DevAgentPanel.currentPanel;
   if (!panel) return;
 
@@ -63,8 +63,14 @@ function broadcastBridgeStatus(status, targetPanel) {
     panel.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
     sidebarProvider?.postMessage({ type: "bridge_offline" });
   } else if (status.phase === "ready") {
-    const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "bridge";
-    panel.postMessage({ type: "bridge_ready", providerLabel: label, alreadyRunning: true });
+    // Sync selectedProviders from the bridge's actual active providers
+    if (selectedProviders.length === 0) {
+      const active = await bridge.getActiveProviders().catch(() => []);
+      if (active.length > 0) selectedProviders = active;
+    }
+    const providerList = selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id }));
+    const label = providerList.map((p) => p.label).join(", ") || "bridge";
+    panel.postMessage({ type: "bridge_ready", providerLabel: label, providers: providerList, alreadyRunning: true });
     sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
     if (workspaceRoot) {
       panel.postMessage({
@@ -81,14 +87,27 @@ function broadcastBridgeStatus(status, targetPanel) {
 }
 
 function startBridgeWatcher(context) {
+  let autoOpened = false;
+
   async function poll() {
     const status = await bridge.checkStatus().catch(() => ({ running: false }));
     const key = status.running ? status.phase : "offline";
     // Always keep initialState fresh so the next panel creation is correct
     DevAgentPanel.initialState = {
-      bridgeReady: status.running && status.phase === "ready",
-      bridgePort:  bridge.resolvePort(),
+      bridgeReady:     status.running && status.phase === "ready",
+      bridgePort:      bridge.resolvePort(),
+      bridgePhase:     status.running ? status.phase : "offline",
+      availableProviders: status.running && status.data?.availableProviders || [],
     };
+
+    // Auto-open panel as soon as the bridge HTTP server is up (any phase), not just ready.
+    // The panel drives provider selection + login confirmation from there.
+    const bridgeUp = status.running && ["waiting_provider_selection", "waiting_confirm", "ready"].includes(status.phase);
+    if (!autoOpened && bridgeUp && !DevAgentPanel.currentPanel) {
+      autoOpened = true;
+      openChatPanel();
+    }
+
     if (key === _lastBridgeKey) return;
     _lastBridgeKey = key;
     broadcastBridgeStatus(status);
@@ -122,12 +141,18 @@ async function activate(context) {
   // during activate (revive) will start in the correct screen immediately.
   try {
     const initStatus = await bridge.checkStatus();
+    const isReady = initStatus.running && initStatus.phase === "ready";
+    if (isReady && selectedProviders.length === 0) {
+      const active = await bridge.getActiveProviders().catch(() => []);
+      if (active.length > 0) selectedProviders = active;
+    }
     DevAgentPanel.initialState = {
-      bridgeReady: initStatus.running && initStatus.phase === "ready",
+      bridgeReady: isReady,
       bridgePort:  bridge.resolvePort(),
+      bridgeProviders: isReady ? selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })) : [],
     };
   } catch {
-    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort() };
+    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort(), bridgeProviders: [] };
   }
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -170,21 +195,24 @@ async function activate(context) {
 }
 
 async function openChatPanel() {
-  // Refresh initial state so the new panel's HTML is accurate
   try {
     const status = await bridge.checkStatus();
+    const isReady = status.running && status.phase === "ready";
+    if (isReady && selectedProviders.length === 0) {
+      const active = await bridge.getActiveProviders().catch(() => []);
+      if (active.length > 0) selectedProviders = active;
+    }
     DevAgentPanel.initialState = {
-      bridgeReady: status.running && status.phase === "ready",
+      bridgeReady: isReady,
       bridgePort:  bridge.resolvePort(),
+      bridgeProviders: isReady ? selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })) : [],
     };
   } catch {
-    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort() };
+    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort(), bridgeProviders: [] };
   }
-  const instance = DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
-  // For non-new reveals, push port so the panel's fetch uses the right port
-  if (!instance?.isNew) {
-    sendBridgePort(instance?.panel);
-  }
+  DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
+  // Reset key so the watcher's next poll re-broadcasts bridge status to the new panel.
+  _lastBridgeKey = null;
 }
 
 function handleSidebarMessage(msg) {
@@ -294,6 +322,12 @@ async function handleWebviewMessage(msg, senderPanel) {
 
   switch (msg.type) {
 
+    case "panel_ready": {
+      // Webview signals it's loaded and ready — push current bridge status immediately
+      pushToPanelNow(panel);
+      break;
+    }
+
     case "check_bridge": {
       // Fallback manual check — primary connection now uses direct fetch
       pushToPanelNow(panel);
@@ -305,6 +339,16 @@ async function handleWebviewMessage(msg, senderPanel) {
       const label = selectedProviders.map((id) => PROVIDER_LABELS[id] ?? id).join(", ") || "Connected";
       sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
       _lastBridgeKey = "ready";
+      break;
+    }
+
+    case "provider_chosen": {
+      // Webview tells us which provider the user picked during setup
+      if (msg.id) {
+        selectedProviders = [msg.id];
+        const label = PROVIDER_LABELS[msg.id] ?? msg.id;
+        sidebarProvider?.postMessage({ type: "bridge_ready", providerLabel: label });
+      }
       break;
     }
 

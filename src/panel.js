@@ -148,7 +148,11 @@ class DevAgentPanel {
     }
     const panel = vscode.window.createWebviewPanel(
       "devAgent.chat", "Dev Agent", vscode.ViewColumn.One,
-      { enableScripts: true, retainContextWhenHidden: true },
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
+      },
     );
     DevAgentPanel.currentPanel = new DevAgentPanel(context, panel, onMessage);
     return { panel: DevAgentPanel.currentPanel, isNew: true };
@@ -157,7 +161,10 @@ class DevAgentPanel {
   constructor(context, panel, onMessage) {
     this._context = context;
     this._panel = panel;
-    panel.webview.options = { enableScripts: true };
+    panel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
+    };
     panel.webview.html = this._buildHtml();
     panel.webview.onDidReceiveMessage((msg) => onMessage(msg, this), null, context.subscriptions);
     panel.onDidDispose(() => { DevAgentPanel.currentPanel = null; }, null, context.subscriptions);
@@ -168,14 +175,19 @@ class DevAgentPanel {
 
   _buildHtml() {
     const initJson = JSON.stringify(DevAgentPanel.initialState);
+    const webview = this._panel.webview;
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'panel-webview.js')
+    );
+    const csp = `default-src 'none'; style-src 'unsafe-inline'; script-src ${webview.cspSource}; img-src data: blob:; connect-src http://localhost:*;`;
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; connect-src http://localhost:*;">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Dev Agent</title>
-<script>const _INIT=${initJson};</script>
+<script type="application/json" id="init-data">${initJson}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -258,6 +270,24 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
 .setup-hdr{padding:28px 32px 0;max-width:600px;width:100%;margin:0 auto;flex-shrink:0}
 .setup-hdr strong{display:block;font-size:15px;font-weight:700;margin-bottom:5px}
 .setup-hdr p{font-size:13px;color:var(--mu);line-height:1.5}
+
+/* ── provider selection screen ── */
+#scr-provider{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.psel-wrap{flex:1;overflow-y:auto;padding:20px 32px;display:flex;flex-direction:column;
+           gap:8px;max-width:600px;width:100%;margin:0 auto}
+.psel-card{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 18px;
+  border:2px solid var(--bd);border-radius:8px;
+  cursor:pointer;background:transparent;
+  width:100%;text-align:left;font:inherit;color:var(--fg);
+  transition:border-color .12s,background .12s,transform .08s;
+}
+.psel-card:hover{border-color:var(--foc);background:var(--hov);transform:translateX(2px)}
+.psel-card-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;transition:box-shadow .15s}
+.psel-card:hover .psel-card-dot{box-shadow:0 0 0 4px color-mix(in srgb,currentColor 20%,transparent)}
+.psel-card-name{font-size:14px;font-weight:600;flex:1}
+.psel-card-arr{font-size:13px;color:var(--mu);flex-shrink:0;opacity:.5}
 
 /* bridge launch progress */
 #bridge-launch{
@@ -381,6 +411,59 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
           display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
           overflow:hidden;margin-bottom:2px}
 .s-meta{font-size:10px;color:var(--mu);opacity:.8}
+
+/* ── provider chip (in input footer) ── */
+.inp-area{padding:10px 18px 13px;border-top:1px solid var(--bd);flex-shrink:0;position:relative}
+.inp-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:6px}
+#prompt{flex:1;background:var(--in-bg);color:var(--in-fg);
+        border:1px solid var(--in-bd);padding:9px 12px;
+        border-radius:var(--r);font:inherit;font-size:13px;resize:none;
+        line-height:1.5;min-height:42px;max-height:160px;overflow-y:auto}
+#prompt:focus{outline:1px solid var(--foc);outline-offset:-1px}
+.inp-foot{display:flex;align-items:center;gap:7px}
+.prov-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px 4px 8px;border-radius:20px;
+  border:1px solid var(--bd);
+  background:transparent;color:var(--mu);
+  font:inherit;font-size:11px;font-weight:500;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+  transition:all .15s;
+}
+.prov-chip:hover{border-color:var(--foc);color:var(--fg)}
+.prov-chip.connected{
+  background:color-mix(in srgb,var(--prov-color,var(--ce)) 12%,transparent);
+  border-color:color-mix(in srgb,var(--prov-color,var(--ce)) 40%,transparent);
+  color:var(--fg);
+}
+.prov-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--mu);opacity:.3;flex-shrink:0;transition:background .2s,opacity .2s}
+.prov-chip.connected .prov-chip-dot{background:var(--prov-color,var(--ce));opacity:1}
+.prov-chip-caret{font-size:9px;opacity:.5;transition:transform .15s}
+.prov-chip.open .prov-chip-caret{transform:rotate(180deg)}
+.inp-hint-txt{font-size:10px;color:var(--mu);opacity:.4;white-space:nowrap;flex-shrink:0}
+
+/* ── provider dropdown (pops up from input) ── */
+#prov-drop{
+  position:absolute;bottom:calc(100% + 4px);left:18px;min-width:200px;
+  background:var(--vscode-sideBar-background,var(--bg));
+  border:1px solid var(--bd);border-radius:6px;
+  box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:200;
+  padding:4px;
+}
+.pi-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+        color:var(--mu);padding:6px 10px 4px}
+.pi-item{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:8px 10px;border-radius:4px;font:inherit;font-size:12px;
+  background:transparent;border:none;cursor:pointer;color:var(--fg);
+  transition:background .1s;
+}
+.pi-item:hover{background:var(--hov)}
+.pi-item.active{background:color-mix(in srgb,var(--foc) 10%,transparent);color:var(--foc);font-weight:600}
+.pi-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--mu);opacity:.35}
+.pi-item.active .pi-dot{opacity:1}
+.pi-check{margin-left:auto;font-size:12px;color:var(--foc);opacity:0}
+.pi-item.active .pi-check{opacity:1}
 
 /* ── settings dropdown ── */
 #settings-drop{
@@ -573,16 +656,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
              border:1px solid color-mix(in srgb,var(--ck) 26%,transparent);
              color:var(--ck);font-size:13px;font-weight:600}
 
-/* input */
-.inp-area{padding:10px 18px 13px;border-top:1px solid var(--bd);flex-shrink:0}
-.inp-row{display:flex;gap:8px;align-items:flex-end}
-#prompt{flex:1;background:var(--in-bg);color:var(--in-fg);
-        border:1px solid var(--in-bd);padding:9px 12px;
-        border-radius:var(--r);font:inherit;font-size:13px;resize:none;
-        line-height:1.5;min-height:42px;max-height:160px;overflow-y:auto}
-#prompt:focus{outline:1px solid var(--foc);outline-offset:-1px}
-.inp-hint{font-size:10px;color:var(--mu);margin-top:5px;opacity:.45;
-          display:flex;justify-content:space-between}
+
 </style>
 </head>
 <body>
@@ -596,14 +670,14 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <!-- connecting state (shown on load) -->
     <div id="cnc-connecting">
       <div class="cnc-spinner"></div>
-      <div class="cnc-hint">Connecting to bridge…</div>
+      <div class="cnc-hint" id="cnc-debug">Connecting to bridge…</div>
     </div>
 
     <!-- waiting state (bridge found but still in setup) -->
     <div id="cnc-waiting" class="hidden">
       <div class="cnc-spinner"></div>
       <div class="cnc-hint">Bridge is starting up…</div>
-      <div class="cnc-hint" style="margin-top:6px;font-size:11px;opacity:.7">Waiting for setup to complete in terminal</div>
+      <div class="cnc-hint" style="margin-top:6px;font-size:11px;opacity:.7">Starting Chrome and connecting…</div>
     </div>
 
     <!-- offline state -->
@@ -626,18 +700,38 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
   </div>
 </div>
 
+<!-- ─── screen: provider selection (setup) ─── -->
+<div id="scr-provider" class="hidden">
+  <div class="setup-hdr">
+    <div class="wizard">
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Bridge</div></div>
+      <div class="wz-line done"></div>
+      <div class="wz-step active"><div class="wz-dot">2</div><div class="wz-label">AI</div></div>
+      <div class="wz-line"></div>
+      <div class="wz-step"><div class="wz-dot">3</div><div class="wz-label">Login</div></div>
+      <div class="wz-line"></div>
+      <div class="wz-step"><div class="wz-dot">4</div><div class="wz-label">Project</div></div>
+    </div>
+    <strong>Choose your AI</strong>
+    <p>Select which AI to use for this session.</p>
+  </div>
+  <div class="psel-wrap" id="psel-list"></div>
+</div>
+
 <!-- ─── screen 2: browser confirmation ─── -->
 <div id="scr-confirm" class="hidden">
   <div class="setup-hdr">
     <div class="wizard">
       <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Bridge</div></div>
       <div class="wz-line done"></div>
-      <div class="wz-step active"><div class="wz-dot">2</div><div class="wz-label">Setup</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">AI</div></div>
+      <div class="wz-line done"></div>
+      <div class="wz-step active"><div class="wz-dot">3</div><div class="wz-label">Login</div></div>
       <div class="wz-line"></div>
-      <div class="wz-step"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
+      <div class="wz-step"><div class="wz-dot">4</div><div class="wz-label">Project</div></div>
     </div>
-    <strong>Browser setup</strong>
-    <p>Log into each provider in Chrome, then confirm below.</p>
+    <strong>Log in to Chrome</strong>
+    <p>Open the AI in Chrome and make sure you're logged in, then confirm.</p>
   </div>
   <!-- shown while bridge process is starting -->
   <div id="bridge-launch">
@@ -657,9 +751,11 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <div class="wizard">
       <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Bridge</div></div>
       <div class="wz-line done"></div>
-      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Setup</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">AI</div></div>
       <div class="wz-line done"></div>
-      <div class="wz-step active"><div class="wz-dot">3</div><div class="wz-label">Project</div></div>
+      <div class="wz-step done"><div class="wz-dot">✓</div><div class="wz-label">Login</div></div>
+      <div class="wz-line done"></div>
+      <div class="wz-step active"><div class="wz-dot">4</div><div class="wz-label">Project</div></div>
     </div>
     <strong>Select a project</strong>
     <p>Choose a workspace folder to work in.</p>
@@ -682,8 +778,6 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
       <button class="hdr-btn" id="btn-sessions">Sessions ▾</button>
       <span class="hdr-sep">·</span>
       <span class="hdr-item" id="hdr-proj">—</span>
-      <span class="hdr-sep">·</span>
-      <span class="hdr-item" id="hdr-prov">—</span>
     </div>
     <div class="hdr-actions">
       <button class="hdr-primary" id="btn-new-chat">＋ New</button>
@@ -700,8 +794,6 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
   <div id="settings-drop" class="hidden">
     <button class="drop-item" id="btn-sb-proj">📂 Change project…</button>
     <button class="drop-item" id="btn-sb-prov">↩ Reconnect bridge</button>
-    <div class="drop-sep"></div>
-    <button class="drop-item" id="btn-sel-provider-qp">⚡ Quick-pick provider…</button>
   </div>
 
   <!-- main area -->
@@ -740,781 +832,26 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <div class="inp-area">
       <div class="inp-row">
         <textarea id="prompt" rows="2" placeholder="Ask Dev Agent to do something…"></textarea>
+      </div>
+      <div class="inp-foot">
+        <button id="btn-prov" class="prov-chip">
+          <span class="prov-chip-dot"></span>
+          <span id="prov-name">No provider</span>
+          <span class="prov-chip-caret">▾</span>
+        </button>
+        <div style="flex:1"></div>
+        <span class="inp-hint-txt">⏎ send</span>
         <button class="btn-p" id="btn-send">Send ▶</button>
         <button class="btn-d hidden" id="btn-stop">■ Stop</button>
       </div>
-      <div class="inp-hint">
-        <span>Enter to send · Shift+Enter for new line</span>
-      </div>
+      <div id="prov-drop" class="hidden"></div>
     </div>
 
   </div><!-- #chat-main -->
 
 </div><!-- #scr-chat -->
 
-<script>
-const vscode = acquireVsCodeApi();
-
-/* ── element refs ── */
-const scrConnect = document.getElementById('scr-connect');
-const scrConfirm = document.getElementById('scr-confirm');
-const scrProject = document.getElementById('scr-project');
-const scrChat    = document.getElementById('scr-chat');
-const pcardList  = document.getElementById('pcard-list');
-const projBody   = document.getElementById('proj-body');
-const messages   = document.getElementById('messages');
-const typingEl   = document.getElementById('typing');
-const welcomeEl  = document.getElementById('welcome');
-const phaseBar   = document.getElementById('phase-bar');
-const phaseLbl   = document.getElementById('phase-lbl');
-const toolChip   = document.getElementById('tool-chip');
-const prompt     = document.getElementById('prompt');
-const btnSend    = document.getElementById('btn-send');
-const btnStop    = document.getElementById('btn-stop');
-const sessionList    = document.getElementById('session-list');
-const sessionsDrop   = document.getElementById('sessions-drop');
-const settingsDrop   = document.getElementById('settings-drop');
-const hdrProj    = document.getElementById('hdr-proj');
-const hdrProv    = document.getElementById('hdr-prov');
-const btnSessions    = document.getElementById('btn-sessions');
-const btnSettingsBtn = document.getElementById('btn-settings');
-const ALL_SCRS   = [scrConnect, scrConfirm, scrProject, scrChat];
-
-/* ── screen helpers ── */
-function show(s){ ALL_SCRS.forEach(x=>x.classList.add('hidden')); s.classList.remove('hidden'); closeDropdowns(); }
-function ts(){ return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function relTime(d){
-  const s=Math.floor((Date.now()-d)/1000);
-  if(s<5)  return 'just now';
-  if(s<60) return s+'s ago';
-  if(s<3600) return Math.floor(s/60)+'m ago';
-  if(s<86400) return Math.floor(s/3600)+'h ago';
-  return Math.floor(s/86400)+'d ago';
-}
-
-/* ── dropdown toggles ── */
-function closeDropdowns(){
-  sessionsDrop.classList.add('hidden'); btnSessions.classList.remove('active');
-  settingsDrop.classList.add('hidden'); btnSettingsBtn.classList.remove('active');
-}
-btnSessions.addEventListener('click', e=>{
-  e.stopPropagation();
-  const open = !sessionsDrop.classList.contains('hidden');
-  closeDropdowns();
-  if(!open){ sessionsDrop.classList.remove('hidden'); btnSessions.classList.add('active'); }
-});
-btnSettingsBtn.addEventListener('click', e=>{
-  e.stopPropagation();
-  const open = !settingsDrop.classList.contains('hidden');
-  closeDropdowns();
-  if(!open){ settingsDrop.classList.remove('hidden'); btnSettingsBtn.classList.add('active'); }
-});
-document.addEventListener('click', closeDropdowns);
-sessionsDrop.addEventListener('click', e=>e.stopPropagation());
-settingsDrop.addEventListener('click', e=>e.stopPropagation());
-
-/* ══════════════════════════════════════
-   MARKDOWN RENDERER
-══════════════════════════════════════ */
-const CB_S = '', CB_E = '';
-
-function renderCodeBlock(code, lang) {
-  const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return '<div class="cb"><div class="cb-hdr">'
-    + (lang ? '<span class="cb-lang">'+esc(lang)+'</span>' : '<span></span>')
-    + '<button class="cb-copy" onclick="copyCode(this)">Copy</button>'
-    + '</div><pre class="cb-pre"><code>'+escaped+'</code></pre></div>';
-}
-
-function renderMarkdown(md) {
-  if (!md) return '';
-  const blocks = [];
-  let text = md.replace(/\`\`\`([\w]*)\n?([\s\S]*?)\`\`\`/g, (_, lang, code) => {
-    const key = CB_S + blocks.length + CB_E;
-    blocks.push({lang: lang.trim(), code: code.replace(/\n$/, '')});
-    return key;
-  });
-  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  text = text
-    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
-    .replace(/\`([^\`]+)\`/g, '<code class="ic">$1</code>');
-  const lines = text.split('\n');
-  const out = [];
-  let inList = null;
-  const closeList = () => { if (inList) { out.push('</'+inList+'>'); inList = null; } };
-  for (const line of lines) {
-    if (line.includes(CB_S)) { closeList(); out.push(line); continue; }
-    const hm = line.match(/^(#{1,3}) (.+)/);
-    const ulm = line.match(/^[-*] (.+)/);
-    const olm = line.match(/^\d+\. (.+)/);
-    if (hm) {
-      closeList();
-      const lv = hm[1].length;
-      out.push('<h'+lv+' class="md-h">'+hm[2]+'</h'+lv+'>');
-    } else if (ulm) {
-      if (inList !== 'ul') { closeList(); out.push('<ul>'); inList = 'ul'; }
-      out.push('<li>'+ulm[1]+'</li>');
-    } else if (olm) {
-      if (inList !== 'ol') { closeList(); out.push('<ol>'); inList = 'ol'; }
-      out.push('<li>'+olm[1]+'</li>');
-    } else if (!line.trim()) {
-      closeList(); out.push('<div class="md-br"></div>');
-    } else {
-      closeList(); out.push('<div class="md-p">'+line+'</div>');
-    }
-  }
-  closeList();
-  text = out.join('');
-  blocks.forEach((b, i) => {
-    text = text.replace(CB_S + i + CB_E, renderCodeBlock(b.code, b.lang));
-  });
-  return text;
-}
-
-function clipboardWrite(text) {
-  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
-  const ta = Object.assign(document.createElement('textarea'), {value:text,style:'position:fixed;opacity:0'});
-  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-  return Promise.resolve();
-}
-function copyCode(btn) {
-  const code = btn.closest('.cb').querySelector('pre code').textContent;
-  clipboardWrite(code).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓ Copied';
-    setTimeout(() => { btn.textContent = orig; }, 1500);
-  });
-}
-
-/* ══════════════════════════════════════
-   FILE PREVIEW
-══════════════════════════════════════ */
-const EXT_ICON = {
-  js:'🟨',ts:'🔷',jsx:'🟨',tsx:'🔷',py:'🐍',json:'📋',html:'🌐',
-  css:'🎨',md:'📝',sh:'⚡',yml:'⚙',yaml:'⚙',rs:'🦀',go:'🐹',
-  java:'☕',rb:'💎',c:'⚙',cpp:'⚙',cs:'💜',php:'🐘',swift:'🍎',
-};
-
-function addFilePreview(data) {
-  const icon = EXT_ICON[(data.ext||'').toLowerCase()] || '📄';
-  const escaped = (data.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const d = document.createElement('div'); d.className = 'fp-card';
-  d.innerHTML = '<div class="fp-hdr">'
-    + '<span class="fp-icon">'+icon+'</span>'
-    + '<span class="fp-path">'+esc(data.relPath||data.filePath)+'</span>'
-    + (data.lines ? '<span class="fp-meta">'+data.lines+' lines</span>' : '')
-    + '<div class="fp-actions">'
-    + '<button class="fp-btn" onclick="copyFpCode(this)">Copy</button>'
-    + '<button class="fp-btn" data-fp="'+esc(data.filePath)+'" onclick="openFile(this.dataset.fp)">Open ↗</button>'
-    + '</div></div>'
-    + '<div class="fp-body"><pre class="fp-pre"><code>'+escaped+'</code></pre></div>'
-    + (data.truncated ? '<div class="fp-trunc">Showing first 8 000 chars…</div>' : '');
-  ibt(d);
-}
-
-function copyFpCode(btn) {
-  const code = btn.closest('.fp-card').querySelector('pre code').textContent;
-  clipboardWrite(code).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓';
-    setTimeout(() => { btn.textContent = orig; }, 1500);
-  });
-}
-function openFile(p) { vscode.postMessage({type:'open_file', path:p}); }
-
-/* ══════════════════════════════════════
-   SESSION MANAGEMENT
-══════════════════════════════════════ */
-const sessions = [];
-let activeSid = null, runningSid = null, sessionLocked = false, sidSeq = 0;
-
-function createSession(promptText){
-  if(activeSid !== null) saveSession(activeSid);
-  const id = ++sidSeq;
-  sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:''});
-  activeSid = id; runningSid = id; sessionLocked = true;
-  clearMsgs(); hideWelcome();
-  renderSessions();
-  return id;
-}
-function finishSession(status){
-  const s=sessions.find(x=>x.id===runningSid);
-  if(s) s.status=status;
-  saveSession(activeSid);
-  runningSid=null; sessionLocked=false;
-  renderSessions();
-}
-function switchSession(id){
-  if(sessionLocked||id===activeSid) return;
-  saveSession(activeSid); activeSid=id; clearMsgs();
-  const s=sessions.find(x=>x.id===id);
-  if(s?.html){
-    const tmp=document.createElement('div'); tmp.innerHTML=s.html;
-    while(tmp.firstChild) messages.insertBefore(tmp.firstChild, typingEl);
-    hideWelcome();
-  } else { showWelcome(); }
-  scrollMsgs(); renderSessions(); closeDropdowns();
-}
-function newChat(){
-  if(sessionLocked) return;
-  if(activeSid!==null) saveSession(activeSid);
-  activeSid=null; clearMsgs(); showWelcome(); hideTyping();
-  phaseBar.classList.add('hidden');
-  currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null;
-  resetDividers();
-  btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
-  renderSessions(); closeDropdowns(); prompt.focus();
-}
-function saveSession(id){
-  const s=sessions.find(x=>x.id===id); if(!s) return;
-  const parts=[];
-  for(const n of messages.children){
-    if(n===typingEl||n===welcomeEl) continue;
-    parts.push(n.outerHTML);
-  }
-  s.html=parts.join('');
-}
-function clearMsgs(){
-  Array.from(messages.children).forEach(n=>{ if(n!==typingEl&&n!==welcomeEl) n.remove(); });
-}
-function showWelcome(){ welcomeEl.style.display=''; }
-function hideWelcome(){ welcomeEl.style.display='none'; }
-
-function renderSessions(){
-  const count = sessions.length;
-  btnSessions.textContent = count ? \`Sessions (\${count}) ▾\` : 'Sessions ▾';
-  if(!count){
-    sessionList.innerHTML='<div class="sb-empty">No sessions yet</div>';
-    return;
-  }
-  sessionList.innerHTML='';
-  sessions.forEach(s=>{
-    const btn=document.createElement('button'); btn.className='sitem'+(s.id===activeSid?' active':'');
-    if(sessionLocked&&s.id!==activeSid) btn.disabled=true;
-    btn.innerHTML='<div class="s-dot '+s.status+'"></div>'
-      +'<div class="s-body">'
-      +'<div class="s-prompt">'+esc(s.prompt)+'</div>'
-      +'<div class="s-meta">'+relTime(s.ts)+'</div>'
-      +'</div>';
-    btn.addEventListener('click', ()=>switchSession(s.id));
-    sessionList.appendChild(btn);
-  });
-}
-setInterval(renderSessions, 30000);
-
-/* ── scroll / typing ── */
-function scrollMsgs(){ messages.scrollTop=messages.scrollHeight; }
-function ibt(el){ if(el) messages.insertBefore(el,typingEl); scrollMsgs(); }
-function showTyping(){ ibt(null); typingEl.style.display='flex'; scrollMsgs(); }
-function hideTyping(){ typingEl.style.display='none'; }
-
-/* ── phase stepper ── */
-const STEPS=[
-  {label:'Planning',   phases:['PLANNING','ORCHESTRATING'],         color:'var(--cp)'},
-  {label:'Researching',phases:['RESEARCHING','SCOPING'],             color:'var(--cr)'},
-  {label:'Executing',  phases:['EXECUTION','WRITING'],               color:'var(--ce)'},
-  {label:'Verifying',  phases:['VERIFYING','REVIEWING','DEBUGGING'], color:'var(--cv)'},
-  {label:'Done',       phases:[],                                    color:'var(--ck)'},
-];
-let currentStepIdx=-1, lastPhase='';
-(function(){
-  const c=document.getElementById('phase-steps');
-  STEPS.forEach((s,i)=>{
-    const d=document.createElement('div'); d.className='phase-step'; d.id='st'+i;
-    d.innerHTML='<div class="sdot" id="sd'+i+'">'+(i+1)+'</div><div class="slabel">'+s.label+'</div>';
-    c.appendChild(d);
-    if(i<STEPS.length-1){ const l=document.createElement('div'); l.className='sline'; l.id='sl'+i; c.appendChild(l); }
-  });
-})();
-function setStep(idx,isDbg){
-  if(idx===currentStepIdx&&!isDbg) return;
-  currentStepIdx=idx;
-  STEPS.forEach((_,i)=>{
-    const se=document.getElementById('st'+i), de=document.getElementById('sd'+i), le=document.getElementById('sl'+i);
-    if(i<idx){ se.className='phase-step done'; de.textContent='✓'; if(le) le.className='sline done'; }
-    else if(i===idx){
-      const c=isDbg?'var(--cd)':STEPS[i].color;
-      se.className='phase-step active'; se.style.setProperty('--sc',c); de.textContent=i+1;
-      if(le) le.className='sline';
-    } else { se.className='phase-step'; se.style.removeProperty('--sc'); de.textContent=i+1; if(le) le.className='sline'; }
-  });
-}
-function phaseToStep(p){ for(let i=0;i<STEPS.length;i++) if(STEPS[i].phases.includes(p)) return i; return -1; }
-
-/* ── phase dividers ── */
-const PM={
-  PLANNING:{icon:'📋',label:'PLANNING',color:'var(--cp)'},
-  ORCHESTRATING:{icon:'🎯',label:'ORCHESTRATING',color:'var(--cp)'},
-  RESEARCHING:{icon:'🔬',label:'RESEARCHING',color:'var(--cr)'},
-  SCOPING:{icon:'🗺',label:'SCOPING',color:'var(--cr)'},
-  EXECUTION:{icon:'⚡',label:'EXECUTING',color:'var(--ce)'},
-  WRITING:{icon:'✏️',label:'WRITING',color:'var(--ce)'},
-  VERIFYING:{icon:'🧪',label:'VERIFYING',color:'var(--cv)'},
-  REVIEWING:{icon:'👀',label:'REVIEWING',color:'var(--cv)'},
-  DEBUGGING:{icon:'🐛',label:'DEBUGGING',color:'var(--cd)'},
-};
-let lastDividerPhase=''; const seenPhases=new Map();
-function addPhaseDivider(phase){
-  if(phase===lastDividerPhase) return; lastDividerPhase=phase;
-  const m=PM[phase]; if(!m) return;
-  const n=(seenPhases.get(phase)||0)+1; seenPhases.set(phase,n);
-  if(n>3) return;
-  const isRepeat=n>1;
-  const d=document.createElement('div'); d.className='pdiv'+(isRepeat?' repeat':'');
-  const labelTxt=isRepeat?m.icon+' '+m.label+' ×'+n:m.icon+' '+m.label;
-  d.innerHTML='<div class="pdline"></div>'
-    +'<div class="pdlabel" style="color:'+m.color+';border-color:'+m.color+'33;background:color-mix(in srgb,'+m.color+' 8%,transparent)">'+labelTxt+'</div>'
-    +'<div class="pdline"></div>';
-  ibt(d);
-}
-function resetDividers(){ lastDividerPhase=''; seenPhases.clear(); }
-
-/* ── tool cards ── */
-let pendingCard=null, readBuf=[];
-function toolStyle(n){
-  const t=(n||'').toLowerCase();
-  if(/read|list|search|glob|get|find|cat|view|ls/.test(t)) return{icon:'📖',color:'var(--cr)',label:'read'};
-  if(/write|creat|patch|edit|updat|delet|remov|modif|apply|put/.test(t)) return{icon:'✏️',color:'var(--ce)',label:'write'};
-  if(/run|exec|bash|shell|command|cmd|spawn|npm|test/.test(t)) return{icon:'⚡',color:'var(--cv)',label:'run'};
-  return{icon:'🔧',color:'#888',label:'tool'};
-}
-function flushReads(){
-  if(!readBuf.length) return;
-  if(readBuf.length===1){
-    const c=document.createElement('div'); c.className='tcrd'; c.style.setProperty('--tc','var(--cr)');
-    c.innerHTML='<span class="tc-ico">📖</span><span class="tc-name">read</span>'
-      +'<span class="tc-file">'+esc((readBuf[0].s||readBuf[0].n).slice(0,80))+'</span><span class="tc-st">✓</span>';
-    ibt(c);
-  } else {
-    const g=document.createElement('div'); g.className='rg-card';
-    const items=readBuf.map(r=>'<div class="rg-item">'+esc((r.s||r.n).slice(0,70))+'</div>').join('');
-    g.innerHTML='<div class="rg-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
-      +'<span class="tc-ico">📖</span><span class="tc-name">read</span>'
-      +'<span class="tc-file">'+readBuf.length+' files</span><span class="rg-caret">▾</span></div>'
-      +'<div class="rg-list">'+items+'</div>';
-    ibt(g);
-  }
-  readBuf=[];
-}
-function addToolCard(name,summary){
-  flushReads();
-  const s=toolStyle(name); const c=document.createElement('div'); c.className='tcrd pending';
-  c.style.setProperty('--tc',s.color);
-  c.innerHTML='<span class="tc-ico">'+s.icon+'</span><span class="tc-name">'+s.label+'</span>'
-    +'<span class="tc-file">'+esc(summary?summary.slice(0,80):name)+'</span><span class="tc-st">…</span>';
-  ibt(c); pendingCard=c;
-}
-function resolveCard(isErr){
-  if(!pendingCard) return;
-  pendingCard.classList.remove('pending');
-  if(isErr) pendingCard.classList.add('error');
-  pendingCard.querySelector('.tc-st').textContent=isErr?'✗':'✓'; pendingCard=null;
-}
-
-/* ── message helpers ── */
-function addUserMsg(text){
-  const d=document.createElement('div'); d.className='msg-u';
-  d.innerHTML='<div class="muh"><span class="mtime">'+ts()+'</span><span class="msend">You</span></div>'
-    +'<div class="mub">'+esc(text)+'</div>';
-  ibt(d);
-}
-function addAgentMsg(text){
-  if(!text?.trim()) return;
-  const d=document.createElement('div'); d.className='msg-a';
-  d.innerHTML='<div class="av-a">A</div><div class="mab-md">'+renderMarkdown(text)+'</div>';
-  ibt(d);
-}
-function addSysMsg(text,isErr){
-  if(!text) return;
-  const d=document.createElement('div'); d.className=isErr?'msg-err':'msg-sys';
-  d.textContent=isErr?'⚠ '+text:text; ibt(d);
-}
-function addDoneBanner(){
-  const d=document.createElement('div'); d.className='done-banner';
-  d.innerHTML='<span>✅</span><span>Task complete</span>'; ibt(d);
-}
-
-/* ── connect screen (screen 1) ── */
-// Bridge connection is checked directly via HTTP fetch — no postMessage
-// round-trip needed, so this works regardless of the extension↔webview
-// message channel state.
-let _bridgePort = (_INIT && _INIT.bridgePort) || 3333;
-let _cncPollTimer = null;
-let _cncElapsed = 0;
-let _cncState = 'connecting';
-
-function cncShow(state) {
-  _cncState = state;
-  document.getElementById('cnc-connecting').classList.toggle('hidden', state !== 'connecting');
-  document.getElementById('cnc-waiting').classList.toggle('hidden', state !== 'waiting');
-  document.getElementById('cnc-offline').classList.toggle('hidden', state !== 'offline');
-  document.getElementById('cnc-error').classList.toggle('hidden', state !== 'error');
-}
-
-function cncStopPoll() {
-  clearInterval(_cncPollTimer);
-  _cncPollTimer = null;
-}
-
-async function _cncTick() {
-  try {
-    const res = await fetch('http://localhost:' + _bridgePort + '/api/setup', { signal: AbortSignal.timeout(2000) });
-    if (!res.ok) throw new Error('not ok');
-    const data = await res.json();
-
-    if (data.phase === 'ready') {
-      cncStopPoll();
-      // Bridge is ready — skip the setup screen entirely
-      cncStopPoll();
-      hdrProv.textContent = data.providerLabel || '—';
-      show(scrProject);
-      vscode.postMessage({type:'get_workspaces'});
-      // Tell extension so it can update the status bar + sidebar
-      vscode.postMessage({type:'bridge_connected_direct'});
-    } else if (data.phase === 'waiting_confirm' || data.phase === 'starting') {
-      if (_cncState !== 'waiting') cncShow('waiting');
-      // Update elapsed if available
-      if (data.elapsed != null) {
-        const hint = document.querySelector('#cnc-waiting .cnc-hint:last-child');
-        if (hint) hint.textContent = 'Setup in terminal… ' + data.elapsed + 's';
-      }
-    }
-    // else: still starting, keep polling
-  } catch {
-    // Bridge not reachable
-    if (_cncState !== 'offline') {
-      cncShow('offline');
-      vscode.postMessage({type:'get_bridge_info'}); // get CLI command to show
-    }
-    _cncElapsed++;
-    const countdown = 3 - (_cncElapsed % 3);
-    const lbl = document.getElementById('cnc-poll-lbl');
-    if (lbl) lbl.textContent = countdown > 0 ? 'Retrying in ' + countdown + 's…' : 'Checking…';
-  }
-}
-
-function cncStartPoll() {
-  cncStopPoll();
-  _cncElapsed = 0;
-  _cncTick();
-  _cncPollTimer = setInterval(_cncTick, 2000);
-}
-
-document.getElementById('btn-cnc-retry').addEventListener('click', () => {
-  cncShow('connecting');
-  cncStartPoll();
-});
-
-/* ── provider cards (screen 2) ── */
-let pcards={};
-function buildCards(providers){
-  pcardList.innerHTML=''; pcards={};
-  providers.forEach(({id,label})=>{
-    const el=document.createElement('div'); el.className='pcard'; el.dataset.id=id;
-    el.innerHTML=\`<div class="pcard-head">
-      <div class="dot waiting" data-dot></div>
-      <span class="pcard-name">\${label}</span>
-      <span class="pcard-tag" data-tag>Waiting…</span>
-    </div>
-    <div class="pcard-body hidden" data-body></div>\`;
-    pcardList.appendChild(el); pcards[id]={el,phase:'waiting'};
-  });
-}
-function setCardPending(id,det){
-  const c=pcards[id]; if(!c) return; c.phase='pending';
-  c.el.querySelector('[data-dot]').className='dot pending';
-  c.el.querySelector('[data-tag]').textContent='Needs confirmation';
-  const b=c.el.querySelector('[data-body]'); b.classList.remove('hidden');
-  b.innerHTML=\`<div class="\${det?'det-y':'det-n'}">\${det?'✓ Interface detected in Chrome':'⚠ Not detected — log in if needed'}</div>
-    <div class="conf-hint">Confirm once the chat interface is visible in Chrome.</div>
-    <div class="conf-btns">
-      <button class="btn-conf" onclick="confirmCard()">✓ Confirm Ready</button>
-      <button class="btn-skip" onclick="skipCard()">Skip</button>
-    </div>\`;
-}
-function setCardDone(id,action){
-  const c=pcards[id]; if(!c) return;
-  const ok=action==='confirm'; c.phase=ok?'confirmed':'skipped';
-  c.el.querySelector('[data-dot]').className='dot '+(ok?'confirmed':'skipped');
-  c.el.querySelector('[data-tag]').textContent=ok?'✓ Ready':'Skipped';
-  c.el.querySelector('[data-body]').classList.add('hidden');
-}
-function confirmCard(){
-  Object.entries(pcards).forEach(([id,c])=>{ if(c.phase==='pending') setCardDone(id,'confirm'); });
-  vscode.postMessage({type:'confirm_provider'});
-}
-function skipCard(){
-  Object.entries(pcards).forEach(([id,c])=>{ if(c.phase==='pending') setCardDone(id,'skip'); });
-  vscode.postMessage({type:'skip_provider'});
-}
-
-/* ── project list (screen 3) ── */
-function renderWorkspaces(folders){
-  projBody.innerHTML='';
-  if(folders.length){
-    const l=document.createElement('div'); l.className='proj-lbl'; l.textContent='Open workspaces'; projBody.appendChild(l);
-    folders.forEach(f=>{
-      const c=document.createElement('div'); c.className='proj-card';
-      c.innerHTML=\`<span class="pi">🗂</span>
-        <div class="pinfo"><div class="pname">\${esc(f.name)}</div><div class="ppath">\${esc(f.path)}</div></div>
-        <span class="parr">›</span>\`;
-      c.addEventListener('click',()=>chooseFolder(f)); projBody.appendChild(c);
-    });
-  } else {
-    const e=document.createElement('div'); e.className='proj-lbl'; e.textContent='No workspace folders open'; projBody.appendChild(e);
-  }
-}
-function chooseFolder(f){ vscode.postMessage({type:'confirm_workspace',name:f.name,path:f.path}); }
-document.getElementById('btn-browse').addEventListener('click',()=>vscode.postMessage({type:'browse_folder'}));
-document.getElementById('btn-new-folder').addEventListener('click',()=>vscode.postMessage({type:'create_folder'}));
-
-/* ── header bar actions ── */
-document.getElementById('btn-new-chat').addEventListener('click', newChat);
-document.getElementById('btn-sb-proj').addEventListener('click',()=>{
-  closeDropdowns(); vscode.postMessage({type:'change_project'});
-});
-document.getElementById('btn-sb-prov').addEventListener('click',()=>{
-  closeDropdowns(); show(scrConnect); cncShow('connecting');
-  cncStartPoll();
-  vscode.postMessage({type:'reset'});
-});
-document.getElementById('btn-sel-provider-qp').addEventListener('click',()=>{
-  closeDropdowns(); vscode.postMessage({type:'select_provider_qp'});
-});
-
-/* ── welcome example prompts ── */
-document.querySelectorAll('.w-ex').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    prompt.value=btn.dataset.prompt;
-    prompt.dispatchEvent(new Event('input'));
-    prompt.focus();
-  });
-});
-
-/* ── send / stop ── */
-let currentPhase='';
-const SILENT=new Set(['PLANNING','ORCHESTRATING','RESEARCHING','SCOPING','REVIEWING']);
-
-btnSend.addEventListener('click',()=>{
-  const text=prompt.value.trim(); if(!text) return;
-  createSession(text); addUserMsg(text); showTyping();
-  phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
-  currentStepIdx=-1; lastPhase=''; readBuf=[]; pendingCard=null; resetDividers();
-  vscode.postMessage({type:'start_task',prompt:text});
-  prompt.value=''; prompt.style.height='';
-  btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
-});
-btnStop.addEventListener('click',()=>{
-  hideTyping(); phaseBar.classList.add('hidden');
-  btnStop.classList.add('hidden'); btnSend.classList.remove('hidden');
-  finishSession('stopped'); vscode.postMessage({type:'stop'});
-});
-prompt.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();btnSend.click();} });
-prompt.addEventListener('input',()=>{
-  prompt.style.height=''; prompt.style.height=Math.min(prompt.scrollHeight,160)+'px';
-  btnSend.disabled=!prompt.value.trim();
-});
-btnSend.disabled=true;
-
-/* ── incoming messages ── */
-window.addEventListener('message',e=>{
-  const msg=e.data; if(!msg?.type) return;
-  switch(msg.type){
-
-    case 'bridge_port':
-      // Extension tells us the port so direct fetch uses the right one
-      _bridgePort = msg.port || 3333;
-      break;
-
-    case 'bridge_info': {
-      const cmd = document.getElementById('cnc-cmd');
-      if (cmd) cmd.textContent = msg.cmd || 'dev-agent';
-      break;
-    }
-
-    case 'bridge_starting':
-      if (msg.providers && msg.providers.length > 0) {
-        // VS Code-launched bridge — show provider confirm screen
-        cncStopPoll();
-        buildCards(msg.providers);
-        show(scrConfirm);
-        startBridgeTicker();
-      }
-      // External CLI bridge: direct poll already handles the waiting state
-      break;
-
-    case 'setup_state': {
-      const st = msg.state; if(!st) break;
-      const blLaunch = document.getElementById('bridge-launch');
-      const blStage  = document.getElementById('bl-stage');
-      const blDetail = document.getElementById('bl-detail');
-      const blElapsed= document.getElementById('bl-elapsed');
-      const blPort   = document.getElementById('bl-port');
-
-      // Update elapsed timer from server-provided value
-      if (st.elapsed != null) blElapsed.textContent = st.elapsed + 's elapsed';
-      if (st.port) blPort.textContent = 'port ' + st.port;
-
-      if (st.phase === 'waiting_for_server') {
-        blLaunch.classList.remove('error');
-        blStage.textContent  = 'Launching browser process…';
-        blDetail.textContent = 'Starting Chrome and the automation server';
-        pcardList.classList.add('hidden'); blLaunch.style.display = '';
-      } else if (st.phase === 'starting') {
-        blLaunch.classList.remove('error');
-        blStage.textContent  = 'Browser connected';
-        blDetail.textContent = 'Running authentication sequence…';
-        pcardList.classList.add('hidden'); blLaunch.style.display = '';
-      } else if (st.phase === 'waiting_confirm') {
-        // Transition to provider cards
-        blLaunch.style.display = 'none'; pcardList.classList.remove('hidden');
-        if (st.provider) setCardPending(st.provider.id, st.provider.detected);
-      } else if (st.phase === 'lost_connection') {
-        blLaunch.classList.add('error');
-        blStage.textContent  = 'Lost connection to browser process';
-        blDetail.textContent = 'It may have crashed — check the browser-ai-bridge terminal.';
-        pcardList.classList.add('hidden'); blLaunch.style.display = '';
-      }
-      break;
-    }
-
-    case 'bridge_ready':
-      // Sent by extension (via postMessage) for VS Code-launched bridge.
-      // For CLI bridge, the direct fetch poll navigates directly.
-      // Handle both paths here as a fallback/supplement.
-      cncStopPoll();
-      stopBridgeTicker();
-      Object.keys(pcards).forEach(id=>{ if(pcards[id].phase==='waiting') setCardDone(id,'confirm'); });
-      if (msg.providerLabel) hdrProv.textContent = msg.providerLabel;
-      if (!scrProject.classList.contains('hidden') || !scrChat.classList.contains('hidden')) break;
-      if(msg.alreadyRunning){
-        show(scrProject); vscode.postMessage({type:'get_workspaces'});
-      } else {
-        setTimeout(()=>{ show(scrProject); vscode.postMessage({type:'get_workspaces'}); },500);
-      }
-      break;
-
-    case 'bridge_failed':
-      cncStopPoll();
-      stopBridgeTicker();
-      // If we're already in chat or project screen, don't interrupt
-      if (!scrChat.classList.contains('hidden') || !scrProject.classList.contains('hidden')) break;
-      show(scrConnect);
-      cncShow('error');
-      document.getElementById('cnc-err-txt').textContent = msg.text || 'Bridge failed to start.';
-      break;
-
-    case 'workspaces':
-      renderWorkspaces(msg.folders||[]); break;
-
-    case 'folder_chosen':
-      chooseFolder(msg.folder); break;
-
-    case 'workspace_confirmed':
-      hdrProj.textContent = msg.name || '—';
-      show(scrChat); break;
-
-    case 'show_project_screen':
-      show(scrProject); vscode.postMessage({type:'get_workspaces'}); break;
-
-    case 'provider_selected_quickpick':
-      hdrProv.textContent = msg.label || msg.id || '—'; break;
-
-    case 'phase_change': {
-      const ph=msg.phase||'';
-      if(ph===lastPhase) break;
-      flushReads(); lastPhase=ph; currentPhase=ph;
-      const L={
-        EXECUTION:'Executing changes…',PLANNING:'Planning approach…',
-        ORCHESTRATING:'Selecting pipeline…',RESEARCHING:'Researching codebase…',
-        SCOPING:'Scoping task…',VERIFYING:'Verifying changes…',
-        REVIEWING:'Reviewing output…',DEBUGGING:'Debugging issues…',WRITING:'Writing code…',
-      };
-      phaseLbl.textContent=L[ph]||msg.label||ph;
-      const si=phaseToStep(ph); if(si>=0) setStep(si,ph==='DEBUGGING');
-      addPhaseDivider(ph);
-      break;
-    }
-
-    case 'tool_call_start':
-      if(msg.tool){
-        const ts_=toolStyle(msg.tool);
-        if(ts_.label==='read'){
-          readBuf.push({n:msg.tool,s:msg.paramsSummary||''});
-          toolChip.style.display='flex'; toolChip.textContent=(msg.paramsSummary||msg.tool).slice(0,38);
-        } else {
-          hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
-          toolChip.style.display='flex'; toolChip.textContent=(msg.paramsSummary||msg.tool).slice(0,38);
-        }
-      }
-      break;
-
-    case 'tool_call_end':
-      if(toolStyle(msg.tool||'').label==='read'){
-        toolChip.style.display='none';
-      } else {
-        flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none'; showTyping();
-        if(msg.isError) addSysMsg('Tool error: '+msg.tool,true);
-      }
-      break;
-
-    case 'file_preview':
-      addFilePreview(msg); break;
-
-    case 'message_complete': {
-      hideTyping();
-      if(SILENT.has(currentPhase)) break;
-      const raw=msg.text||msg.content||'';
-      const preview=raw.length>2400?raw.slice(0,2400)+'…':raw;
-      if(preview.trim()) addAgentMsg(preview);
-      break;
-    }
-
-    case 'system_message':
-      hideTyping(); addSysMsg(msg.text,msg.level==='error');
-      if(msg.level!=='error'){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
-      break;
-
-    case 'session_end':
-    case 'task_complete':
-      flushReads(); hideTyping(); toolChip.style.display='none';
-      setStep(4); addDoneBanner(); finishSession('done');
-      btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
-      setTimeout(()=>{ phaseBar.classList.add('hidden'); currentStepIdx=-1; },1400);
-      break;
-  }
-});
-
-/* ── bridge launch elapsed ticker ── */
-let _bridgeLaunchTs = null;
-let _elapsedTick    = null;
-function startBridgeTicker() {
-  _bridgeLaunchTs = Date.now();
-  if (_elapsedTick) clearInterval(_elapsedTick);
-  _elapsedTick = setInterval(() => {
-    const el = document.getElementById('bl-elapsed');
-    if (el && _bridgeLaunchTs) {
-      el.textContent = Math.round((Date.now() - _bridgeLaunchTs) / 1000) + 's elapsed';
-    }
-  }, 1000);
-}
-function stopBridgeTicker() {
-  if (_elapsedTick) { clearInterval(_elapsedTick); _elapsedTick = null; }
-}
-
-// On load: if the extension already knows the bridge is ready, skip
-// the connect screen entirely. Otherwise start the direct HTTP poll.
-if (_INIT && _INIT.bridgeReady) {
-  hdrProv.textContent = 'Connected';
-  show(scrProject);
-  vscode.postMessage({type:'get_workspaces'});
-  vscode.postMessage({type:'bridge_connected_direct'});
-} else {
-  cncShow('connecting');
-  cncStartPoll();
-}
-
-</script>
+<script src="${scriptUri}"></script>
 </body>
 </html>`;
   }

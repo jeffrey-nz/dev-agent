@@ -53,6 +53,13 @@ async function isRunning() {
   return res.ok && res.data?.status === "ready";
 }
 
+async function getActiveProviders() {
+  const port = resolvePort();
+  const res = await _get(port, "/api/ping");
+  if (!res.ok || res.data?.status !== "ready") return [];
+  return Object.keys(res.data?.providers ?? {});
+}
+
 async function checkStatus() {
   const port = resolvePort();
   const res = await _get(port, "/api/setup");
@@ -177,4 +184,4 @@ function checkInstall() {
   return { binExists, binPath: BRIDGE_BIN };
 }
 
-module.exports = { isRunning, checkStatus, confirmProvider, skipProvider, launch, waitForReady, resolvePort, checkInstall };
+module.exports = { isRunning, checkStatus, getActiveProviders, confirmProvider, skipProvider, launch, waitForReady, resolvePort, checkInstall };

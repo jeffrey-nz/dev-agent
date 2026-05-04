@@ -23,9 +23,12 @@ for (let i = 0; i < 4; i++) {
   dir = parent;
 }
 
-const workspacePath = process.argv[2];
+const workspacePath = process.argv[2] ? resolve(process.cwd(), process.argv[2]) : null;
+const extensionDir = resolve(__dirname, "..");
 
-// Poll bridge until ready, then open VS Code (if workspace provided)
+// Open VS Code as soon as the bridge HTTP server is up and waiting for
+// provider selection (waiting_provider_selection phase). No need to wait
+// for the full ready state — the VS Code panel drives the rest.
 if (workspacePath) {
   let opened = false;
   const poll = setInterval(() => {
@@ -38,11 +41,18 @@ if (workspacePath) {
         res.on("end", () => {
           try {
             const data = JSON.parse(body);
-            if (data.phase === "ready" && !opened) {
+            const phase = data.phase;
+            // Open as soon as the server is up and waiting for UI input.
+            const openPhases = ["waiting_provider_selection", "waiting_confirm", "ready"];
+            if (openPhases.includes(phase) && !opened) {
               opened = true;
               clearInterval(poll);
-              console.log(`\n[dev-agent] Bridge ready — opening VS Code at ${workspacePath}`);
-              spawn("code", [workspacePath], { stdio: "ignore", detached: true }).unref();
+              console.log(`\n[dev-agent] Bridge ready (phase=${phase}) — opening VS Code at ${workspacePath}`);
+              spawn("code", [
+                "--new-window",
+                `--extensionDevelopmentPath=${extensionDir}`,
+                workspacePath,
+              ], { stdio: "ignore", detached: true }).unref();
             }
           } catch {}
         });

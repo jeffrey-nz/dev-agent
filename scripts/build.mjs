@@ -1,5 +1,6 @@
 import { build } from "esbuild";
 import { argv } from "process";
+import { copyFileSync } from "fs";
 
 const watch = argv.includes("--watch");
 
@@ -28,6 +29,10 @@ const ctx = await build({
   sourcemap: true,
   logLevel: "info",
 });
+
+// Copy webview script to dist (loaded by webview.asWebviewUri, not bundled)
+copyFileSync("src/panel-webview.js", "dist/panel-webview.js");
+console.log("Copied panel-webview.js to dist/");
 
 if (watch) {
   console.log("Watching for changes...");
