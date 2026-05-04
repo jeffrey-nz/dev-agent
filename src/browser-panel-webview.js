@@ -16,11 +16,8 @@ let port = (() => {
 
 let remoteW = 1440, remoteH = 900;
 let frameCount = 0, lastFpsTs = Date.now();
-let pollTimer = null;
 let overlayTimer = null;
 let hasReceivedFrame = false;
-let polling = false;
-let _mouseDown = false;
 
 // ── Scaling ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +49,6 @@ function showOverlay(msg, immediate) {
   if (immediate || !hasReceivedFrame) {
     overlayEl.classList.remove('hidden');
   } else {
-    // Delay showing the overlay so brief blips don't flash it
     overlayTimer = setTimeout(() => overlayEl.classList.remove('hidden'), 1200);
   }
 }
@@ -70,7 +66,7 @@ setInterval(() => {
   frameCount = 0; lastFpsTs = now;
 }, 1000);
 
-// ── Screencast connection ─────────────────────────────────────────────────────
+// ── Frame rendering ───────────────────────────────────────────────────────────
 
 function handleFrame(payload) {
   const img = new Image();
@@ -86,46 +82,66 @@ function handleFrame(payload) {
   img.src = 'data:image/jpeg;base64,' + payload.f;
 }
 
-// Poll /api/browser/frame at ~150ms instead of SSE streaming.
-// VS Code webviews do not support streaming fetch body readers, so we use
-// simple short-lived requests that definitely work.
-let _pollActive = false;
+// ── WebSocket connection ──────────────────────────────────────────────────────
+// CDP screencast frames are pushed from the bridge over WebSocket in real time,
+// giving far higher FPS than the old 150ms HTTP polling approach.
 
-async function pollFrame() {
-  if (!polling) return;
-  if (_pollActive) { pollTimer = setTimeout(pollFrame, 150); return; }
-  _pollActive = true;
-  try {
-    const r = await fetch(`http://localhost:${port}/api/browser/frame`);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    if (d.available && d.f) {
-      handleFrame(d);
-    } else if (!hasReceivedFrame) {
-      showOverlay('Waiting for browser…', false);
-    }
-    pollTimer = setTimeout(pollFrame, 150);
-  } catch {
-    if (!hasReceivedFrame) showOverlay('Connecting…', false);
-    pollTimer = setTimeout(pollFrame, 1500);
-  } finally {
-    _pollActive = false;
+let _ws = null;
+let _reconnectTimer = null;
+let _reconnecting = false;
+
+function wsUrl() { return `ws://localhost:${port}/api/browser/ws`; }
+
+function connectWs() {
+  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
+  clearTimeout(_reconnectTimer);
+  showOverlay('Connecting…', !hasReceivedFrame);
+
+  _ws = new WebSocket(wsUrl());
+
+  _ws.onopen = () => {
+    _reconnecting = false;
+  };
+
+  _ws.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.f) handleFrame(payload);
+    } catch {}
+  };
+
+  _ws.onclose = () => {
+    _ws = null;
+    if (!_reconnecting) showOverlay('Waiting for browser…', false);
+    _reconnectTimer = setTimeout(connectWs, 1500);
+  };
+
+  _ws.onerror = () => {
+    // onclose fires immediately after, which handles reconnect
+  };
+}
+
+function disconnectWs() {
+  clearTimeout(_reconnectTimer);
+  if (_ws) {
+    _ws.onclose = null; // suppress auto-reconnect
+    _ws.close();
+    _ws = null;
   }
 }
 
 function connect() {
-  polling = true;
-  clearTimeout(pollTimer);
-  showOverlay('Connecting…', !hasReceivedFrame);
-  pollFrame();
+  _reconnecting = false;
+  connectWs();
 }
 
 function disconnect() {
-  polling = false;
-  clearTimeout(pollTimer);
+  disconnectWs();
 }
 
 // ── Input forwarding ──────────────────────────────────────────────────────────
+
+let _mouseDown = false;
 
 async function input(body) {
   try {
@@ -185,7 +201,12 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 
-btnRefresh.addEventListener('click', () => { hasReceivedFrame = false; connect(); });
+btnRefresh.addEventListener('click', () => {
+  hasReceivedFrame = false;
+  _reconnecting = true;
+  disconnectWs();
+  connect();
+});
 
 setInterval(async () => {
   try {

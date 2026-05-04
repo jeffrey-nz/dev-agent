@@ -58,7 +58,7 @@ class BrowserViewPanel {
       "style-src 'unsafe-inline'",
       `script-src ${webview.cspSource}`,
       "img-src data: blob:",
-      "connect-src http://localhost:*",
+      "connect-src http://localhost:* ws://localhost:*",
     ].join("; ");
     const initJson = JSON.stringify({ port: this._port });
     return `<!DOCTYPE html>
