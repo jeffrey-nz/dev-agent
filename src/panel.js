@@ -379,7 +379,7 @@ a{color:var(--acc)}
            white-space:nowrap;flex-shrink:0}
 
 /* ── chat main area ───────────────────────────────────────────────────── */
-#chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 
 /* ── messages ─────────────────────────────────────────────────────────── */
 #messages{flex:1;overflow-y:auto;padding:0 20px 8px;
@@ -467,6 +467,36 @@ a{color:var(--acc)}
 .rg-card.open .rg-list{display:flex}
 .rg-item{font-size:11px;color:var(--mu);opacity:.65;
          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 0}
+
+/* message entry animation */
+.msg-u,.msg-a{animation:msgIn .16s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* copy button on agent messages */
+.msg-a{position:relative}
+.msg-copy{
+  position:absolute;top:0;right:0;
+  background:transparent;border:1px solid var(--bd);color:var(--mu);
+  border-radius:3px;padding:2px 7px;font-size:11px;cursor:pointer;
+  opacity:0;transition:opacity .15s,background .1s;line-height:1.4;
+}
+.msg-a:hover .msg-copy{opacity:1}
+.msg-copy:hover{background:var(--hov);color:var(--fg)}
+
+/* scroll-to-bottom button */
+#scroll-btn{
+  position:absolute;bottom:82px;right:16px;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--sidebar);border:1px solid var(--bd);color:var(--mu);
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s,background .1s;
+  z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+#scroll-btn.show{opacity:1;pointer-events:auto}
+#scroll-btn:hover{background:var(--hov);color:var(--fg)}
+
+/* phase elapsed timer */
+.phase-elapsed{font-size:10px;opacity:.45;margin-left:3px;font-family:var(--mono)}
 
 /* tool-group spacing */
 .msg-tools{margin:4px 0 2px;padding-left:2px}
@@ -728,6 +758,8 @@ a{color:var(--acc)}
       </div>
     </div>
 
+    <button id="scroll-btn" title="Scroll to bottom">↓</button>
+
     <div class="inp-area">
       <div class="inp-wrap">
         <textarea id="prompt" rows="1" placeholder="Describe what to build…"></textarea>
@@ -740,7 +772,7 @@ a{color:var(--acc)}
           <span id="prov-name">No provider</span>
           <span class="prov-chip-caret">▾</span>
         </button>
-        <span class="inp-hint">↵ send · shift+↵ newline</span>
+        <span class="inp-hint" id="inp-hint">↵ send · ↑ history</span>
       </div>
       <div id="prov-drop" class="hidden"></div>
     </div>

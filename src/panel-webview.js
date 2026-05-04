@@ -123,6 +123,33 @@ function renderMarkdown(md) {
   return text;
 }
 
+/* ── phase elapsed timer ── */
+let _phaseStartTs = null, _phaseTimer = null, _phaseBaseLabel = '';
+function startPhaseTimer(label) {
+  _phaseBaseLabel = label;
+  _phaseStartTs = Date.now();
+  clearInterval(_phaseTimer);
+  _phaseTimer = setInterval(() => {
+    const s = Math.round((Date.now() - _phaseStartTs) / 1000);
+    phaseLbl.textContent = _phaseBaseLabel;
+    const el = phaseLbl.querySelector('.phase-elapsed') || (() => {
+      const e = document.createElement('span'); e.className = 'phase-elapsed';
+      phaseLbl.appendChild(e); return e;
+    })();
+    el.textContent = ' · ' + (s >= 60 ? Math.floor(s/60)+'m '+s%60+'s' : s+'s');
+  }, 1000);
+}
+function stopPhaseTimer() { clearInterval(_phaseTimer); _phaseTimer = null; _phaseStartTs = null; }
+
+/* ── copy agent message ── */
+function copyMsg(btn) {
+  const text = btn.closest('.msg-a').querySelector('.mab-md').innerText;
+  clipboardWrite(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
 function clipboardWrite(text) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
   const ta = Object.assign(document.createElement('textarea'), {value:text,style:'position:fixed;opacity:0'});
@@ -177,11 +204,13 @@ function openFile(p) { vscode.postMessage({type:'open_file', path:p}); }
 ══════════════════════════════════════ */
 const sessions = [];
 let activeSid = null, runningSid = null, sessionLocked = false, sidSeq = 0;
+let _sessionStartTs = null; // wall-clock start of current task run
 
 function createSession(promptText){
   if(activeSid !== null) saveSession(activeSid);
   const id = ++sidSeq;
-  sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:''});
+  _sessionStartTs = Date.now();
+  sessions.unshift({id, prompt:promptText.slice(0,80), ts:new Date(), status:'running', html:'', tools:0});
   activeSid = id; runningSid = id; sessionLocked = true;
   clearMsgs(); hideWelcome();
   renderSessions();
@@ -189,7 +218,7 @@ function createSession(promptText){
 }
 function finishSession(status){
   const s=sessions.find(x=>x.id===runningSid);
-  if(s) s.status=status;
+  if(s){ s.status=status; if(_sessionStartTs) s.elapsed=Math.round((Date.now()-_sessionStartTs)/1000); }
   saveSession(activeSid);
   runningSid=null; sessionLocked=false;
   renderSessions();
@@ -210,8 +239,11 @@ function newChat(){
   if(activeSid!==null) saveSession(activeSid);
   activeSid=null; clearMsgs(); showWelcome(); hideTyping();
   phaseBar.classList.add('hidden');
+  stopPhaseTimer();
+  _userScrolled=false; scrollBtn.classList.remove('show');
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null;
   resetDividers();
+  _histIdx=-1;
   btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
   renderSessions(); closeDropdowns(); prompt.focus();
 }
@@ -241,10 +273,13 @@ function renderSessions(){
   sessions.forEach(s=>{
     const btn=document.createElement('button'); btn.className='sitem'+(s.id===activeSid?' active':'');
     if(sessionLocked&&s.id!==activeSid) btn.disabled=true;
+    const metaParts=[relTime(s.ts)];
+    if(s.tools) metaParts.push(s.tools+' tools');
+    if(s.elapsed!=null){ const m=Math.floor(s.elapsed/60), sec=s.elapsed%60; metaParts.push(m?m+'m '+sec+'s':sec+'s'); }
     btn.innerHTML='<div class="s-dot '+s.status+'"></div>'
       +'<div class="s-body">'
       +'<div class="s-prompt">'+esc(s.prompt)+'</div>'
-      +'<div class="s-meta">'+relTime(s.ts)+'</div>'
+      +'<div class="s-meta">'+metaParts.join(' · ')+'</div>'
       +'</div>';
     btn.addEventListener('click', ()=>switchSession(s.id));
     sessionList.appendChild(btn);
@@ -253,7 +288,24 @@ function renderSessions(){
 setInterval(renderSessions, 30000);
 
 /* ── scroll / typing ── */
-function scrollMsgs(){ messages.scrollTop=messages.scrollHeight; }
+const scrollBtn = document.getElementById('scroll-btn');
+let _userScrolled = false;
+
+messages.addEventListener('scroll', () => {
+  const threshold = 80;
+  const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < threshold;
+  _userScrolled = !atBottom;
+  scrollBtn.classList.toggle('show', _userScrolled);
+});
+scrollBtn.addEventListener('click', () => {
+  _userScrolled = false;
+  scrollBtn.classList.remove('show');
+  messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+});
+
+function scrollMsgs(){
+  if(!_userScrolled) messages.scrollTop=messages.scrollHeight;
+}
 function ibt(el){ if(el) messages.insertBefore(el,typingEl); scrollMsgs(); }
 function showTyping(){ ibt(null); typingEl.style.display='flex'; scrollMsgs(); }
 function hideTyping(){ typingEl.style.display='none'; }
@@ -374,7 +426,8 @@ function addAgentMsg(text){
   if(!text?.trim()) return;
   const d=document.createElement('div'); d.className='msg-a';
   d.innerHTML='<div class="msg-sender agent">Dev Agent</div>'
-    +'<div class="mab-md">'+renderMarkdown(text)+'</div>';
+    +'<div class="mab-md">'+renderMarkdown(text)+'</div>'
+    +'<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
   ibt(d);
 }
 function addSysMsg(text,isErr){
@@ -384,7 +437,14 @@ function addSysMsg(text,isErr){
 }
 function addDoneBanner(){
   const d=document.createElement('div'); d.className='done-banner';
-  d.innerHTML='<div class="done-line"></div><span>✓ Task complete</span><div class="done-line"></div>';
+  let label='✓ Task complete';
+  if(_sessionStartTs){
+    const s=Math.round((Date.now()-_sessionStartTs)/1000);
+    label += ' · '+(s>=60?Math.floor(s/60)+'m '+s%60+'s':s+'s');
+  }
+  const sess=sessions.find(x=>x.id===runningSid||x.id===activeSid);
+  if(sess?.tools) label+=' · '+sess.tools+' tools';
+  d.innerHTML='<div class="done-line"></div><span>'+label+'</span><div class="done-line"></div>';
   ibt(d);
 }
 
@@ -660,30 +720,80 @@ document.querySelectorAll('.w-ex').forEach(btn=>{
   });
 });
 
+/* ── input history ── */
+const _history = [];
+let _histIdx = -1, _histSaved = '';
+
+function histPush(text) {
+  if (_history[0] !== text) _history.unshift(text);
+  if (_history.length > 50) _history.pop();
+  _histIdx = -1;
+}
+
 /* ── send / stop ── */
 let currentPhase='';
 const SILENT=new Set(['PLANNING','ORCHESTRATING','RESEARCHING','SCOPING','REVIEWING']);
 
 btnSend.addEventListener('click',()=>{
   const text=prompt.value.trim(); if(!text) return;
+  histPush(text); _histIdx = -1;
   createSession(text); addUserMsg(text); showTyping();
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
   currentStepIdx=-1; lastPhase=''; readBuf=[]; pendingCard=null; resetDividers();
+  stopPhaseTimer();
   vscode.postMessage({type:'start_task', prompt:text, provider: _selectedProvider || undefined});
-  prompt.value=''; prompt.style.height='';
+  prompt.value=''; prompt.style.height=''; btnSend.disabled=true;
   btnSend.classList.add('hidden'); btnStop.classList.remove('hidden');
 });
 btnStop.addEventListener('click',()=>{
   hideTyping(); phaseBar.classList.add('hidden');
+  stopPhaseTimer();
   btnStop.classList.add('hidden'); btnSend.classList.remove('hidden');
   finishSession('stopped'); vscode.postMessage({type:'stop'});
 });
-prompt.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();btnSend.click();} });
+
+prompt.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); btnSend.click(); return; }
+
+  // History navigation (only when cursor is at start of first line)
+  const atLineStart = prompt.selectionStart === 0;
+  if(e.key==='ArrowUp' && atLineStart && _history.length){
+    e.preventDefault();
+    if(_histIdx===-1){ _histSaved=prompt.value; _histIdx=0; }
+    else if(_histIdx<_history.length-1) _histIdx++;
+    prompt.value=_history[_histIdx];
+    prompt.style.height=''; prompt.style.height=Math.min(prompt.scrollHeight,160)+'px';
+    btnSend.disabled=!prompt.value.trim();
+    return;
+  }
+  if(e.key==='ArrowDown' && _histIdx>=0){
+    e.preventDefault();
+    if(_histIdx===0){ _histIdx=-1; prompt.value=_histSaved; }
+    else _histIdx--;
+    if(_histIdx>=0) prompt.value=_history[_histIdx];
+    prompt.style.height=''; prompt.style.height=Math.min(prompt.scrollHeight,160)+'px';
+    btnSend.disabled=!prompt.value.trim();
+    return;
+  }
+
+  // Cmd/Ctrl+K — new chat
+  if((e.metaKey||e.ctrlKey) && e.key==='k'){ e.preventDefault(); newChat(); }
+});
+
 prompt.addEventListener('input',()=>{
+  _histIdx=-1; // any manual edit exits history mode
   prompt.style.height=''; prompt.style.height=Math.min(prompt.scrollHeight,160)+'px';
   btnSend.disabled=!prompt.value.trim();
 });
 btnSend.disabled=true;
+
+/* ── global keyboard shortcuts ── */
+document.addEventListener('keydown',e=>{
+  // Cmd/Ctrl+K — new chat (when prompt not focused)
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'&&document.activeElement!==prompt){
+    e.preventDefault(); newChat();
+  }
+});
 
 /* ── incoming messages ── */
 window.addEventListener('message',e=>{
@@ -812,12 +922,14 @@ window.addEventListener('message',e=>{
       if(ph===lastPhase) break;
       flushReads(); lastPhase=ph; currentPhase=ph;
       const L={
-        EXECUTION:'Executing changes…',PLANNING:'Planning approach…',
-        ORCHESTRATING:'Selecting pipeline…',RESEARCHING:'Researching codebase…',
-        SCOPING:'Scoping task…',VERIFYING:'Verifying changes…',
-        REVIEWING:'Reviewing output…',DEBUGGING:'Debugging issues…',WRITING:'Writing code…',
+        EXECUTION:'Executing',PLANNING:'Planning',
+        ORCHESTRATING:'Orchestrating',RESEARCHING:'Researching',
+        SCOPING:'Scoping',VERIFYING:'Verifying',
+        REVIEWING:'Reviewing',DEBUGGING:'Debugging',WRITING:'Writing',
       };
-      phaseLbl.textContent=L[ph]||msg.label||ph;
+      const label=(L[ph]||msg.label||ph)+'…';
+      phaseLbl.textContent=label;
+      startPhaseTimer(label);
       const si=phaseToStep(ph); if(si>=0) setStep(si,ph==='DEBUGGING');
       addPhaseDivider(ph);
       break;
@@ -828,22 +940,26 @@ window.addEventListener('message',e=>{
         const ts_=toolStyle(msg.tool);
         if(ts_.label==='read'){
           readBuf.push({n:msg.tool,s:msg.paramsSummary||''});
-          toolChip.style.display='flex'; toolChip.textContent=(msg.paramsSummary||msg.tool).slice(0,38);
+          toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else {
           hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
-          toolChip.style.display='flex'; toolChip.textContent=(msg.paramsSummary||msg.tool).slice(0,38);
+          toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         }
       }
       break;
 
-    case 'tool_call_end':
-      if(toolStyle(msg.tool||'').label==='read'){
+    case 'tool_call_end': {
+      const isRead=toolStyle(msg.tool||'').label==='read';
+      // Increment tool counter for running session
+      { const s=sessions.find(x=>x.id===runningSid); if(s) s.tools=(s.tools||0)+1; }
+      if(isRead){
         toolChip.style.display='none';
       } else {
         flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none'; showTyping();
         if(msg.isError) addSysMsg('Tool error: '+msg.tool,true);
       }
       break;
+    }
 
     case 'file_preview':
       addFilePreview(msg); break;
@@ -865,6 +981,7 @@ window.addEventListener('message',e=>{
     case 'session_end':
     case 'task_complete':
       flushReads(); hideTyping(); toolChip.style.display='none';
+      stopPhaseTimer();
       setStep(4); addDoneBanner(); finishSession('done');
       btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
       setTimeout(()=>{ phaseBar.classList.add('hidden'); currentStepIdx=-1; },1400);
