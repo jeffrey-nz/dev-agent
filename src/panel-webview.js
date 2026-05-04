@@ -594,9 +594,11 @@ function setCardPending(id,det){
   b.innerHTML=`<div class="${det?'det-y':'det-n'}">${det?'✓ Interface detected in Chrome':'⚠ Not detected — log in if needed'}</div>
     <div class="conf-hint">Confirm once the chat interface is visible in Chrome.</div>
     <div class="conf-btns">
-      <button class="btn-conf" onclick="confirmCard()">✓ Confirm Ready</button>
-      <button class="btn-skip" onclick="skipCard()">Skip</button>
+      <button class="btn-conf">✓ Confirm Ready</button>
+      <button class="btn-skip">Skip</button>
     </div>`;
+  b.querySelector('.btn-conf').addEventListener('click', confirmCard);
+  b.querySelector('.btn-skip').addEventListener('click', skipCard);
 }
 function setCardDone(id,action){
   const c=pcards[id]; if(!c) return;
@@ -914,6 +916,7 @@ if (_INIT && _INIT.bridgeReady) {
   buildProviderCards(_availableProviders);
   show(scrProvider);
   vscode.postMessage({type:'bridge_connected_direct'});
+  cncStartPoll(); // keep polling so we catch waiting_confirm if bridge advances
 } else {
   cncShow('connecting');
   cncStartPoll();
