@@ -962,6 +962,10 @@ document.getElementById('btn-sb-prov').addEventListener('click',()=>{
   cncStartPoll();
   vscode.postMessage({type:'reset'});
 });
+document.getElementById('btn-stop-bridge').addEventListener('click',()=>{
+  closeDropdowns();
+  vscode.postMessage({type:'stop_bridge'});
+});
 /* ── welcome example prompts ── */
 document.querySelectorAll('.w-ex').forEach(btn=>{
   btn.addEventListener('click',()=>{

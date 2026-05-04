@@ -227,8 +227,25 @@ setInterval(async () => {
 
 // ── Extension messages ────────────────────────────────────────────────────────
 
-const hintBar  = document.getElementById('hint-bar');
-const hintText = document.getElementById('hint-text');
+const hintBar    = document.getElementById('hint-bar');
+const hintText   = document.getElementById('hint-text');
+const hintSub    = document.getElementById('hint-sub');
+const btnConfirm = document.getElementById('btn-hint-confirm');
+const btnDismiss = document.getElementById('btn-hint-dismiss');
+
+if (btnConfirm) {
+  btnConfirm.addEventListener('click', () => {
+    btnConfirm.textContent = '…';
+    btnConfirm.disabled = true;
+    vscode.postMessage({ type: 'browser_confirm_ready' });
+  });
+}
+
+if (btnDismiss) {
+  btnDismiss.addEventListener('click', () => {
+    hintBar?.classList.add('hidden');
+  });
+}
 
 window.addEventListener('message', (e) => {
   const msg = e.data;
@@ -239,7 +256,9 @@ window.addEventListener('message', (e) => {
     connect();
   }
   if (msg.type === 'set_hint') {
-    if (hintText) hintText.textContent = msg.text || 'Log in here, then click Confirm Ready in the Dev Agent panel';
+    if (hintText) hintText.textContent = msg.text || 'Log in here';
+    if (hintSub) hintSub.textContent = msg.sub || 'Once logged in, click Confirm Ready →';
+    if (btnConfirm) { btnConfirm.textContent = '✓ Confirm Ready'; btnConfirm.disabled = false; }
     hintBar?.classList.remove('hidden');
   }
   if (msg.type === 'clear_hint') {

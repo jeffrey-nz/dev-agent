@@ -395,7 +395,7 @@ a{color:var(--acc)}
 #chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 
 /* ── messages ─────────────────────────────────────────────────────────── */
-#messages{flex:1;overflow-y:auto;padding:0 20px 8px;
+#messages{flex:1;overflow-y:auto;padding:0 10px 12px;
           display:flex;flex-direction:column;scroll-behavior:smooth}
 
 /* welcome */
@@ -412,14 +412,18 @@ a{color:var(--acc)}
 .w-ex:hover::before{opacity:1}
 
 /* user message */
-.msg-u{margin:24px 0 2px}
-.msg-sender{font-size:11px;font-weight:600;margin-bottom:4px;color:var(--mu)}
+.msg-u{margin:20px 0 6px}
+.msg-sender{font-size:11px;font-weight:600;margin-bottom:5px;color:var(--mu)}
 .msg-sender.agent{color:var(--acc)}
-.msg-body{font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
-          color:var(--fg)}
+.msg-body{
+  font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
+  color:var(--fg);padding:8px 10px;
+  background:color-mix(in srgb,var(--fg) 4%,transparent);
+  border-radius:var(--r);border-left:2px solid var(--acc);
+}
 
 /* agent message */
-.msg-a{margin:4px 0 2px}
+.msg-a{margin:6px 0}
 .mab-md{font-size:13px;line-height:1.65;color:var(--fg)}
 
 /* markdown */
@@ -452,34 +456,38 @@ a{color:var(--acc)}
 .cb-pre{overflow-x:auto;padding:10px 12px;margin:0}
 .cb-pre code{font-family:var(--mono);font-size:12px;white-space:pre;color:var(--fg);line-height:1.55}
 
-/* tool cards — terminal style */
+/* tool cards — activity timeline style */
 .tcrd{
-  display:flex;align-items:center;gap:7px;
-  padding:1px 0;font-size:12px;font-family:var(--mono);
-  color:var(--mu);margin:0;
+  display:flex;align-items:center;gap:8px;
+  padding:3px 6px;font-size:12px;font-family:var(--mono);
+  color:var(--mu);margin:1px 0;border-radius:3px;
+  transition:background .1s;
 }
+.tcrd:hover{background:var(--hov)}
 .tcrd.pending{opacity:.55}
 .tcrd.error .tc-file{color:var(--err)}
 .tcrd.error .tc-st{color:var(--err)}
-.tc-pfx{color:var(--mu);opacity:.4;flex-shrink:0;font-size:11px;user-select:none}
-.tc-name{width:36px;flex-shrink:0;font-size:11px;color:var(--mu);opacity:.7}
+.tc-pfx{color:var(--mu);opacity:.35;flex-shrink:0;font-size:11px;user-select:none}
+.tc-name{width:38px;flex-shrink:0;font-size:11px;color:var(--mu);opacity:.65}
 .tc-file{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-         color:var(--fg);opacity:.8}
+         color:var(--fg);opacity:.85}
 .tc-st{flex-shrink:0;font-size:11px;color:var(--ok)}
-.tcrd.pending .tc-st{color:var(--mu);opacity:.4}
+.tcrd.pending .tc-st{color:var(--mu);opacity:.35}
 
 /* read groups */
-.rg-card{margin:0;font-family:var(--mono)}
-.rg-hdr{display:flex;align-items:center;gap:7px;padding:1px 0;
-        font-size:12px;cursor:pointer;user-select:none;color:var(--mu)}
+.rg-card{margin:1px 0;font-family:var(--mono)}
+.rg-hdr{display:flex;align-items:center;gap:8px;padding:3px 6px;
+        font-size:12px;cursor:pointer;user-select:none;color:var(--mu);
+        border-radius:3px;transition:background .1s}
+.rg-hdr:hover{background:var(--hov)}
 .rg-hdr:hover .tc-file{opacity:1}
 .rg-caret{font-size:9px;color:var(--mu);opacity:.4;margin-left:auto;
           transition:transform .2s;flex-shrink:0}
 .rg-card.open .rg-caret{transform:rotate(180deg)}
-.rg-list{display:none;flex-direction:column;padding:2px 0 2px 54px}
+.rg-list{display:none;flex-direction:column;padding:2px 0 2px 52px}
 .rg-card.open .rg-list{display:flex}
-.rg-item{font-size:11px;color:var(--mu);opacity:.65;
-         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 0}
+.rg-item{font-size:11px;color:var(--mu);opacity:.6;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 0}
 
 /* message entry animation */
 .msg-u,.msg-a{animation:msgIn .16s ease}
@@ -529,14 +537,14 @@ a{color:var(--acc)}
 .phase-elapsed{font-size:10px;opacity:.45;margin-left:3px;font-family:var(--mono)}
 
 /* tool-group spacing */
-.msg-tools{margin:4px 0 2px;padding-left:2px}
+.msg-tools{margin:6px 0 2px}
 
 /* pending tool prefix blinks */
 .tcrd.pending .tc-pfx{animation:blink .9s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
 
 /* plan / review special cards */
-.sc-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:10px 0}
+.sc-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:8px -10px}
 .sc-card.plan{border-left:2px solid var(--cp)}
 .sc-card.review{border-left:2px solid var(--cv)}
 .sc-hdr{display:flex;align-items:center;gap:7px;padding:6px 10px;cursor:pointer;
@@ -578,8 +586,9 @@ a{color:var(--acc)}
 .change-path{color:var(--fg);opacity:.85;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .change-tag{font-size:10px;opacity:.5;flex-shrink:0}
 
-/* ── diff card ── */
-.diff-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:5px 0;font-family:var(--mono)}
+/* ── diff card — edge-to-edge (negative margins cancel the #messages 10px padding) ── */
+.diff-card{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;
+           margin:5px -10px;font-family:var(--mono)}
 .diff-hdr{
   display:flex;align-items:center;gap:7px;padding:6px 10px;
   background:color-mix(in srgb,var(--fg) 3%,transparent);
@@ -638,20 +647,21 @@ a{color:var(--acc)}
 .dl-code{flex:1;padding:0 10px;white-space:pre;color:var(--fg);word-break:normal;min-width:0;overflow:hidden}
 
 /* system / error messages */
-.msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:4px 0;opacity:.65}
+.msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:5px 6px;opacity:.6}
 .msg-err{font-size:12px;color:var(--err);display:flex;align-items:center;gap:6px;
-         padding:6px 10px;background:color-mix(in srgb,var(--err) 7%,transparent);
-         border:1px solid color-mix(in srgb,var(--err) 20%,transparent);
-         border-radius:var(--r);margin:4px 0;font-family:var(--mono)}
+         padding:7px 10px;background:color-mix(in srgb,var(--err) 7%,transparent);
+         border:1px solid color-mix(in srgb,var(--err) 22%,transparent);
+         border-left:3px solid var(--err);
+         border-radius:var(--r);margin:6px 0;font-family:var(--mono)}
 
 /* phase dividers */
-.pdiv{display:flex;align-items:center;gap:10px;margin:14px 0 8px}
-.pdiv.repeat{opacity:.35;margin:6px 0 4px}
+.pdiv{display:flex;align-items:center;gap:8px;margin:16px -10px 10px;padding:0 10px}
+.pdiv.repeat{opacity:.28;margin:5px -10px 4px;padding:0 10px}
 .pdiv.repeat .pdlabel{font-size:9px}
 .pdline{flex:1;height:1px;background:var(--bd)}
 .pdlabel{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
-         font-family:var(--mono);padding:2px 8px;border-radius:20px;
-         border:1px solid transparent;white-space:nowrap}
+         font-family:var(--mono);padding:2px 9px;border-radius:20px;
+         border:1px solid transparent;white-space:nowrap;letter-spacing:.03em}
 
 /* typing indicator */
 #typing{display:none;align-items:center;gap:8px;padding:6px 0;
@@ -663,7 +673,7 @@ a{color:var(--acc)}
 @keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.25}30%{transform:translateY(-4px);opacity:.9}}
 
 /* done / stopped banners */
-.done-banner,.stop-banner{display:flex;align-items:center;gap:10px;padding:10px 0;margin:8px 0;
+.done-banner,.stop-banner{display:flex;align-items:center;gap:10px;padding:10px 6px;margin:10px 0;
              font-size:11px;font-family:var(--mono)}
 .done-banner{color:var(--ok)}
 .stop-banner{color:var(--err)}
@@ -690,7 +700,8 @@ a{color:var(--acc)}
 /* ── compact mode: hide tool noise ── */
 #chat-main.compact .tcrd,
 #chat-main.compact .rg-card,
-#chat-main.compact .pdiv{display:none!important}
+#chat-main.compact .pdiv,
+#chat-main.compact .sc-card{display:none!important}
 
 /* ── input char count ── */
 .inp-char{font-size:10px;color:var(--mu);opacity:.4;font-family:var(--mono);margin-left:auto}
@@ -895,6 +906,7 @@ a{color:var(--acc)}
     <button class="drop-item" id="btn-export">Export transcript</button>
     <div class="drop-sep"></div>
     <button class="drop-item" id="btn-sb-prov">Reconnect bridge</button>
+    <button class="drop-item" id="btn-stop-bridge" style="color:var(--err)">Stop bridge</button>
   </div>
 
   <div id="chat-main">

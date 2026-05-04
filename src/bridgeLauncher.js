@@ -75,6 +75,8 @@ async function skipProvider() {
   return _post(resolvePort(), "/api/setup/skip");
 }
 
+let _bridgeTerminal = null;
+
 function launch(providers = []) {
   let binExists = false;
   try { fs.accessSync(BRIDGE_BIN); binExists = true; } catch {}
@@ -93,7 +95,19 @@ function launch(providers = []) {
   });
   terminal.sendText(`node "${BRIDGE_BIN}"`);
   terminal.show(false);
+  _bridgeTerminal = terminal;
   return terminal;
+}
+
+function stopBridge() {
+  if (_bridgeTerminal) {
+    _bridgeTerminal.dispose();
+    _bridgeTerminal = null;
+  }
+  // Also find and close any terminal named browser-ai-bridge (e.g. if started externally)
+  for (const t of vscode.window.terminals) {
+    if (t.name === "browser-ai-bridge") t.dispose();
+  }
 }
 
 /**
@@ -184,4 +198,4 @@ function checkInstall() {
   return { binExists, binPath: BRIDGE_BIN };
 }
 
-module.exports = { isRunning, checkStatus, getActiveProviders, confirmProvider, skipProvider, launch, waitForReady, resolvePort, checkInstall };
+module.exports = { isRunning, checkStatus, getActiveProviders, confirmProvider, skipProvider, launch, stopBridge, waitForReady, resolvePort, checkInstall };

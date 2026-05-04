@@ -4,7 +4,7 @@ class BrowserViewPanel {
   static currentPanel = null;
   static viewType = "devAgent.browser";
 
-  static createOrShow(context, port) {
+  static createOrShow(context, port, onMessage) {
     if (BrowserViewPanel.currentPanel) {
       BrowserViewPanel.currentPanel._panel.reveal(vscode.ViewColumn.Two, true);
       BrowserViewPanel.currentPanel._setPort(port);
@@ -20,7 +20,7 @@ class BrowserViewPanel {
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
       },
     );
-    BrowserViewPanel.currentPanel = new BrowserViewPanel(context, panel, port);
+    BrowserViewPanel.currentPanel = new BrowserViewPanel(context, panel, port, onMessage);
     return BrowserViewPanel.currentPanel;
   }
 
@@ -28,7 +28,7 @@ class BrowserViewPanel {
     BrowserViewPanel.currentPanel?.dispose();
   }
 
-  constructor(context, panel, port) {
+  constructor(context, panel, port, onMessage) {
     this._context = context;
     this._panel = panel;
     this._port = port ?? 3333;
@@ -36,6 +36,9 @@ class BrowserViewPanel {
     panel.onDidDispose(() => {
       BrowserViewPanel.currentPanel = null;
     }, null, context.subscriptions);
+    if (onMessage) {
+      panel.webview.onDidReceiveMessage(onMessage, null, context.subscriptions);
+    }
   }
 
   _setPort(port) {
@@ -124,15 +127,30 @@ html,body{width:100%;height:100vh;overflow:hidden;
 #overlay-msg{color:rgba(255,255,255,.7);font-size:12px;letter-spacing:.02em}
 #hint-bar{
   position:absolute;bottom:0;left:0;right:0;z-index:10;
-  display:flex;align-items:center;gap:8px;padding:9px 14px;
-  background:rgba(0,80,200,.82);backdrop-filter:blur(4px);
-  border-top:1px solid rgba(255,255,255,.12);
-  font-size:11px;color:rgba(255,255,255,.92);letter-spacing:.01em;
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:rgba(10,60,180,.88);backdrop-filter:blur(6px);
+  border-top:1px solid rgba(255,255,255,.13);
+  font-size:11px;color:rgba(255,255,255,.93);
   animation:slideUp .22s ease;
 }
 #hint-bar.hidden{display:none}
-.hint-arrow{font-size:14px;animation:nudge .9s ease-in-out infinite alternate;flex-shrink:0}
-@keyframes nudge{from{transform:translateX(-4px)}to{transform:translateX(0)}}
+.hint-arrow{font-size:13px;animation:nudge .9s ease-in-out infinite alternate;flex-shrink:0;opacity:.8}
+.hint-body{flex:1;min-width:0}
+.hint-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+.hint-sub{font-size:10px;opacity:.7}
+#btn-hint-confirm{
+  background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);
+  padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;
+  flex-shrink:0;font-family:inherit;transition:background .12s;
+}
+#btn-hint-confirm:hover{background:rgba(255,255,255,.28)}
+#btn-hint-dismiss{
+  background:transparent;color:rgba(255,255,255,.55);border:none;
+  font-size:15px;cursor:pointer;padding:2px 4px;line-height:1;
+  flex-shrink:0;border-radius:3px;transition:color .1s;
+}
+#btn-hint-dismiss:hover{color:rgba(255,255,255,.9)}
+@keyframes nudge{from{transform:translateX(-3px)}to{transform:translateX(2px)}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
@@ -149,8 +167,13 @@ html,body{width:100%;height:100vh;overflow:hidden;
     <span id="overlay-msg">Connecting…</span>
   </div>
   <div id="hint-bar" class="hidden">
-    <span class="hint-arrow">←</span>
-    <span id="hint-text">Log in here, then click Confirm Ready in the Dev Agent panel</span>
+    <span class="hint-arrow">↓</span>
+    <div class="hint-body">
+      <div class="hint-title" id="hint-text">Log in here</div>
+      <div class="hint-sub" id="hint-sub">Once logged in, click Confirm Ready →</div>
+    </div>
+    <button id="btn-hint-confirm">✓ Confirm Ready</button>
+    <button id="btn-hint-dismiss" title="Dismiss">✕</button>
   </div>
 </div>
 <script src="${scriptUri}"></script>

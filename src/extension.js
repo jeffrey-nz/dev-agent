@@ -86,7 +86,7 @@ async function broadcastBridgeStatus(status, targetPanel) {
     }
     // Open browser panel so user can watch the AI work; clear any setup hint
     if (extensionCtx) {
-      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort());
+      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
       bp?.postMessage({ type: "clear_hint" });
     }
   } else {
@@ -95,9 +95,9 @@ async function broadcastBridgeStatus(status, targetPanel) {
     sidebarProvider?.postMessage({ type: "bridge_starting" });
     // Open browser panel during waiting_confirm so user can see the login screen
     if (extensionCtx && status.phase === "waiting_confirm") {
-      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort());
+      const bp = BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
       const provName = status.data?.provider?.name || "your AI provider";
-      bp?.postMessage({ type: "set_hint", text: `Log in to ${provName} here, then click Confirm Ready in the Dev Agent panel` });
+      bp?.postMessage({ type: "set_hint", text: `Log in to ${provName}`, sub: `Once you're signed in, click Confirm Ready to start` });
     }
   }
 }
@@ -240,6 +240,12 @@ async function openChatPanel() {
 
 function handleSidebarMessage(msg) {
   if (msg.type === "open_panel") openChatPanel();
+}
+
+function handleBrowserPanelMessage(msg) {
+  if (msg.type === "browser_confirm_ready") {
+    bridge.confirmProvider().catch(() => {});
+  }
 }
 
 // ── Status bar helpers ─────────────────────────────────────────────────────
@@ -536,6 +542,16 @@ async function handleWebviewMessage(msg, senderPanel) {
       selectedProviders = [];
       workspaceRoot = null;
       _lastBridgeKey = null; // force re-broadcast on next poll
+      setStatusIdle();
+      break;
+
+    case "stop_bridge":
+      agentSession?.stop();
+      bridge.stopBridge();
+      BrowserViewPanel.dispose();
+      selectedProviders = [];
+      workspaceRoot = null;
+      _lastBridgeKey = null;
       setStatusIdle();
       break;
 
