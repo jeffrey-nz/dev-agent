@@ -203,37 +203,58 @@ function copyCode(btn) {
 ══════════════════════════════════════ */
 function openFile(p) { vscode.postMessage({type:'open_file', path:p}); }
 
+function langColor(ext) {
+  const m = {js:'#f7c948',ts:'#3178c6',tsx:'#61dafb',jsx:'#61dafb',
+             py:'#3776ab',json:'#f97316',css:'#264de4',scss:'#cf649a',
+             html:'#e34f26',md:'#888',sh:'#89e051',go:'#00add8',
+             rs:'#dea584',java:'#f89820',cpp:'#f34b7d',c:'#aaa'};
+  return m[(ext||'').toLowerCase()] || '#888';
+}
+
 function addFileDiff(data) {
   const isNew = data.isNew;
-  const badge = isNew ? '+ new file' : '✎ edited';
-  const badgeCls = isNew ? 'new' : 'mod';
-  const addTxt = data.added   ? `<span class="ds-add">+${data.added}</span>`   : '';
+  const ext   = data.ext || '';
+  const rel   = data.relPath || '';
+  const slash = rel.lastIndexOf('/');
+  const fname = slash >= 0 ? rel.slice(slash + 1) : rel;
+  const fdir  = slash >= 0 ? rel.slice(0, slash + 1) : '';
+
+  const addTxt = data.added   ? `<span class="ds-add">+${data.added}</span>` : '';
   const remTxt = data.removed ? `<span class="ds-rem">-${data.removed}</span>` : '';
+  const badge  = isNew ? `<span class="diff-badge new">new</span>` : '';
 
   let bodyHtml = '';
-  const hunks = data.hunks || [];
-  hunks.forEach((hunk, hi) => {
-    if (hi > 0) bodyHtml += '<hr class="diff-sep"/>';
+  (data.hunks || []).forEach((hunk, hi) => {
+    if (hi > 0) bodyHtml += `<div class="diff-hunk-sep">···</div>`;
     for (const line of hunk) {
-      const cls  = line.t === 'a' ? 'add' : line.t === 'r' ? 'rem' : 'ctx';
-      const sym  = line.t === 'a' ? '+'  : line.t === 'r' ? '−'  : ' ';
-      const ln   = line.t === 'r' ? (line.o || '') : (line.n || '');
-      const code = esc(line.s ?? '');
-      bodyHtml += `<div class="dl ${cls}"><span class="dl-ln">${ln}</span><span class="dl-sym">${sym}</span><span class="dl-code">${code}</span></div>`;
+      const cls   = line.t === 'a' ? 'add' : line.t === 'r' ? 'rem' : 'ctx';
+      const sym   = line.t === 'a' ? '+'  : line.t === 'r' ? '−'  : ' ';
+      const oldLn = (line.t === 'r' || line.t === 'c') ? (line.o || '') : '';
+      const newLn = (line.t === 'a' || line.t === 'c') ? (line.n || '') : '';
+      bodyHtml += `<div class="dl ${cls}"><span class="dl-lo">${oldLn}</span><span class="dl-ln">${newLn}</span><span class="dl-sym">${sym}</span><span class="dl-code">${esc(line.s ?? '')}</span></div>`;
     }
   });
   if (!bodyHtml) {
-    bodyHtml = '<div class="dl ctx"><span class="dl-ln"></span><span class="dl-sym"> </span><span class="dl-code" style="font-style:italic;opacity:.5">no changes detected</span></div>';
+    bodyHtml = `<div class="dl ctx"><span class="dl-lo"></span><span class="dl-ln"></span><span class="dl-sym"> </span><span class="dl-code" style="font-style:italic;opacity:.5">no changes detected</span></div>`;
   }
 
-  const d = document.createElement('div'); d.className = 'diff-card';
+  const openBtn = data.filePath
+    ? `<button class="diff-open" title="Open in editor" onclick="event.stopPropagation();openFile(this.dataset.fp)" data-fp="${esc(data.filePath)}">↗</button>`
+    : '';
+
+  const d = document.createElement('div');
+  d.className = 'diff-card'; // collapsed by default — click header to expand
   d.innerHTML = `<div class="diff-hdr">
-    <span class="diff-badge ${badgeCls}">${badge}</span>
-    <span class="diff-path">${esc(data.relPath || '')}</span>
+    <span class="diff-chevron">▶</span>
+    <span class="diff-lang-dot" style="background:${langColor(ext)}"></span>
+    ${badge}
+    <span class="diff-fname">${esc(fname)}</span>
+    <span class="diff-fdir">${esc(fdir)}</span>
     <div class="diff-stats">${addTxt}${remTxt}</div>
-    ${data.filePath ? `<button class="diff-open" data-fp="${esc(data.filePath)}" onclick="openFile(this.dataset.fp)">Open ↗</button>` : ''}
+    ${openBtn}
   </div>
   <div class="diff-body">${bodyHtml}</div>`;
+  d.querySelector('.diff-hdr').addEventListener('click', () => d.classList.toggle('open'));
   ibt(d);
 }
 
@@ -909,9 +930,10 @@ function exportSession() {
     } else if (node.classList.contains('msg-a')) {
       lines.push('**Dev Agent**\n' + (node.querySelector('.mab-md')?.innerText || '').trim());
     } else if (node.classList.contains('diff-card')) {
-      const p = node.querySelector('.diff-path')?.textContent || '';
+      const dir = node.querySelector('.diff-fdir')?.textContent || '';
+      const fname = node.querySelector('.diff-fname')?.textContent || '';
       const st = node.querySelector('.diff-stats')?.textContent || '';
-      lines.push('`' + p + '`' + (st ? '  ' + st : ''));
+      lines.push('`' + dir + fname + '`' + (st ? '  ' + st : ''));
     } else if (node.classList.contains('done-banner') || node.classList.contains('stop-banner')) {
       lines.push('---\n' + (node.querySelector('span')?.textContent || '').trim());
     }
