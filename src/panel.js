@@ -514,6 +514,35 @@ a{color:var(--acc)}
 .sd-add{color:var(--ok);font-weight:600}
 .sd-rem{color:var(--err);font-weight:600}
 
+/* ── browser context meter ── */
+#ctx-meter{
+  display:none;align-items:center;gap:5px;flex-shrink:0;
+  font-family:var(--mono);font-size:10px;color:var(--mu);opacity:.65;
+}
+#ctx-meter.show{display:flex}
+.ctx-bar{
+  width:36px;height:4px;border-radius:2px;overflow:hidden;
+  background:color-mix(in srgb,var(--mu) 15%,transparent);flex-shrink:0;
+}
+.ctx-fill{height:100%;border-radius:2px;transition:width .4s ease,background .4s;
+          background:var(--ok)}
+.ctx-fill.warn{background:var(--warn,#d29922)}
+.ctx-fill.crit{background:var(--err)}
+.ctx-lbl{font-size:10px;opacity:.7;white-space:nowrap}
+
+/* ── browser session rotation banner ── */
+.session-rotate{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;
+  margin:10px 0 4px;border-radius:7px;
+  background:color-mix(in srgb,var(--acc) 6%,transparent);
+  border:1px solid color-mix(in srgb,var(--acc) 18%,var(--bd));
+  font-size:11px;color:var(--mu);flex-shrink:0;
+}
+.sr-icon{font-size:13px;color:var(--acc);opacity:.8;flex-shrink:0;line-height:1}
+.sr-body{flex:1;min-width:0}
+.sr-title{font-weight:600;color:var(--fg);opacity:.75;font-size:11px}
+.sr-meta{font-size:10px;opacity:.5;font-family:var(--mono);margin-top:1px}
+
 /* ── phase timeline pills ─────────────────────────────────────────────── */
 #phase-pills{
   display:flex;align-items:center;gap:0;
@@ -1207,6 +1236,10 @@ a{color:var(--acc)}
       <div class="tool-chip" id="tool-chip"></div>
       <span class="phase-gap"></span>
       <span id="session-delta" class="hidden"></span>
+      <div id="ctx-meter">
+        <div class="ctx-bar"><div id="ctx-fill" class="ctx-fill" style="width:0%"></div></div>
+        <span id="ctx-lbl" class="ctx-lbl"></span>
+      </div>
       <div id="phase-stats"></div>
     </div>
     <div id="phase-pills" class="hidden"></div>

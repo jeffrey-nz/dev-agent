@@ -313,6 +313,9 @@ let _notesSeq = 0;
 
 const progressFill   = document.getElementById('progress-fill');
 const phaseStats     = document.getElementById('phase-stats');
+const ctxMeter       = document.getElementById('ctx-meter');
+const ctxFill        = document.getElementById('ctx-fill');
+const ctxLbl         = document.getElementById('ctx-lbl');
 const phasePillsEl   = document.getElementById('phase-pills');
 const activityStrip  = document.getElementById('activity-strip');
 const activityChips  = document.getElementById('activity-chips');
@@ -358,6 +361,7 @@ function resetSessionTracking() {
   sessionDeltaEl?.classList.add('hidden');
   _stepTimes = [];
   phasePillsEl?.classList.add('hidden');
+  ctxMeter?.classList.remove('show');
   phaseStats.innerHTML = ''; resetProgress();
 }
 
@@ -511,6 +515,29 @@ function updateSessionDelta(added, removed) {
   sessionDeltaEl.innerHTML = html;
 }
 
+function updateCtxMeter(messageCount, threshold) {
+  if (!ctxMeter || !ctxFill || !ctxLbl) return;
+  if (!threshold) { ctxMeter.classList.remove('show'); return; }
+  const pct = Math.min(100, Math.round((messageCount / threshold) * 100));
+  ctxFill.style.width = pct + '%';
+  ctxFill.classList.toggle('warn', pct >= 60 && pct < 85);
+  ctxFill.classList.toggle('crit', pct >= 85);
+  ctxLbl.textContent = messageCount + '/' + threshold;
+  ctxMeter.classList.add('show');
+}
+
+function addSessionRotateBanner(segmentIndex, previousMessageCount, providerName) {
+  const d = document.createElement('div');
+  d.className = 'session-rotate';
+  const provLabel = providerName ? providerName.replace('copilot365','Copilot').replace('deepseek','DeepSeek') : 'Browser';
+  d.innerHTML = '<span class="sr-icon">↻</span>'
+    + '<div class="sr-body">'
+    + '<div class="sr-title">New browser session · ' + provLabel + '</div>'
+    + '<div class="sr-meta">Segment ' + segmentIndex + ' — previous session had ' + previousMessageCount + ' messages</div>'
+    + '</div>';
+  ibt(d);
+}
+
 function addSpecialCard(type, text) {
   if (!text?.trim()) return;
   const cfg = {
@@ -604,6 +631,7 @@ function newChat(){
   phasePillsEl?.classList.add('hidden');
   activityStrip?.classList.add('hidden');
   sessionDeltaEl?.classList.add('hidden');
+  ctxMeter?.classList.remove('show');
   stopPhaseTimer();
   _stoppedByUser=false; _hadError=false;
   _userScrolled=false; scrollBtn.classList.remove('show');
@@ -1568,11 +1596,21 @@ window.addEventListener('message',e=>{
       btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); btnStop.disabled=false;
       setTimeout(()=>{
         phaseBar.classList.add('hidden'); currentStepIdx=-1;
+        ctxMeter?.classList.remove('show');
         document.getElementById('progress-bar').style.opacity='';
         resetProgress();
       },1400);
       break;
     }
+
+    case 'browser_context_update':
+      updateCtxMeter(msg.messageCount, msg.threshold);
+      break;
+
+    case 'copilot365_segment_boundary':
+      addSessionRotateBanner(msg.segmentIndex, msg.previousMessageCount, msg.providerName || 'copilot365');
+      updateCtxMeter(0, msg.threshold ?? null);
+      break;
   }
 });
 
