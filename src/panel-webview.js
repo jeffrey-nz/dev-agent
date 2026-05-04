@@ -698,6 +698,8 @@ window.addEventListener('message',e=>{
     }
 
     case 'bridge_offline':
+      // Don't reset UI mid-session — the bridge may be slow under load.
+      if (runningSid !== null) break;
       // Bridge went down — reset state and go back to connect screen so the
       // next startup cycle (waiting_provider_selection etc.) works correctly.
       cncStopPoll();

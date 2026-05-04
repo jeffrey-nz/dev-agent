@@ -677,7 +677,7 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
     <div id="cnc-waiting" class="hidden">
       <div class="cnc-spinner"></div>
       <div class="cnc-hint">Bridge is starting up…</div>
-      <div class="cnc-hint" style="margin-top:6px;font-size:11px;opacity:.7">Starting Chrome and connecting…</div>
+      <div class="cnc-hint" style="margin-top:6px;font-size:11px;opacity:.7">Starting browser and connecting…</div>
     </div>
 
     <!-- offline state -->
@@ -730,14 +730,14 @@ button{border:none;border-radius:var(--r);cursor:pointer;font:inherit;transition
       <div class="wz-line"></div>
       <div class="wz-step"><div class="wz-dot">4</div><div class="wz-label">Project</div></div>
     </div>
-    <strong>Log in to Chrome</strong>
+    <strong>Log in to the AI site</strong>
     <p>The browser panel on the right shows the AI site. Log in if needed, then confirm.</p>
   </div>
   <!-- shown while bridge process is starting -->
   <div id="bridge-launch">
     <div class="bl-spinner"></div>
     <div class="bl-stage" id="bl-stage">Launching browser process…</div>
-    <div class="bl-detail" id="bl-detail">Opening Chrome and starting the automation server</div>
+    <div class="bl-detail" id="bl-detail">Opening browser and starting the automation server</div>
     <div class="bl-elapsed" id="bl-elapsed"></div>
     <div class="bl-port" id="bl-port"></div>
   </div>

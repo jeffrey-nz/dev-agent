@@ -53,6 +53,7 @@ let statusBar = null;
 // check_bridge message is kept as a fallback.
 
 let _lastBridgeKey = null; // tracks last broadcast so we don't repeat
+let _bridgeOfflineTicks = 0; // grace period: require 3 consecutive failures before offline broadcast
 
 async function broadcastBridgeStatus(status, targetPanel) {
   const panel = targetPanel ?? DevAgentPanel.currentPanel;
@@ -113,6 +114,13 @@ function startBridgeWatcher(context) {
     if (!autoOpened && bridgeUp && !DevAgentPanel.currentPanel) {
       autoOpened = true;
       openChatPanel();
+    }
+
+    if (status.running) {
+      _bridgeOfflineTicks = 0;
+    } else {
+      _bridgeOfflineTicks++;
+      if (_bridgeOfflineTicks < 3) return; // ~6s grace period before declaring offline
     }
 
     if (key === _lastBridgeKey) return;
@@ -455,7 +463,8 @@ async function handleWebviewMessage(msg, senderPanel) {
 
       let lastWritePath = null;
       const broadcast = (e) => {
-        panel?.postMessage(e);
+        // Use currentPanel (not captured panel) so events reach a reopened panel
+        (DevAgentPanel.currentPanel ?? panel)?.postMessage(e);
         sidebarProvider?.postMessage(e);
 
         if (e.type === "phase_change") setStatusPhase(e.phase);
