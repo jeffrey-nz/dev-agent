@@ -24,9 +24,9 @@ const sessionList    = document.getElementById('session-list');
 const sessionsDrop   = document.getElementById('sessions-drop');
 const settingsDrop   = document.getElementById('settings-drop');
 const hdrProj    = document.getElementById('hdr-proj');
-const hdrProv    = null; // replaced by #btn-prov dropdown
 const btnSessions    = document.getElementById('btn-sessions');
 const btnSettingsBtn = document.getElementById('btn-settings');
+const btnNewChat     = document.getElementById('btn-new-chat');
 const ALL_SCRS   = [scrConnect, scrConfirm, scrProvider, scrProject, scrChat];
 
 /* ── screen helpers ── */
@@ -331,16 +331,18 @@ function toolStyle(n){
 function flushReads(){
   if(!readBuf.length) return;
   if(readBuf.length===1){
-    const c=document.createElement('div'); c.className='tcrd'; c.style.setProperty('--tc','var(--cr)');
-    c.innerHTML='<span class="tc-ico">📖</span><span class="tc-name">read</span>'
-      +'<span class="tc-file">'+esc((readBuf[0].s||readBuf[0].n).slice(0,80))+'</span><span class="tc-st">✓</span>';
+    const c=document.createElement('div'); c.className='tcrd done';
+    c.innerHTML='<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
+      +'<span class="tc-file">'+esc((readBuf[0].s||readBuf[0].n).slice(0,80))+'</span>'
+      +'<span class="tc-st">✓</span>';
     ibt(c);
   } else {
     const g=document.createElement('div'); g.className='rg-card';
     const items=readBuf.map(r=>'<div class="rg-item">'+esc((r.s||r.n).slice(0,70))+'</div>').join('');
     g.innerHTML='<div class="rg-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
-      +'<span class="tc-ico">📖</span><span class="tc-name">read</span>'
-      +'<span class="tc-file">'+readBuf.length+' files</span><span class="rg-caret">▾</span></div>'
+      +'<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
+      +'<span class="tc-file">'+readBuf.length+' files</span>'
+      +'<span class="rg-caret">▾</span></div>'
       +'<div class="rg-list">'+items+'</div>';
     ibt(g);
   }
@@ -349,9 +351,9 @@ function flushReads(){
 function addToolCard(name,summary){
   flushReads();
   const s=toolStyle(name); const c=document.createElement('div'); c.className='tcrd pending';
-  c.style.setProperty('--tc',s.color);
-  c.innerHTML='<span class="tc-ico">'+s.icon+'</span><span class="tc-name">'+s.label+'</span>'
-    +'<span class="tc-file">'+esc(summary?summary.slice(0,80):name)+'</span><span class="tc-st">…</span>';
+  c.innerHTML='<span class="tc-pfx">↳</span><span class="tc-name">'+s.label+'</span>'
+    +'<span class="tc-file">'+esc(summary?summary.slice(0,80):name)+'</span>'
+    +'<span class="tc-st">—</span>';
   ibt(c); pendingCard=c;
 }
 function resolveCard(isErr){
@@ -364,24 +366,26 @@ function resolveCard(isErr){
 /* ── message helpers ── */
 function addUserMsg(text){
   const d=document.createElement('div'); d.className='msg-u';
-  d.innerHTML='<div class="muh"><span class="mtime">'+ts()+'</span><span class="msend">You</span></div>'
-    +'<div class="mub">'+esc(text)+'</div>';
+  d.innerHTML='<div class="msg-sender">You</div>'
+    +'<div class="msg-body">'+esc(text)+'</div>';
   ibt(d);
 }
 function addAgentMsg(text){
   if(!text?.trim()) return;
   const d=document.createElement('div'); d.className='msg-a';
-  d.innerHTML='<div class="av-a">A</div><div class="mab-md">'+renderMarkdown(text)+'</div>';
+  d.innerHTML='<div class="msg-sender agent">Dev Agent</div>'
+    +'<div class="mab-md">'+renderMarkdown(text)+'</div>';
   ibt(d);
 }
 function addSysMsg(text,isErr){
   if(!text) return;
   const d=document.createElement('div'); d.className=isErr?'msg-err':'msg-sys';
-  d.textContent=isErr?'⚠ '+text:text; ibt(d);
+  d.textContent=isErr?'✗ '+text:text; ibt(d);
 }
 function addDoneBanner(){
   const d=document.createElement('div'); d.className='done-banner';
-  d.innerHTML='<span>✅</span><span>Task complete</span>'; ibt(d);
+  d.innerHTML='<div class="done-line"></div><span>✓ Task complete</span><div class="done-line"></div>';
+  ibt(d);
 }
 
 /* ── provider selection ── */
@@ -623,9 +627,8 @@ function renderWorkspaces(folders){
     const l=document.createElement('div'); l.className='proj-lbl'; l.textContent='Open workspaces'; projBody.appendChild(l);
     folders.forEach(f=>{
       const c=document.createElement('div'); c.className='proj-card';
-      c.innerHTML=`<span class="pi">🗂</span>
-        <div class="pinfo"><div class="pname">${esc(f.name)}</div><div class="ppath">${esc(f.path)}</div></div>
-        <span class="parr">›</span>`;
+      c.innerHTML=`<div class="pinfo"><div class="pname">${esc(f.name)}</div><div class="ppath">${esc(f.path)}</div></div>`
+        +`<span class="parr">›</span>`;
       c.addEventListener('click',()=>chooseFolder(f)); projBody.appendChild(c);
     });
   } else {
