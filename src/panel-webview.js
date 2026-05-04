@@ -171,6 +171,11 @@ function startPhaseTimer(label) {
       phaseLbl.appendChild(e); return e;
     })();
     el.textContent = ' · ' + (s >= 60 ? Math.floor(s/60)+'m '+s%60+'s' : s+'s');
+    // tick the live duration on the active phase pill
+    const liveDur = phasePillsEl?.querySelector('.pp-live');
+    if (liveDur && _stepTimes[currentStepIdx]) {
+      liveDur.textContent = _fmtDur(Date.now() - _stepTimes[currentStepIdx].start);
+    }
   }, 1000);
 }
 function stopPhaseTimer() { clearInterval(_phaseTimer); _phaseTimer = null; _phaseStartTs = null; }
@@ -259,6 +264,7 @@ function addFileDiff(data) {
   <div class="diff-body">${bodyHtml}</div>`;
   d.querySelector('.diff-hdr').addEventListener('click', () => d.classList.toggle('open'));
   ibt(d);
+  return d;
 }
 
 /* ══════════════════════════════════════
@@ -276,8 +282,23 @@ let _writesThisSession = []; // {path, isNew}
 let _readsThisSession  = new Set();
 let _runsThisSession   = 0;
 
-const progressFill = document.getElementById('progress-fill');
-const phaseStats   = document.getElementById('phase-stats');
+/* ── phase timeline ── */
+let _stepTimes = []; // [{start, end|null}] indexed by STEPS index
+
+/* ── activity strip ── */
+const _chipMap = new Map(); // relPath → {chip, added, removed}
+let _hiddenChipsCount = 0;
+let _totalAdded = 0, _totalRemoved = 0;
+let _lastRunSummary = null;
+const MAX_CHIPS = 7;
+
+const progressFill   = document.getElementById('progress-fill');
+const phaseStats     = document.getElementById('phase-stats');
+const phasePillsEl   = document.getElementById('phase-pills');
+const activityStrip  = document.getElementById('activity-strip');
+const activityChips  = document.getElementById('activity-chips');
+const activityOverflow = document.getElementById('activity-overflow');
+const sessionDeltaEl = document.getElementById('session-delta');
 
 const PHASE_PROGRESS = {
   PLANNING:12, ORCHESTRATING:18,
@@ -310,7 +331,140 @@ function updatePhaseStats() {
 
 function resetSessionTracking() {
   _writesThisSession = []; _readsThisSession = new Set(); _runsThisSession = 0;
+  _totalAdded = 0; _totalRemoved = 0; _lastRunSummary = null;
+  _chipMap.clear(); _hiddenChipsCount = 0;
+  if (activityChips) activityChips.innerHTML = '';
+  activityOverflow?.classList.add('hidden');
+  activityStrip?.classList.add('hidden');
+  sessionDeltaEl?.classList.add('hidden');
+  _stepTimes = [];
+  phasePillsEl?.classList.add('hidden');
   phaseStats.innerHTML = ''; resetProgress();
+}
+
+/* ── phase timeline helpers ── */
+function _fmtDur(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + 's';
+  return Math.floor(s/60) + 'm' + (s % 60 ? (s%60) + 's' : '');
+}
+
+function enterStep(idx) {
+  if (idx < 0) return;
+  const now = Date.now();
+  if (!_stepTimes[idx]) _stepTimes[idx] = { start: now, end: null };
+  for (let i = 0; i < idx; i++) {
+    if (_stepTimes[i] && _stepTimes[i].end === null) _stepTimes[i].end = now;
+  }
+  renderPhasePills();
+}
+
+function renderPhasePills() {
+  if (!phasePillsEl) return;
+  phasePillsEl.innerHTML = '';
+  phasePillsEl.classList.remove('hidden');
+  STEPS.forEach((step, i) => {
+    if (i > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'pp-sep'; sep.textContent = '›';
+      phasePillsEl.appendChild(sep);
+    }
+    const t = _stepTimes[i];
+    const isActive = i === currentStepIdx;
+    const isDone = t && t.end !== null;
+    const item = document.createElement('div');
+    item.className = 'pp-item' + (isDone ? ' done' : isActive ? ' active' : '');
+    item.style.setProperty('--pc', step.color);
+    if (isDone) {
+      item.innerHTML = '<span class="pp-check">✓</span>'
+        + '<span class="pp-label">' + step.label + '</span>'
+        + '<span class="pp-dur">' + _fmtDur(t.end - t.start) + '</span>';
+    } else if (isActive) {
+      const el = t ? _fmtDur(Date.now() - t.start) : '';
+      item.innerHTML = '<span class="pp-pulse"></span>'
+        + '<span class="pp-label">' + step.label + '</span>'
+        + (el ? '<span class="pp-dur pp-live">' + el + '</span>' : '');
+    } else {
+      item.innerHTML = '<span class="pp-num">' + (i+1) + '</span>'
+        + '<span class="pp-label">' + step.label + '</span>';
+    }
+    phasePillsEl.appendChild(item);
+  });
+}
+
+/* ── activity strip helpers ── */
+function addActivityChip(data, diffEl) {
+  if (!activityStrip) return;
+  activityStrip.classList.remove('hidden');
+  const { relPath='', ext='', isNew, added=0, removed=0 } = data;
+  const slash = relPath.lastIndexOf('/');
+  const fname = slash >= 0 ? relPath.slice(slash+1) : relPath;
+
+  if (_chipMap.has(relPath)) {
+    const entry = _chipMap.get(relPath);
+    entry.added += added; entry.removed += removed;
+    const st = entry.chip.querySelector('.ac-stats');
+    if (st) st.innerHTML = _chipStatsHtml(entry.added, entry.removed, isNew);
+    return;
+  }
+  const chip = document.createElement('div');
+  chip.className = 'ac-chip';
+  chip.title = relPath;
+  chip.innerHTML = '<span class="ac-dot" style="background:' + langColor(ext) + '"></span>'
+    + '<span class="ac-name">' + esc(fname) + '</span>'
+    + '<span class="ac-stats">' + _chipStatsHtml(added, removed, isNew) + '</span>';
+  if (diffEl) chip.addEventListener('click', e => {
+    e.stopPropagation();
+    diffEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    diffEl.classList.add('diff-flash');
+    setTimeout(() => diffEl.classList.remove('diff-flash'), 750);
+  });
+  _placeChip(chip);
+  _chipMap.set(relPath, { chip, added, removed });
+}
+
+function addCommandChip(summary) {
+  if (!activityStrip || !summary) return;
+  activityStrip.classList.remove('hidden');
+  const chip = document.createElement('div');
+  chip.className = 'ac-chip ac-run';
+  const label = summary.length > 28 ? summary.slice(0, 28) + '…' : summary;
+  chip.title = summary;
+  chip.innerHTML = '<span class="ac-run-dot">▷</span>'
+    + '<span class="ac-name">' + esc(label) + '</span>';
+  _placeChip(chip);
+}
+
+function _placeChip(chip) {
+  const visible = activityChips.querySelectorAll('.ac-chip').length;
+  if (visible < MAX_CHIPS) {
+    activityChips.appendChild(chip);
+  } else {
+    _hiddenChipsCount++;
+    if (activityOverflow) {
+      activityOverflow.textContent = '+' + _hiddenChipsCount + ' more';
+      activityOverflow.classList.remove('hidden');
+    }
+  }
+}
+
+function _chipStatsHtml(added, removed, isNew) {
+  if (isNew) return '<span class="ac-new">new</span>';
+  let s = '';
+  if (added)   s += '<span class="ac-add">+' + added + '</span>';
+  if (removed) s += '<span class="ac-rem">-' + removed + '</span>';
+  return s;
+}
+
+function updateSessionDelta(added, removed) {
+  _totalAdded += added; _totalRemoved += removed;
+  if (!sessionDeltaEl) return;
+  if (!_totalAdded && !_totalRemoved) { sessionDeltaEl.classList.add('hidden'); return; }
+  sessionDeltaEl.classList.remove('hidden');
+  let html = '';
+  if (_totalAdded)   html += '<span class="sd-add">+' + _totalAdded + '</span>';
+  if (_totalRemoved) html += '<span class="sd-rem"> −' + _totalRemoved + '</span>';
+  sessionDeltaEl.innerHTML = html;
 }
 
 function addSpecialCard(type, text) {
@@ -400,10 +554,17 @@ function newChat(){
   if(activeSid!==null) saveSession(activeSid);
   activeSid=null; clearMsgs(); showWelcome(); hideTyping();
   phaseBar.classList.add('hidden');
+  phasePillsEl?.classList.add('hidden');
+  activityStrip?.classList.add('hidden');
+  sessionDeltaEl?.classList.add('hidden');
   stopPhaseTimer();
   _stoppedByUser=false; _hadError=false;
   _userScrolled=false; scrollBtn.classList.remove('show');
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null;
+  _stepTimes=[]; _chipMap.clear(); _hiddenChipsCount=0;
+  _totalAdded=0; _totalRemoved=0;
+  if(activityChips) activityChips.innerHTML='';
+  activityOverflow?.classList.add('hidden');
   resetDividers();
   _histIdx=-1;
   btnSend.classList.remove('hidden'); btnStop.classList.add('hidden');
@@ -508,15 +669,15 @@ function phaseToStep(p){ for(let i=0;i<STEPS.length;i++) if(STEPS[i].phases.incl
 
 /* ── phase dividers ── */
 const PM={
-  PLANNING:{icon:'📋',label:'PLANNING',color:'var(--cp)'},
-  ORCHESTRATING:{icon:'🎯',label:'ORCHESTRATING',color:'var(--cp)'},
-  RESEARCHING:{icon:'🔬',label:'RESEARCHING',color:'var(--cr)'},
-  SCOPING:{icon:'🗺',label:'SCOPING',color:'var(--cr)'},
-  EXECUTION:{icon:'⚡',label:'EXECUTING',color:'var(--ce)'},
-  WRITING:{icon:'✏️',label:'WRITING',color:'var(--ce)'},
-  VERIFYING:{icon:'🧪',label:'VERIFYING',color:'var(--cv)'},
-  REVIEWING:{icon:'👀',label:'REVIEWING',color:'var(--cv)'},
-  DEBUGGING:{icon:'🐛',label:'DEBUGGING',color:'var(--cd)'},
+  PLANNING:{icon:'○',label:'PLANNING',color:'var(--cp)'},
+  ORCHESTRATING:{icon:'○',label:'ORCHESTRATING',color:'var(--cp)'},
+  RESEARCHING:{icon:'◎',label:'RESEARCHING',color:'var(--cr)'},
+  SCOPING:{icon:'◎',label:'SCOPING',color:'var(--cr)'},
+  EXECUTION:{icon:'▷',label:'EXECUTING',color:'var(--ce)'},
+  WRITING:{icon:'▷',label:'WRITING',color:'var(--ce)'},
+  VERIFYING:{icon:'◇',label:'VERIFYING',color:'var(--cv)'},
+  REVIEWING:{icon:'◇',label:'REVIEWING',color:'var(--cv)'},
+  DEBUGGING:{icon:'△',label:'DEBUGGING',color:'var(--cd)'},
 };
 let lastDividerPhase=''; const seenPhases=new Map();
 function addPhaseDivider(phase){
@@ -565,7 +726,7 @@ function flushReads(){
 }
 function addToolCard(name,summary){
   flushReads();
-  const s=toolStyle(name); const c=document.createElement('div'); c.className='tcrd pending';
+  const s=toolStyle(name); const c=document.createElement('div'); c.className='tcrd pending '+s.label;
   c.innerHTML='<span class="tc-pfx">↳</span><span class="tc-name">'+s.label+'</span>'
     +'<span class="tc-file">'+esc(summary?summary.slice(0,80):name)+'</span>'
     +'<span class="tc-st">—</span>';
@@ -1218,7 +1379,7 @@ window.addEventListener('message',e=>{
       phaseLbl.textContent=label;
       startPhaseTimer(label);
       const pct=PHASE_PROGRESS[ph]; if(pct) setProgress(pct);
-      const si=phaseToStep(ph); if(si>=0) setStep(si,ph==='DEBUGGING');
+      const si=phaseToStep(ph); if(si>=0) { setStep(si,ph==='DEBUGGING'); enterStep(si); }
       addPhaseDivider(ph);
       break;
     }
@@ -1240,6 +1401,7 @@ window.addEventListener('message',e=>{
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else if(ts_.label==='run'){
           _runsThisSession++;
+          _lastRunSummary = msg.paramsSummary || null;
           hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else {
@@ -1252,19 +1414,33 @@ window.addEventListener('message',e=>{
 
     case 'tool_call_end': {
       const isRead=toolStyle(msg.tool||'').label==='read';
+      const isWrite=toolStyle(msg.tool||'').label==='write';
+      const isRun=toolStyle(msg.tool||'').label==='run';
       // Increment tool counter for running session
       { const s=sessions.find(x=>x.id===runningSid); if(s) s.tools=(s.tools||0)+1; }
       if(isRead){
         toolChip.style.display='none';
       } else {
-        flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none'; showTyping();
+        flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none';
+        // Write tools: suppress typing — the file_diff card follows immediately
+        if(!isWrite || msg.isError) showTyping();
         if(msg.isError) addSysMsg('Tool error: '+msg.tool,true);
+        // Command chip: add to activity strip when run tool completes cleanly
+        if(isRun && !msg.isError && _lastRunSummary) {
+          addCommandChip(_lastRunSummary);
+          _lastRunSummary = null;
+        }
       }
       break;
     }
 
-    case 'file_diff':
-      addFileDiff(msg); break;
+    case 'file_diff': {
+      const diffEl = addFileDiff(msg);
+      addActivityChip(msg, diffEl);
+      updateSessionDelta(msg.added || 0, msg.removed || 0);
+      showTyping();
+      break;
+    }
 
     case 'message_complete': {
       hideTyping();
@@ -1330,7 +1506,12 @@ window.addEventListener('message',e=>{
       // Natural completion
       setProgress(100,'var(--ok)');
       setTimeout(()=>{ document.getElementById('progress-bar').style.opacity='0'; },1200);
-      setStep(4); addDoneBanner(); addChangesSummary(); finishSession('done');
+      setStep(4);
+      // Finalize phase timeline: close any open steps, mark Done
+      for(let i=0;i<4;i++){ if(_stepTimes[i]&&_stepTimes[i].end===null) _stepTimes[i].end=Date.now(); }
+      if(!_stepTimes[4]) _stepTimes[4]={start:Date.now(),end:Date.now()};
+      renderPhasePills();
+      addDoneBanner(); addChangesSummary(); finishSession('done');
       btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); btnStop.disabled=false;
       setTimeout(()=>{
         phaseBar.classList.add('hidden'); currentStepIdx=-1;
