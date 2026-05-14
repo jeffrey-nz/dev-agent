@@ -7,3 +7,4 @@ dev-agent.log
 copilot-reports/
 .verification_complete.txt
 logs/
+.claude/
