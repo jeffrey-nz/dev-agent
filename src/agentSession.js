@@ -4,11 +4,12 @@ const fs = require("fs");
 const path = require("path");
 
 class AgentSession extends EventEmitter {
-  constructor({ workspaceRoot, prompt, provider, onEvent, logger, images }) {
+  constructor({ workspaceRoot, prompt, provider, providerMode, onEvent, logger, images }) {
     super();
     this._workspaceRoot = workspaceRoot;
     this._prompt = prompt;
     this._provider = provider;
+    this._providerMode = providerMode || null;
     this._onEvent = onEvent;
     this._logger = logger;
     this._images = images || [];
@@ -67,7 +68,7 @@ class AgentSession extends EventEmitter {
         "system_message", "message_complete",
         "phase_change", "tool_call_start", "tool_call_end",
         "browser_context_update", "copilot365_segment_boundary",
-        "session_handoff",
+        "session_handoff", "session_role_update",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {
@@ -117,6 +118,7 @@ class AgentSession extends EventEmitter {
 
       await runCopilotFlow({
         providerName: this._provider,
+        providerMode: this._providerMode,
         projectDir: this._workspaceRoot,
         sessionInfo,
         signal: this._abortController.signal,

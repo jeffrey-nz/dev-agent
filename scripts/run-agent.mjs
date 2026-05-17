@@ -14,10 +14,17 @@ import fs from "node:fs";
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [,, provider = "deepseek", workspace = "/tmp/agent-test", ...promptParts] = process.argv;
-const prompt = promptParts.join(" ") || "Hello, build a simple hello world project.";
+const [,, provider = "deepseek", workspace = "/tmp/agent-test", ...rest] = process.argv;
+// Allow --mode <mode> anywhere after the workspace (e.g. fast / thinking / pro).
+let providerMode = null;
+const modeIdx = rest.indexOf("--mode");
+if (modeIdx !== -1) {
+  providerMode = rest[modeIdx + 1];
+  rest.splice(modeIdx, 2);
+}
+const prompt = rest.join(" ") || "Hello, build a simple hello world project.";
 
-console.log(`[runner] Provider: ${provider}`);
+console.log(`[runner] Provider: ${provider}${providerMode ? ` (mode: ${providerMode})` : ""}`);
 console.log(`[runner] Workspace: ${workspace}`);
 console.log(`[runner] Prompt: ${prompt.slice(0, 120)}${prompt.length > 120 ? '...' : ''}`);
 console.log(`[runner] Starting agent...\n`);
@@ -36,6 +43,7 @@ const session = new AgentSession({
   workspaceRoot: workspace,
   prompt,
   provider,
+  providerMode,
   onEvent: (e) => {
     if (e.type === "system_message") {
       log(`[${e.level || "info"}] ${e.text}`);

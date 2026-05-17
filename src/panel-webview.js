@@ -16,6 +16,9 @@ const typingEl   = document.getElementById('typing');
 const welcomeEl  = document.getElementById('welcome');
 const phaseBar   = document.getElementById('phase-bar');
 const phaseLbl   = document.getElementById('phase-lbl');
+const aiSessionsBar    = document.getElementById('ai-sessions-bar');
+const aiSessPrimary    = document.getElementById('ai-sess-primary');
+const aiSessAuxiliary  = document.getElementById('ai-sess-auxiliary');
 const toolChip   = document.getElementById('tool-chip');
 const prompt     = document.getElementById('prompt');
 const btnSend    = document.getElementById('btn-send');
@@ -199,6 +202,44 @@ function startPhaseTimer(label) {
   }, 1000);
 }
 function stopPhaseTimer() { clearInterval(_phaseTimer); _phaseTimer = null; _phaseStartTs = null; }
+
+/* ── AI sessions bar ──────────────────────────────────────────────────── */
+const _PROVIDER_LABELS = {
+  deepseek: 'DeepSeek', chatgpt: 'ChatGPT', gemini: 'Gemini',
+  grok: 'Grok', copilot: 'Copilot', claude: 'Claude', unknown: '—',
+};
+function _providerLabel(id) {
+  if (!id) return '—';
+  return _PROVIDER_LABELS[id.toLowerCase()] || id;
+}
+function updateAiSessionBar(role, status, provider, task) {
+  if (!aiSessionsBar) return;
+  const el = role === 'primary' ? aiSessPrimary : aiSessAuxiliary;
+  if (!el) return;
+
+  const nameEl = el.querySelector('.ai-sess-name');
+  const taskEl = el.querySelector('.ai-sess-task');
+  const isActive = status === 'active';
+
+  el.classList.toggle('active', isActive);
+  if (nameEl) nameEl.textContent = _providerLabel(provider);
+  if (taskEl) taskEl.textContent = isActive && task ? task : '';
+
+  // Show/hide the bar: show whenever either session has been touched
+  aiSessionsBar.classList.add('show');
+}
+function resetAiSessionBar() {
+  if (!aiSessionsBar) return;
+  aiSessionsBar.classList.remove('show');
+  [aiSessPrimary, aiSessAuxiliary].forEach(el => {
+    if (!el) return;
+    el.classList.remove('active');
+    const nameEl = el.querySelector('.ai-sess-name');
+    const taskEl = el.querySelector('.ai-sess-task');
+    if (nameEl) nameEl.textContent = '—';
+    if (taskEl) taskEl.textContent = '';
+  });
+}
 
 /* ── copy agent message ── */
 function copyMsg(btn) {
@@ -1360,6 +1401,7 @@ btnSend.addEventListener('click',()=>{
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null; resetDividers();
   stopPhaseTimer();
+  resetAiSessionBar();
   // Serialize images as {data, mimeType} objects — strip the name field to keep the payload lean
   const images = _pendingImages.map(i=>({data:i.data, mimeType:i.mimeType}));
   vscode.postMessage({type:'start_task', prompt:text, provider: _selectedProvider || undefined, ...(images.length?{images}:{})});
@@ -1723,6 +1765,7 @@ window.addEventListener('message',e=>{
         ctxMeter?.classList.remove('show');
         document.getElementById('progress-bar').style.opacity='';
         resetProgress();
+        resetAiSessionBar();
       },1400);
       break;
     }
@@ -1738,6 +1781,10 @@ window.addEventListener('message',e=>{
     case 'copilot365_segment_boundary':
       // Only show banner if session_handoff wasn't already shown for this rotation
       if (!msg._suppressBanner) addHandoffCard(msg);
+      break;
+
+    case 'session_role_update':
+      updateAiSessionBar(msg.role, msg.status, msg.provider, msg.task);
       break;
   }
 });

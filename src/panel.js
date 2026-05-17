@@ -530,6 +530,48 @@ a{color:var(--acc)}
 .ctx-fill.crit{background:var(--err)}
 .ctx-lbl{font-size:10px;opacity:.7;white-space:nowrap}
 
+/* ── AI sessions bar ────────────────────────────────────────────────── */
+#ai-sessions-bar{
+  flex-shrink:0;display:none;align-items:center;gap:6px;padding:0 10px;
+  height:26px;border-bottom:1px solid var(--bd);
+  background:color-mix(in srgb,var(--bg) 97%,var(--acc) 3%);
+  font-size:10.5px;
+}
+#ai-sessions-bar.show{display:flex}
+.ai-sess{
+  display:flex;align-items:center;gap:5px;padding:2px 7px;
+  border-radius:4px;border:1px solid color-mix(in srgb,var(--bd) 80%,transparent);
+  transition:border-color .2s,background .2s;flex-shrink:0;
+}
+.ai-sess.active{
+  border-color:color-mix(in srgb,var(--acc) 50%,transparent);
+  background:color-mix(in srgb,var(--acc) 8%,transparent);
+}
+.ai-sess-dot{
+  width:6px;height:6px;border-radius:50%;background:color-mix(in srgb,var(--mu) 30%,transparent);
+  flex-shrink:0;transition:background .2s;
+}
+.ai-sess.active .ai-sess-dot{
+  background:var(--acc);
+  animation:sess-pulse 1.6s ease-in-out infinite;
+}
+@keyframes sess-pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.4;transform:scale(.85)}
+}
+.ai-sess-badge{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--mu);opacity:.6;
+}
+.ai-sess.active .ai-sess-badge{opacity:.9;color:var(--acc)}
+.ai-sess-name{font-weight:600;color:var(--fg);opacity:.8;font-size:10.5px}
+.ai-sess-task{
+  color:var(--mu);opacity:.65;font-family:var(--mono);font-size:10px;
+  max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ai-sess.active .ai-sess-task{opacity:.9}
+.ai-sess-sep{color:var(--mu);opacity:.25;flex-shrink:0;font-size:10px;margin:0 1px}
+
 /* ── browser session rotation banner ── */
 /* ── session handoff card ─────────────────────────────────────────────── */
 .handoff-card{
@@ -1317,6 +1359,21 @@ a{color:var(--acc)}
         <span id="ctx-lbl" class="ctx-lbl"></span>
       </div>
       <div id="phase-stats"></div>
+    </div>
+    <div id="ai-sessions-bar">
+      <div class="ai-sess" id="ai-sess-primary">
+        <div class="ai-sess-dot"></div>
+        <span class="ai-sess-badge">Primary</span>
+        <span class="ai-sess-name" id="ai-sess-primary-name">—</span>
+        <span class="ai-sess-task" id="ai-sess-primary-task"></span>
+      </div>
+      <span class="ai-sess-sep">·</span>
+      <div class="ai-sess" id="ai-sess-auxiliary">
+        <div class="ai-sess-dot"></div>
+        <span class="ai-sess-badge">Aux</span>
+        <span class="ai-sess-name" id="ai-sess-auxiliary-name">—</span>
+        <span class="ai-sess-task" id="ai-sess-auxiliary-task"></span>
+      </div>
     </div>
     <div id="phase-pills" class="hidden"></div>
     <div id="progress-bar"><div id="progress-fill"></div></div>

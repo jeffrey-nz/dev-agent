@@ -3,7 +3,6 @@ const path = require("path");
 const fs = require("fs");
 const { AgentSession } = require("./agentSession");
 const { DevAgentViewProvider, DevAgentPanel } = require("./panel");
-const { BrowserViewPanel } = require("./browserPanel");
 const { SessionLogger } = require("./logger");
 const { computeFileDiff } = require("./diffUtils");
 const bridge = require("./bridgeLauncher");
@@ -66,7 +65,6 @@ async function broadcastBridgeStatus(status, targetPanel) {
     panel?.postMessage({ type: "bridge_offline" });
     panel?.postMessage({ type: "bridge_info", cmd: `node "${binPath}"` });
     sidebarProvider?.postMessage({ type: "bridge_offline" });
-    BrowserViewPanel.dispose();
   } else if (status.phase === "ready") {
     // Sync selectedProviders from the bridge's actual active providers
     if (selectedProviders.length === 0) {
@@ -84,16 +82,10 @@ async function broadcastBridgeStatus(status, targetPanel) {
         path: workspaceRoot,
       });
     }
-    if (extensionCtx) {
-      BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
-    }
   } else {
     panel?.postMessage({ type: "bridge_starting", providers: [] });
     panel?.postMessage({ type: "setup_state", state: { ...status.data, port: status.port } });
     sidebarProvider?.postMessage({ type: "bridge_starting" });
-    if (extensionCtx && status.phase === "waiting_confirm") {
-      BrowserViewPanel.createOrShow(extensionCtx, status.port ?? bridge.resolvePort(), handleBrowserPanelMessage);
-    }
   }
 }
 
@@ -235,12 +227,6 @@ async function openChatPanel() {
 
 function handleSidebarMessage(msg) {
   if (msg.type === "open_panel") openChatPanel();
-}
-
-function handleBrowserPanelMessage(msg) {
-  if (msg.type === "browser_confirm_ready") {
-    bridge.confirmProvider().catch(() => {});
-  }
 }
 
 // ── Status bar helpers ─────────────────────────────────────────────────────
@@ -543,7 +529,6 @@ async function handleWebviewMessage(msg, senderPanel) {
     case "stop_bridge":
       agentSession?.stop();
       bridge.stopBridge();
-      BrowserViewPanel.dispose();
       selectedProviders = [];
       workspaceRoot = null;
       _lastBridgeKey = null;
