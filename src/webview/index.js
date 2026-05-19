@@ -542,6 +542,7 @@ btnSend?.addEventListener('click', () => {
   prompt.value = '';
   prompt.style.height = '';
   btnSend.disabled = true;
+  localStorage.removeItem(_DRAFT_KEY);
   setPendingImages([]);
   renderAttachPreviews();
   btnSend.classList.add('hidden');
@@ -630,9 +631,28 @@ prompt?.addEventListener('input', () => {
   const len = prompt.value.length;
   if (inpChar) inpChar.textContent = len > 60 ? len + ' chars' : '';
   if (inpHint) inpHint.style.display = len > 60 ? 'none' : '';
+  // Persist draft (or clear when empty)
+  if (prompt.value.trim()) localStorage.setItem(_DRAFT_KEY, prompt.value);
+  else localStorage.removeItem(_DRAFT_KEY);
 });
 
 if (btnSend) btnSend.disabled = true;
+
+// ── Draft prompt persistence ───────────────────────────────────────────────
+// Saves the textarea content to localStorage so it survives panel reloads.
+
+const _DRAFT_KEY = 'da-prompt-draft';
+
+(function _restoreDraft() {
+  const saved = localStorage.getItem(_DRAFT_KEY);
+  if (saved && prompt && !sessionLocked) {
+    prompt.value = saved;
+    prompt.dispatchEvent(new Event('input'));
+  }
+})();
+
+// Clear draft once a message is sent (added to btnSend handler below)
+// Clear draft when the textarea is emptied (handled in prompt input handler)
 
 // ── Rotating placeholder prompts ───────────────────────────────────────────
 // Cycles through example prompts in the textarea when the user isn't typing.
@@ -764,9 +784,16 @@ document.addEventListener('keydown', e => {
     if (msgSearchEl?.classList.contains('hidden')) _openSearch(); else _closeSearch();
     return;
   }
-  // Cmd/Ctrl+K — new chat (when prompt not focused)
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k' && document.activeElement !== prompt) {
+  // Cmd/Ctrl+K or Cmd/Ctrl+L — new chat (when prompt not focused)
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'l') && document.activeElement !== prompt) {
     e.preventDefault(); newChat();
+  }
+  // Cmd/Ctrl+/ — focus the prompt input
+  if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+    e.preventDefault();
+    closeDropdowns();
+    prompt?.focus();
+    prompt?.select();
   }
   // Cmd/Ctrl+Shift+I — debug snapshot
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'i') {
