@@ -1347,6 +1347,16 @@ function exportSession() {
       const label = node.querySelector('.sc-label')?.textContent || 'Plan';
       const body = node.querySelector('.sc-body')?.innerText || '';
       if (body.trim()) lines.push('**' + label + '**\n' + body.trim());
+    } else if (node.classList.contains('run-output')) {
+      const t = node.textContent?.trim();
+      if (t) lines.push('```\n' + t + '\n```');
+    } else if (node.classList.contains('subtask-chip')) {
+      const num = node.querySelector('.sc-num')?.textContent || '';
+      const lbl = node.querySelector('.sc-label')?.textContent || '';
+      if (lbl) lines.push('**Subtask ' + num + ':** ' + lbl);
+    } else if (node.classList.contains('retry-notice')) {
+      const t = node.textContent?.trim().replace(/\s+/g, ' ');
+      if (t) lines.push('> ↺ ' + t);
     } else if (node.classList.contains('msg-ok') || node.classList.contains('msg-sys')) {
       const t = node.textContent?.trim();
       if (t) lines.push('> ' + t);
@@ -1795,6 +1805,14 @@ window.addEventListener('message',e=>{
         if(msg.isError){
           const errDetail = msg.errorSummary || msg.error || msg.tool;
           addSysMsg('Tool error: '+errDetail,true);
+        } else if(isRun && msg.result && !msg.result.startsWith('[ERROR]')) {
+          // Surface run-tool output as a faint code snippet after the card resolves
+          const out = msg.result.trimEnd();
+          if (out && out.length > 2) {
+            const pre = document.createElement('pre'); pre.className = 'run-output';
+            pre.textContent = out.length > 240 ? out.slice(0, 240) + '\n…' : out;
+            ibt(pre);
+          }
         }
       }
       break;
@@ -2031,10 +2049,18 @@ window.addEventListener('message',e=>{
     case 'research_progress': {
       const { step, maxSteps, elapsed } = msg;
       _dlog('research_progress: step=' + step + (maxSteps ? '/' + maxSteps : '') + (elapsed ? ' elapsed='+elapsed+'s' : ''));
-      // Update typing label to show research step progress instead of just the phase name
       if (typingLblEl && step != null) {
-        const elapsedStr = elapsed != null ? ' · ' + elapsed + 's' : '';
-        typingLblEl.textContent = 'step ' + step + (maxSteps ? '/' + maxSteps : '') + elapsedStr;
+        const isExecution = currentPhase === 'EXECUTION' || currentPhase === 'WRITING';
+        if (isExecution) {
+          // During execution, show elapsed seconds without clobbering subtask label
+          const existing = typingLblEl.textContent.replace(/ · \d+s$/, '');
+          const elapsedStr = elapsed != null ? ' · ' + elapsed + 's' : '';
+          typingLblEl.textContent = existing + elapsedStr;
+        } else {
+          // During research/scoping, show step counter
+          const elapsedStr = elapsed != null ? ' · ' + elapsed + 's' : '';
+          typingLblEl.textContent = 'step ' + step + (maxSteps ? '/' + maxSteps : '') + elapsedStr;
+        }
       }
       break;
     }

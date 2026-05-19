@@ -883,6 +883,16 @@ a{color:var(--acc)}
 .tcrd.pending .tc-st{color:var(--mu);opacity:.3}
 .tcrd.run.done .tc-st{color:var(--cv)}
 
+/* run tool output snippet */
+.run-output{
+  font-family:var(--mono);font-size:10px;color:var(--mu);
+  white-space:pre-wrap;word-break:break-all;
+  margin:1px 0 3px 18px;padding:3px 8px;
+  background:color-mix(in srgb,var(--mu) 5%,transparent);
+  border-radius:3px;opacity:.65;
+  max-height:80px;overflow:hidden;
+}
+
 /* read groups */
 .rg-card{margin:1px 0;font-family:var(--mono);border-left:2px solid transparent}
 .rg-hdr{display:flex;align-items:center;gap:8px;padding:3px 8px 3px 8px;
