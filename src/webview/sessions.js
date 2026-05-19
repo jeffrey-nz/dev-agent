@@ -48,17 +48,35 @@ const scrollBtn   = document.getElementById('scroll-btn');
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Format a date as a relative time string (e.g. "3m ago", "just now").
+ * Format a date as a human-readable time string.
+ * Recent (< 60s): "just now" / "42s ago".
+ * Same day (< 90min): "X m ago"; older same-day: "3:45 PM".
+ * Yesterday / earlier this week: "Yesterday" / "Mon".
+ * Older: "May 14" or "May 14, 2024".
  * @param {Date} d
  * @returns {string}
  */
 function relTime(d) {
   const s = Math.floor((Date.now() - d) / 1000);
-  if (s < 5)     return 'just now';
-  if (s < 60)    return s + 's ago';
-  if (s < 3600)  return Math.floor(s / 60) + 'm ago';
-  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-  return Math.floor(s / 86400) + 'd ago';
+  if (s < 5)    return 'just now';
+  if (s < 60)   return s + 's ago';
+  if (s < 5400) return Math.floor(s / 60) + 'm ago'; // up to 90 min
+
+  const now = new Date();
+  const dt  = new Date(d);
+  const sameDay  = dt.toDateString() === now.toDateString();
+  if (sameDay) return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  if (dt.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+  // Same calendar week: show weekday name
+  if (s < 518400) return dt.toLocaleDateString([], { weekday: 'short' });
+
+  // Older: "May 14" (omit year if same year)
+  const opts = { month: 'short', day: 'numeric' };
+  if (dt.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return dt.toLocaleDateString([], opts);
 }
 
 /**

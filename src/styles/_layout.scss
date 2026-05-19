@@ -239,6 +239,12 @@
   }
 }
 
+// Agent is running: accent-tinted border + subtle pulse animation
+.inp-area:has(.inp-stop:not(.hidden)) .inp-wrap {
+  border-color: color-mix(in srgb, var(--acc) 35%, var(--in-bd));
+  animation: inp-running 2.5s ease-in-out infinite;
+}
+
 // Main text input
 #prompt {
   width: 100%;

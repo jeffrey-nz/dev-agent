@@ -793,6 +793,20 @@ document.addEventListener('keydown', e => {
       }
     }
   }
+  // ⌘↑/⌘↓ — jump between user messages in the transcript
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+      && document.activeElement !== prompt) {
+    e.preventDefault();
+    const userMsgs = Array.from(messages.querySelectorAll('.msg-u'));
+    if (!userMsgs.length) return;
+    const midY = messages.scrollTop + messages.clientHeight / 2;
+    let cur = -1;
+    userMsgs.forEach((el, i) => { if (el.offsetTop <= midY) cur = i; });
+    const next = e.key === 'ArrowDown'
+      ? Math.min(cur + 1, userMsgs.length - 1)
+      : Math.max(cur - 1, 0);
+    if (next >= 0) userMsgs[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 });
 
 // ── Header bar actions ─────────────────────────────────────────────────────
