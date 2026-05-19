@@ -129,6 +129,9 @@ async function runScenario(scenario, opts) {
     subtasksPassed: 0,
     subtasksFailed: 0,
     phases: [],
+    errors: [],   // captured error/warn system messages
+    eventCounts: {},
+    lastEvents: [],  // last 30 event types (for forensics)
   };
 
   const startMs = Date.now();
@@ -142,18 +145,37 @@ async function runScenario(scenario, opts) {
     provider: opts.provider,
     providerMode: opts.providerMode,
     onEvent: (e) => {
+      metrics.eventCounts[e.type] = (metrics.eventCounts[e.type] || 0) + 1;
+      metrics.lastEvents.push({
+        t: Date.now() - startMs,
+        type: e.type,
+        snippet: typeof e.text === "string" ? e.text.slice(0, 120) : undefined,
+        phase: e.phase,
+        feedback: e.feedback,
+      });
+      if (metrics.lastEvents.length > 30) metrics.lastEvents.shift();
+
       if (e.type === "subtask_status") {
         if (e.feedback === "PASS") metrics.subtasksPassed++;
         else if (e.feedback === "FAIL") metrics.subtasksFailed++;
-        // retries is cumulative for this subtask — sum across all subtasks
         if (e.retries > 0) metrics.coderRetries += e.retries;
       }
-      if (
-        e.type === "system_message" &&
-        typeof e.text === "string" &&
-        /patch review.*issue/i.test(e.text)
-      ) {
-        metrics.patchRetries++;
+      if (e.type === "system_message" && typeof e.text === "string") {
+        if (/patch review.*issue/i.test(e.text)) metrics.patchRetries++;
+        if (e.level === "error" || e.level === "warning" || /error|failed|aborted|stalled|blocked/i.test(e.text)) {
+          metrics.errors.push({
+            t: Date.now() - startMs,
+            level: e.level || "info",
+            text: e.text.slice(0, 300),
+          });
+        }
+      }
+      if (e.type === "session_error") {
+        metrics.errors.push({
+          t: Date.now() - startMs,
+          level: "session_error",
+          text: (e.message || JSON.stringify(e)).slice(0, 300),
+        });
       }
       if (e.type === "phase_change") {
         metrics.phases.push({ phase: e.phase, msFromStart: Date.now() - startMs });
@@ -210,6 +232,9 @@ async function runScenario(scenario, opts) {
     subtasksPassed: metrics.subtasksPassed,
     subtasksFailed: metrics.subtasksFailed,
     phases: metrics.phases,
+    errors: metrics.errors,
+    eventCounts: metrics.eventCounts,
+    lastEvents: metrics.lastEvents,
     workspace: opts.keepWorkspace ? ws : null,
   };
 }

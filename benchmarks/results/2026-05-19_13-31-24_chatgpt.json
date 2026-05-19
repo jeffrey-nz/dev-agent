@@ -1,0 +1,57 @@
+{
+  "provider": "chatgpt",
+  "providerMode": null,
+  "startedAt": "2026-05-19T13:23:31.975Z",
+  "completedAt": "2026-05-19T13:31:24.604Z",
+  "totalDurationMs": 472629,
+  "passRate": 0,
+  "results": [
+    {
+      "scenarioId": "python-todo-cli",
+      "name": "Python Todo CLI",
+      "language": "python",
+      "provider": "chatgpt",
+      "durationMs": 471421,
+      "sessionError": null,
+      "checkPassed": false,
+      "checkPassCount": 1,
+      "checkFailCount": 7,
+      "checkOutput": "TAP version 13\n# Subtest: All three source modules exist\nnot ok 1 - All three source modules exist\n  ---\n  duration_ms: 7.364259\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:17:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Missing modules: todo.py, storage.py, models.py. Files: .backup, .git\n    + actual - expected\n    \n    + [\n    +   'todo.py',\n    +   'storage.py',\n    +   'models.py'\n    + ]\n    - []\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: 'todo.py'\n    1: 'storage.py'\n    2: 'models.py'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:20:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    node:internal/test_runner/harness:255:12\n    node:internal/process/task_queues:140:7\n    AsyncResource.runInAsyncScope (node:async_hooks:206:9)\n    AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)\n  ...\n# Subtest: Both test files exist\nnot ok 2 - Both test files exist\n  ---\n  duration_ms: 0.505345\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:23:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Missing test files: test_storage.py, test_models.py\n    + actual - expected\n    \n    + [\n    +   'test_storage.py',\n    +   'test_models.py'\n    + ]\n    - []\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: 'test_storage.py'\n    1: 'test_models.py'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:26:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: pytest exits 0 with at least 5 tests passing\nnot ok 3 - pytest exits 0 with at least 5 tests passing\n  ---\n  duration_ms: 283.562339\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:29:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    pytest failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/bin/python3: No module named pytest\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:35:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: Todo dataclass: defaults and to_dict/from_dict round-trip\nnot ok 4 - Todo dataclass: defaults and to_dict/from_dict round-trip\n  ---\n  duration_ms: 98.427298\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:41:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Todo model smoke failed:\n    Traceback (most recent call last):\n      File \"<string>\", line 2, in <module>\n        from models import Todo\n    ModuleNotFoundError: No module named 'models'\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:52:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: storage: load returns [] on missing file, save/load round-trips\nnot ok 5 - storage: load returns [] on missing file, save/load round-trips\n  ---\n  duration_ms: 87.372937\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:55:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    storage smoke failed:\n    Traceback (most recent call last):\n      File \"<string>\", line 3, in <module>\n        from storage import load_todos, save_todos, next_id\n    ModuleNotFoundError: No module named 'storage'\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:82:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: CLI end-to-end: add, list, complete\nnot ok 6 - CLI end-to-end: add, list, complete\n  ---\n  duration_ms: 47.148384\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:85:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    add 1 failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python: can't open file '/private/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-FmLtow/todo.py': [Errno 2] No such file or directory\n    \n    \n    2 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 2\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:93:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: CLI errors: complete with unknown id exits non-zero\nok 7 - CLI errors: complete with unknown id exits non-zero\n  ---\n  duration_ms: 52.570562\n  ...\n# Subtest: storage uses .todos.json as the default path\nnot ok 8 - storage uses .todos.json as the default path\n  ---\n  duration_ms: 0.628868\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:127:1'\n  failureType: 'testCodeFailure'\n  error: \"ENOENT: no such file or directory, open '/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-FmLtow/storage.py'\"\n  code: 'ENOENT'\n  stack: |-\n    readFileSync (node:fs:448:20)\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:128:15)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 1\n# fail 7\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 764.800355\n",
+      "coderRetries": 0,
+      "patchRetries": 0,
+      "subtasksPassed": 0,
+      "subtasksFailed": 0,
+      "phases": [
+        {
+          "phase": "EXECUTION",
+          "msFromStart": 1927
+        },
+        {
+          "phase": "ORCHESTRATING",
+          "msFromStart": 2045
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 2054
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 80271
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 357423
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 432095
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 470794
+        }
+      ],
+      "workspace": null
+    }
+  ]
+}
