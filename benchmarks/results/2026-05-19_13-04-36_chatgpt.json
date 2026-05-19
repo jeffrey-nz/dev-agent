@@ -1,0 +1,93 @@
+{
+  "provider": "chatgpt",
+  "providerMode": null,
+  "startedAt": "2026-05-19T12:55:08.097Z",
+  "completedAt": "2026-05-19T13:04:36.947Z",
+  "totalDurationMs": 568850,
+  "passRate": 0,
+  "results": [
+    {
+      "scenarioId": "python-calculator",
+      "name": "Python Calculator",
+      "language": "python",
+      "provider": "chatgpt",
+      "durationMs": 567823,
+      "sessionError": null,
+      "checkPassed": false,
+      "checkPassCount": 0,
+      "checkFailCount": 5,
+      "checkOutput": "TAP version 13\n# Subtest: calculator.py was created\nnot ok 1 - calculator.py was created\n  ---\n  duration_ms: 4.082007\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:18:1'\n  failureType: 'testCodeFailure'\n  error: 'calculator.py not found — agent did not create the main module'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:19:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    node:internal/test_runner/harness:255:12\n    node:internal/process/task_queues:140:7\n    AsyncResource.runInAsyncScope (node:async_hooks:206:9)\n    AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)\n  ...\n# Subtest: test_calculator.py was created\nnot ok 2 - test_calculator.py was created\n  ---\n  duration_ms: 2.03982\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:25:1'\n  failureType: 'testCodeFailure'\n  error: 'No test_*.py file found in workspace. Files: .backup, .git, docs'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:27:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: pytest exits 0 (all tests pass)\nnot ok 3 - pytest exits 0 (all tests pass)\n  ---\n  duration_ms: 136.675406\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:30:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    pytest failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/bin/python3: No module named pytest\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:35:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: Calculator.add(2, 3) returns 5\nnot ok 4 - Calculator.add(2, 3) returns 5\n  ---\n  duration_ms: 112.247208\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:40:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Smoke test failed:\n    Traceback (most recent call last):\n      File \"<string>\", line 2, in <module>\n        from calculator import Calculator\n    ModuleNotFoundError: No module named 'calculator'\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:48:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: Calculator.divide raises ValueError on zero divisor\nnot ok 5 - Calculator.divide raises ValueError on zero divisor\n  ---\n  duration_ms: 110.35976\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:51:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    ValueError check failed:\n    Traceback (most recent call last):\n      File \"<string>\", line 2, in <module>\n        from calculator import Calculator\n    ModuleNotFoundError: No module named 'calculator'\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-calculator.check.mjs:62:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 0\n# fail 5\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 591.51543\n",
+      "coderRetries": 8,
+      "patchRetries": 0,
+      "subtasksPassed": 2,
+      "subtasksFailed": 2,
+      "phases": [
+        {
+          "phase": "EXECUTION",
+          "msFromStart": 2157
+        },
+        {
+          "phase": "ORCHESTRATING",
+          "msFromStart": 2282
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 2303
+        },
+        {
+          "phase": "RESEARCHING",
+          "msFromStart": 62340
+        },
+        {
+          "phase": "WRITING",
+          "msFromStart": 99873
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 99927
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 100299
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 100301
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 323049
+        },
+        {
+          "phase": "WRITING",
+          "msFromStart": 323202
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 323213
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 323430
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 323434
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 540460
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 540640
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 540641
+        }
+      ],
+      "workspace": null
+    }
+  ]
+}
