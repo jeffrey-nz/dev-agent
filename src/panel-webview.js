@@ -1982,8 +1982,13 @@ window.addEventListener('message',e=>{
     case 'progress_update': {
       const { completed = 0, total = 1 } = msg;
       _dlog('progress_update: ' + completed + '/' + total);
-      // Drive progress bar: scale 15→90% range across subtask completion
-      if (total > 0) setProgress(Math.min(90, Math.round((completed / total) * 80) + 12));
+      // Scale from EXECUTION baseline (55%) to 90% as subtasks complete.
+      // This prevents the bar from going backward after the EXECUTION phase_change already set 55%.
+      if (total > 0) {
+        const base = PHASE_PROGRESS['EXECUTION'] || 55;
+        const pct = Math.min(90, Math.round(base + ((90 - base) * completed) / total));
+        setProgress(pct);
+      }
       break;
     }
 
