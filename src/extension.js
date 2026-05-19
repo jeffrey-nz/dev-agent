@@ -35,6 +35,7 @@ const PROVIDERS = [
   { id: "gemini",    label: "Google Gemini",          description: "Google's AI assistant" },
   { id: "deepseek",  label: "DeepSeek",               description: "DeepSeek AI" },
   { id: "grok",      label: "xAI Grok",               description: "xAI's Grok assistant" },
+  { id: "claude",    label: "Claude",                 description: "Anthropic's Claude" },
 ];
 
 const PROVIDER_LABELS = Object.fromEntries(PROVIDERS.map((p) => [p.id, p.label]));
@@ -255,7 +256,8 @@ function setStatusPhase(phase) {
   if (!statusBar) return;
   const icon = PHASE_ICONS[phase] ?? "$(sync~spin)";
   const label = phase.charAt(0) + phase.slice(1).toLowerCase();
-  statusBar.text = `${icon} Dev Agent · ${label}`;
+  const provLabel = selectedProviders.length > 0 ? ` · ${PROVIDER_LABELS[selectedProviders[0]] ?? selectedProviders[0]}` : '';
+  statusBar.text = `${icon} Dev Agent · ${label}${provLabel}`;
   statusBar.backgroundColor = undefined;
 }
 
@@ -456,7 +458,15 @@ async function handleWebviewMessage(msg, senderPanel) {
     }
 
     case "open_file": {
-      if (msg.path) vscode.window.showTextDocument(vscode.Uri.file(msg.path)).catch(() => {});
+      if (!msg.path) break;
+      // Resolve relative paths against the current workspace root
+      let filePath = msg.path;
+      if (!path.isAbsolute(filePath) && workspaceRoot) {
+        filePath = path.join(workspaceRoot, filePath);
+      }
+      vscode.window.showTextDocument(vscode.Uri.file(filePath)).catch(() => {
+        vscode.window.showWarningMessage(`Dev Agent: File not found — ${filePath}`);
+      });
       break;
     }
 

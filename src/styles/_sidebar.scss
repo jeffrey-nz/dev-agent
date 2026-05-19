@@ -6,6 +6,29 @@
 //   - Notes drawer (#notes-drawer) that slides in from the right with
 //     plan/review note chips (.note-chip, .note-chip-*)
 
+// ── Session search ────────────────────────────────────────────────────────
+// Search box that filters the session list as the user types
+
+.ss-search-wrap {
+  padding: 6px 6px 2px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.ss-search {
+  width: 100%; padding: 5px 9px;
+  background: var(--in-bg); color: var(--in-fg);
+  border: 1px solid var(--in-bd); border-radius: 5px;
+  font: inherit; font-size: 11.5px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder { color: var(--mu); opacity: 0.5; }
+
+  &:focus {
+    border-color: var(--foc);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--foc) 15%, transparent);
+  }
+}
+
 // ── Session list items ─────────────────────────────────────────────────────
 // Each session is a button with a coloured status dot and two-line body
 
@@ -34,6 +57,12 @@
 }
 
 .s-body { flex: 1; min-width: 0; }
+
+// Search match highlight within session prompt
+.s-match {
+  background: color-mix(in srgb, var(--warn) 28%, transparent);
+  color: inherit; border-radius: 2px; font-weight: inherit;
+}
 
 // Prompt excerpt (up to 2 lines, then clamp)
 .s-prompt {

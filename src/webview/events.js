@@ -823,12 +823,18 @@ function _handleMessage(msg) {
       updateCtxMeter(msg.messageCount, msg.threshold, msg.segmentIndex);
       break;
 
-    case 'session_handoff':
+    case 'session_handoff': {
+      const provName = (msg.providerName || 'browser').replace('copilot365', 'Copilot');
+      showToast('New ' + provName + ' session started (context rotated)', 'info', 3000);
       addHandoffCard(msg);
       break;
+    }
 
     case 'copilot365_segment_boundary':
-      if (!msg._suppressBanner) addHandoffCard(msg);
+      if (!msg._suppressBanner) {
+        showToast('Copilot 365 segment boundary — new session', 'info', 3000);
+        addHandoffCard(msg);
+      }
       break;
 
     case 'session_role_update':

@@ -26,7 +26,7 @@
  *   PM           — phase → {icon, label, color} for dividers
  */
 
-import { currentStepIdx, setCurrentStepIdx, _stepTimes, setStepTimes } from './state.js';
+import { currentStepIdx, setCurrentStepIdx, _stepTimes, setStepTimes, _sessionStartTs } from './state.js';
 
 // ── Element refs ───────────────────────────────────────────────────────────
 const phaseLbl    = document.getElementById('phase-lbl');
@@ -353,9 +353,15 @@ export function addPhaseDivider(phase) {
   const d = document.createElement('div');
   d.className = 'pdiv' + (isRepeat ? ' repeat' : '');
   const labelTxt = isRepeat ? m.icon + ' ' + m.label + ' ×' + n : m.icon + ' ' + m.label;
+  // Add elapsed time since session start in the tooltip
+  const elapsed = _sessionStartTs ? Math.round((Date.now() - _sessionStartTs) / 1000) : null;
+  const tooltipTs = elapsed != null
+    ? ' · ' + (elapsed >= 60 ? Math.floor(elapsed / 60) + 'm ' + elapsed % 60 + 's' : elapsed + 's')
+    : '';
   d.innerHTML = '<div class="pdline"></div>'
     + '<div class="pdlabel" style="color:' + m.color + ';border-color:' + m.color + '33;'
-    + 'background:color-mix(in srgb,' + m.color + ' 8%,transparent)">' + labelTxt + '</div>'
+    + 'background:color-mix(in srgb,' + m.color + ' 8%,transparent)"'
+    + ' title="' + labelTxt + tooltipTs + '">' + labelTxt + '</div>'
     + '<div class="pdline"></div>';
 
   // Insert before the typing indicator

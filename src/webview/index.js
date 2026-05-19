@@ -229,6 +229,9 @@ function closeDropdowns() {
   btnSettingsBtn?.classList.remove('active');
   provDrop?.classList.add('hidden');
   btnProv?.classList.remove('open');
+  // Clear session search on close
+  const ssInput = document.querySelector('.ss-search');
+  if (ssInput) ssInput.value = '';
 }
 
 // Expose for use across modules
@@ -259,7 +262,15 @@ btnSessions?.addEventListener('click', e => {
   e.stopPropagation();
   const open = !sessionsDrop.classList.contains('hidden');
   closeDropdowns();
-  if (!open) { sessionsDrop.classList.remove('hidden'); btnSessions.classList.add('active'); }
+  if (!open) {
+    sessionsDrop.classList.remove('hidden');
+    btnSessions.classList.add('active');
+    // Focus search input if sessions exist
+    setTimeout(() => {
+      const si = document.querySelector('.ss-search');
+      if (si && sessions.length > 2) si.focus();
+    }, 50);
+  }
 });
 
 btnSettingsBtn?.addEventListener('click', e => {
@@ -602,6 +613,13 @@ if (prompt) {
 // ── Global keyboard shortcuts ──────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {
+  // Escape — close any open dropdowns or notes drawer
+  if (e.key === 'Escape') {
+    closeDropdowns();
+    notesDrawer?.classList.remove('open');
+    btnNotes?.classList.remove('active');
+    return;
+  }
   // Cmd/Ctrl+K — new chat (when prompt not focused)
   if ((e.metaKey || e.ctrlKey) && e.key === 'k' && document.activeElement !== prompt) {
     e.preventDefault(); newChat();

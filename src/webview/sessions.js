@@ -258,6 +258,30 @@ export function saveSession(id) {
     : [];
 }
 
+// ── Session search state ───────────────────────────────────────────────────
+
+let _sessionFilter = '';
+
+// Ensure the search input exists above the session list; inject once.
+(function _initSessionSearch() {
+  const drop = document.getElementById('sessions-drop');
+  if (!drop || drop.querySelector('.ss-search')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'ss-search-wrap';
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'ss-search';
+  inp.placeholder = 'Search sessions…';
+  inp.autocomplete = 'off';
+  inp.addEventListener('input', () => {
+    _sessionFilter = inp.value.trim().toLowerCase();
+    renderSessions();
+  });
+  inp.addEventListener('click', e => e.stopPropagation());
+  wrap.appendChild(inp);
+  drop.insertBefore(wrap, drop.firstChild);
+})();
+
 /**
  * Rebuild the session list dropdown with the current sessions array.
  * Also updates the session-count badge in the header.
@@ -267,13 +291,19 @@ export function renderSessions() {
   const badge = document.getElementById('session-count');
   if (badge) badge.textContent = count > 1 ? String(count) : '';
 
-  if (!count) {
-    sessionList.innerHTML = '<div class="sb-empty">No sessions yet</div>';
+  const filtered = _sessionFilter
+    ? sessions.filter(s => s.prompt.toLowerCase().includes(_sessionFilter))
+    : sessions;
+
+  if (!filtered.length) {
+    sessionList.innerHTML = _sessionFilter
+      ? '<div class="sb-empty">No matches</div>'
+      : '<div class="sb-empty">No sessions yet</div>';
     return;
   }
 
   sessionList.innerHTML = '';
-  sessions.forEach(s => {
+  filtered.forEach(s => {
     const btn = document.createElement('button');
     btn.className = 'sitem' + (s.id === activeSid ? ' active' : '');
     if (sessionLocked && s.id !== activeSid) btn.disabled = true;
@@ -296,9 +326,22 @@ export function renderSessions() {
         + (PROV_SHORT[s.provider] || s.provider.slice(0, 3).toUpperCase())
         + '</span>'
       : '';
+
+    // Highlight matching text when filtering
+    let promptHtml = esc(s.prompt);
+    if (_sessionFilter) {
+      const idx = s.prompt.toLowerCase().indexOf(_sessionFilter);
+      if (idx >= 0) {
+        const before = esc(s.prompt.slice(0, idx));
+        const match  = esc(s.prompt.slice(idx, idx + _sessionFilter.length));
+        const after  = esc(s.prompt.slice(idx + _sessionFilter.length));
+        promptHtml   = before + '<mark class="s-match">' + match + '</mark>' + after;
+      }
+    }
+
     btn.innerHTML = '<div class="s-dot ' + s.status + '"></div>'
       + '<div class="s-body">'
-      + '<div class="s-prompt">' + esc(s.prompt) + '</div>'
+      + '<div class="s-prompt">' + promptHtml + '</div>'
       + '<div class="s-meta">' + metaParts.join(' · ') + '</div>'
       + '</div>'
       + provBadge;

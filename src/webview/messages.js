@@ -174,6 +174,17 @@ export function addSysMsg(text, isErr, isWarn, isOk) {
   else if (isWarn) { d.className = 'msg-warn'; d.textContent = text; }
   else if (isOk)   { d.className = 'msg-ok';   d.textContent = text; }
   else             { d.className = 'msg-sys';  d.textContent = text; }
+  // Error and warning messages are clickable to copy
+  if (isErr || isWarn) {
+    d.title = 'Click to copy';
+    d.style.cursor = 'pointer';
+    d.addEventListener('click', () => {
+      navigator.clipboard?.writeText(text).catch(() => {});
+      const prev = d.style.opacity;
+      d.style.opacity = '0.5';
+      setTimeout(() => { d.style.opacity = prev || ''; }, 300);
+    });
+  }
   ibt(d);
 }
 

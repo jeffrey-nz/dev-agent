@@ -69,6 +69,7 @@ function _renderTable(rows) {
   }
   const headers  = parsed[0];
   const dataRows = parsed.slice(2);
+  // Note: headers and cells are already HTML-escaped (step 2 ran before table accumulation)
   let html = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
   html += headers.map(h => '<th>' + h + '</th>').join('');
   html += '</tr></thead><tbody>';
