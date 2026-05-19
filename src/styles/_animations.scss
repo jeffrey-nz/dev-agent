@@ -80,3 +80,9 @@
   0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 10%, transparent); }
   50%       { box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent); }
 }
+
+// Context meter critical fill pulse — alerts user to imminent session rotation
+@keyframes ctx-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}

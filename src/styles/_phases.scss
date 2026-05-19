@@ -145,10 +145,16 @@
   background: var(--ok);
 
   &.warn { background: var(--warn); }
-  &.crit { background: var(--err); }
+  &.crit {
+    background: var(--err);
+    animation: ctx-pulse 1.6s ease-in-out infinite;
+  }
 }
 
-.ctx-lbl { font-size: 10px; opacity: 0.7; white-space: nowrap; }
+.ctx-lbl {
+  font-size: 10px; opacity: 0.7; white-space: nowrap;
+  #ctx-meter.ctx-danger & { color: var(--err); opacity: 0.9; font-weight: 600; }
+}
 
 // ── AI sessions bar ───────────────────────────────────────────────────────
 // Shows primary + auxiliary AI session status when both are running.

@@ -341,10 +341,19 @@ function _handleMessage(msg) {
       chooseFolder(msg.folder);
       break;
 
-    case 'workspace_confirmed':
-      if (hdrProj) hdrProj.textContent = msg.name || '—';
+    case 'workspace_confirmed': {
+      const projName = msg.name || '';
+      if (hdrProj) hdrProj.textContent = projName || '—';
+      // Personalise the welcome screen heading when a real project name is known
+      const wTitle = document.querySelector('.w-title');
+      if (wTitle) {
+        wTitle.textContent = projName && projName !== '—'
+          ? 'What can I build in ' + projName + '?'
+          : 'What can I build?';
+      }
       show(scrChat);
       break;
+    }
 
     case 'show_project_screen':
       show(scrProject);

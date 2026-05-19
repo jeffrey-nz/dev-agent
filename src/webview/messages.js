@@ -558,10 +558,11 @@ export function updateCtxMeter(messageCount, threshold, segmentIndex) {
   ctxMeter.title = pct + '% context used · ' + messageCount + '/' + threshold + ' messages';
 
   // Label: "S2 · 78%" — segment prefix only on non-first segments
+  // At >85% show "↺ soon" to signal imminent session rotation
   const segPfx = segmentIndex > 1 ? 'S' + segmentIndex + ' · ' : '';
   const remaining = threshold - messageCount;
-  ctxLbl.textContent = segPfx + pct + '%';
-  ctxLbl.title = messageCount + '/' + threshold + ' messages · ~' + remaining + ' remaining';
+  ctxLbl.textContent = pct >= 85 ? segPfx + '↺ soon' : segPfx + pct + '%';
+  ctxLbl.title = pct + '% context used · ' + messageCount + '/' + threshold + ' messages · ~' + remaining + ' remaining';
   ctxMeter.classList.add('show');
 }
 
