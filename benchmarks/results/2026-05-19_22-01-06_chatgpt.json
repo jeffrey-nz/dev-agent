@@ -1,0 +1,232 @@
+{
+  "provider": "chatgpt",
+  "providerMode": null,
+  "startedAt": "2026-05-19T21:46:05.259Z",
+  "completedAt": "2026-05-19T22:01:06.385Z",
+  "totalDurationMs": 901126,
+  "passRate": 0,
+  "results": [
+    {
+      "scenarioId": "python-todo-cli",
+      "name": "Python Todo CLI",
+      "language": "python",
+      "provider": "chatgpt",
+      "durationMs": 900102,
+      "sessionError": "Timed out after 900s",
+      "checkPassed": false,
+      "checkPassCount": 6,
+      "checkFailCount": 2,
+      "checkOutput": "TAP version 13\n# Subtest: All three source modules exist\nok 1 - All three source modules exist\n  ---\n  duration_ms: 2.805239\n  ...\n# Subtest: Both test files exist\nok 2 - Both test files exist\n  ---\n  duration_ms: 0.431082\n  ...\n# Subtest: pytest exits 0 with at least 5 tests passing\nnot ok 3 - pytest exits 0 with at least 5 tests passing\n  ---\n  duration_ms: 96.143862\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:29:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    pytest failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/bin/python3: No module named pytest\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:35:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: Todo dataclass: defaults and to_dict/from_dict round-trip\nok 4 - Todo dataclass: defaults and to_dict/from_dict round-trip\n  ---\n  duration_ms: 277.619665\n  ...\n# Subtest: storage: load returns [] on missing file, save/load round-trips\nok 5 - storage: load returns [] on missing file, save/load round-trips\n  ---\n  duration_ms: 85.666126\n  ...\n# Subtest: CLI end-to-end: add, list, complete\nnot ok 6 - CLI end-to-end: add, list, complete\n  ---\n  duration_ms: 95.857265\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:85:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    add 1 failed:\n    Traceback (most recent call last):\n      File \"/private/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-HbZMMF/todo.py\", line 67, in <module>\n        if name == 'main':\n           ^^^^\n    NameError: name 'name' is not defined\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:93:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: CLI errors: complete with unknown id exits non-zero\nok 7 - CLI errors: complete with unknown id exits non-zero\n  ---\n  duration_ms: 89.98625\n  ...\n# Subtest: storage uses .todos.json as the default path\nok 8 - storage uses .todos.json as the default path\n  ---\n  duration_ms: 1.196009\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 6\n# fail 2\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 813.589063\n",
+      "coderRetries": 0,
+      "patchRetries": 0,
+      "subtasksPassed": 6,
+      "subtasksFailed": 0,
+      "phases": [
+        {
+          "phase": "EXECUTION",
+          "msFromStart": 1406
+        },
+        {
+          "phase": "ORCHESTRATING",
+          "msFromStart": 1501
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 1515
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 50140
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 274331
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 296280
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 311243
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 365013
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 434436
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 504020
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 717548
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 796148
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 875066
+        }
+      ],
+      "errors": [
+        {
+          "t": 311221,
+          "level": "warning",
+          "text": "⚡ Critic review: 0 risks flagged for coder awareness"
+        }
+      ],
+      "eventCounts": {
+        "system_message": 16,
+        "phase_change": 13,
+        "pipeline_selected": 1,
+        "session_role_update": 14,
+        "message_complete": 7,
+        "progress_update": 7,
+        "subtask_kickoff": 7,
+        "spinner_update": 68,
+        "research_progress": 54,
+        "tool_call_start": 14,
+        "tool_call_end": 14,
+        "browser_context_update": 6,
+        "subtask_status": 6,
+        "github_activity": 6,
+        "session_end": 1
+      },
+      "lastEvents": [
+        {
+          "t": 826842,
+          "type": "spinner_update"
+        },
+        {
+          "t": 826842,
+          "type": "research_progress"
+        },
+        {
+          "t": 836972,
+          "type": "spinner_update"
+        },
+        {
+          "t": 836979,
+          "type": "research_progress"
+        },
+        {
+          "t": 846953,
+          "type": "spinner_update"
+        },
+        {
+          "t": 846953,
+          "type": "research_progress"
+        },
+        {
+          "t": 856955,
+          "type": "spinner_update"
+        },
+        {
+          "t": 856955,
+          "type": "research_progress"
+        },
+        {
+          "t": 862740,
+          "type": "tool_call_start"
+        },
+        {
+          "t": 863084,
+          "type": "tool_call_end"
+        },
+        {
+          "t": 866955,
+          "type": "spinner_update"
+        },
+        {
+          "t": 866955,
+          "type": "research_progress"
+        },
+        {
+          "t": 874794,
+          "type": "browser_context_update"
+        },
+        {
+          "t": 874798,
+          "type": "message_complete"
+        },
+        {
+          "t": 875066,
+          "type": "phase_change",
+          "phase": "VERIFYING"
+        },
+        {
+          "t": 875074,
+          "type": "system_message",
+          "snippet": "◎ Running validation — syntax, compilation, smoke test…"
+        },
+        {
+          "t": 875234,
+          "type": "system_message",
+          "snippet": "✓ Verified: verified subtask"
+        },
+        {
+          "t": 875234,
+          "type": "progress_update"
+        },
+        {
+          "t": 875591,
+          "type": "session_role_update"
+        },
+        {
+          "t": 875592,
+          "type": "subtask_status",
+          "feedback": "PASS"
+        },
+        {
+          "t": 875856,
+          "type": "github_activity",
+          "snippet": "Progress push after subtask 6/12"
+        },
+        {
+          "t": 875865,
+          "type": "subtask_kickoff"
+        },
+        {
+          "t": 876018,
+          "type": "session_role_update"
+        },
+        {
+          "t": 876162,
+          "type": "spinner_update"
+        },
+        {
+          "t": 876170,
+          "type": "spinner_update"
+        },
+        {
+          "t": 885879,
+          "type": "spinner_update"
+        },
+        {
+          "t": 885879,
+          "type": "research_progress"
+        },
+        {
+          "t": 895880,
+          "type": "spinner_update"
+        },
+        {
+          "t": 895880,
+          "type": "research_progress"
+        },
+        {
+          "t": 900102,
+          "type": "session_end"
+        }
+      ],
+      "workspace": "/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-HbZMMF"
+    }
+  ]
+}

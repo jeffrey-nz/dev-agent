@@ -1,0 +1,382 @@
+{
+  "provider": "chatgpt",
+  "providerMode": null,
+  "startedAt": "2026-05-19T22:29:31.664Z",
+  "completedAt": "2026-05-19T22:53:47.518Z",
+  "totalDurationMs": 1455854,
+  "passRate": 1,
+  "results": [
+    {
+      "scenarioId": "python-todo-cli",
+      "name": "Python Todo CLI",
+      "language": "python",
+      "provider": "chatgpt",
+      "durationMs": 1453871,
+      "sessionError": null,
+      "checkPassed": true,
+      "checkPassCount": 8,
+      "checkFailCount": 0,
+      "checkOutput": "TAP version 13\n# Subtest: All three source modules exist\nok 1 - All three source modules exist\n  ---\n  duration_ms: 2.945191\n  ...\n# Subtest: Both test files exist\nok 2 - Both test files exist\n  ---\n  duration_ms: 0.429496\n  ...\n# Subtest: pytest exits 0 with at least 5 tests passing\nok 3 - pytest exits 0 with at least 5 tests passing\n  ---\n  duration_ms: 647.15878\n  ...\n# Subtest: Todo dataclass: defaults and to_dict/from_dict round-trip\nok 4 - Todo dataclass: defaults and to_dict/from_dict round-trip\n  ---\n  duration_ms: 86.704025\n  ...\n# Subtest: storage: load returns [] on missing file, save/load round-trips\nok 5 - storage: load returns [] on missing file, save/load round-trips\n  ---\n  duration_ms: 96.45833\n  ...\n# Subtest: CLI end-to-end: add, list, complete\nok 6 - CLI end-to-end: add, list, complete\n  ---\n  duration_ms: 494.597952\n  ...\n# Subtest: CLI errors: complete with unknown id exits non-zero\nok 7 - CLI errors: complete with unknown id exits non-zero\n  ---\n  duration_ms: 94.049372\n  ...\n# Subtest: storage uses .todos.json as the default path\nok 8 - storage uses .todos.json as the default path\n  ---\n  duration_ms: 1.21127\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1610.615034\n",
+      "coderRetries": 21,
+      "patchRetries": 0,
+      "subtasksPassed": 12,
+      "subtasksFailed": 0,
+      "phases": [
+        {
+          "phase": "EXECUTION",
+          "msFromStart": 1952
+        },
+        {
+          "phase": "ORCHESTRATING",
+          "msFromStart": 2048
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 2057
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 47425
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 352844
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 364053
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 587302
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 710601
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 778519
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 860742
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 916367
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 985115
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1062551
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1063144
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1063147
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1113348
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1113646
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1113649
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1161389
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1161965
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1161965
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1218728
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1219202
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1219202
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1286641
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1287878
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1287880
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1350770
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1351318
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1351319
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1422895
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1423440
+        },
+        {
+          "phase": "REVIEWING",
+          "msFromStart": 1423440
+        }
+      ],
+      "errors": [
+        {
+          "t": 352732,
+          "level": "error",
+          "text": "⚠️ Project Manager failed to produce a valid plan after 3 attempts: No JSON object found in output"
+        },
+        {
+          "t": 587267,
+          "level": "warning",
+          "text": "⚡ Critic review: 0 risks flagged for coder awareness"
+        },
+        {
+          "t": 1075559,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1084647,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 1/8"
+        },
+        {
+          "t": 1122539,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1132202,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 2/8"
+        },
+        {
+          "t": 1173112,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1184635,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 3/8"
+        },
+        {
+          "t": 1233327,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1244526,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 4/8"
+        },
+        {
+          "t": 1302608,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1317630,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 5/8"
+        },
+        {
+          "t": 1363487,
+          "level": "warning",
+          "text": "✗ Requirements Review: failed"
+        },
+        {
+          "t": 1376887,
+          "level": "warning",
+          "text": "✗ Rejected by 1 reviewer(s) — retry 6/8"
+        }
+      ],
+      "eventCounts": {
+        "system_message": 52,
+        "phase_change": 33,
+        "pipeline_selected": 1,
+        "session_role_update": 52,
+        "message_complete": 15,
+        "subtask_kickoff": 6,
+        "spinner_update": 102,
+        "research_progress": 62,
+        "tool_call_start": 45,
+        "tool_call_end": 45,
+        "browser_context_update": 20,
+        "progress_update": 12,
+        "subtask_status": 12,
+        "github_activity": 5,
+        "session_end": 1
+      },
+      "lastEvents": [
+        {
+          "t": 1409312,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409496,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409496,
+          "type": "tool_call_end"
+        },
+        {
+          "t": 1409496,
+          "type": "tool_call_start"
+        },
+        {
+          "t": 1409496,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409665,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409665,
+          "type": "tool_call_end"
+        },
+        {
+          "t": 1409665,
+          "type": "tool_call_start"
+        },
+        {
+          "t": 1409665,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409834,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1409834,
+          "type": "tool_call_end"
+        },
+        {
+          "t": 1416964,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1416964,
+          "type": "research_progress"
+        },
+        {
+          "t": 1422797,
+          "type": "browser_context_update"
+        },
+        {
+          "t": 1422827,
+          "type": "message_complete"
+        },
+        {
+          "t": 1422895,
+          "type": "phase_change",
+          "phase": "VERIFYING"
+        },
+        {
+          "t": 1423068,
+          "type": "system_message",
+          "snippet": "◎ Running validation — syntax, compilation, smoke test…"
+        },
+        {
+          "t": 1423074,
+          "type": "system_message",
+          "snippet": "✓ Verified: verified subtask"
+        },
+        {
+          "t": 1423075,
+          "type": "progress_update"
+        },
+        {
+          "t": 1423422,
+          "type": "session_role_update"
+        },
+        {
+          "t": 1423424,
+          "type": "subtask_status",
+          "feedback": "PASS"
+        },
+        {
+          "t": 1423440,
+          "type": "phase_change",
+          "phase": "REVIEWING"
+        },
+        {
+          "t": 1423440,
+          "type": "phase_change",
+          "phase": "REVIEWING"
+        },
+        {
+          "t": 1423440,
+          "type": "system_message",
+          "snippet": "✓ Security Review: passed (no files modified — nothing to security-review)"
+        },
+        {
+          "t": 1423443,
+          "type": "session_role_update"
+        },
+        {
+          "t": 1436292,
+          "type": "session_role_update"
+        },
+        {
+          "t": 1436292,
+          "type": "system_message",
+          "snippet": "✓ Requirements Review: passed"
+        },
+        {
+          "t": 1436296,
+          "type": "system_message",
+          "snippet": "✓ All reviewers approved — subtask verified"
+        },
+        {
+          "t": 1436310,
+          "type": "system_message",
+          "snippet": "🧠 Updating project memory…"
+        },
+        {
+          "t": 1453869,
+          "type": "session_end"
+        }
+      ],
+      "workspace": "/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-OxUAMO"
+    }
+  ]
+}

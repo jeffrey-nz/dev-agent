@@ -1,0 +1,247 @@
+{
+  "provider": "chatgpt",
+  "providerMode": null,
+  "startedAt": "2026-05-19T22:02:58.746Z",
+  "completedAt": "2026-05-19T22:28:00.571Z",
+  "totalDurationMs": 1501825,
+  "passRate": 0,
+  "results": [
+    {
+      "scenarioId": "python-todo-cli",
+      "name": "Python Todo CLI",
+      "language": "python",
+      "provider": "chatgpt",
+      "durationMs": 1500683,
+      "sessionError": "Timed out after 1500s",
+      "checkPassed": false,
+      "checkPassCount": 3,
+      "checkFailCount": 5,
+      "checkOutput": "TAP version 13\n# Subtest: All three source modules exist\nnot ok 1 - All three source modules exist\n  ---\n  duration_ms: 8.102629\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:17:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Missing modules: todo.py. Files: .git, __pycache__, models.py, storage.py\n    + actual - expected\n    \n    + [\n    +   'todo.py'\n    + ]\n    - []\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: 'todo.py'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:20:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    node:internal/test_runner/harness:255:12\n    node:internal/process/task_queues:140:7\n    AsyncResource.runInAsyncScope (node:async_hooks:206:9)\n    AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)\n  ...\n# Subtest: Both test files exist\nnot ok 2 - Both test files exist\n  ---\n  duration_ms: 1.35204\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:23:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Missing test files: test_storage.py, test_models.py\n    + actual - expected\n    \n    + [\n    +   'test_storage.py',\n    +   'test_models.py'\n    + ]\n    - []\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: 'test_storage.py'\n    1: 'test_models.py'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:26:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: pytest exits 0 with at least 5 tests passing\nnot ok 3 - pytest exits 0 with at least 5 tests passing\n  ---\n  duration_ms: 247.313989\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:29:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    pytest failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/bin/python3: No module named pytest\n    \n    \n    1 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:35:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: Todo dataclass: defaults and to_dict/from_dict round-trip\nok 4 - Todo dataclass: defaults and to_dict/from_dict round-trip\n  ---\n  duration_ms: 232.919431\n  ...\n# Subtest: storage: load returns [] on missing file, save/load round-trips\nok 5 - storage: load returns [] on missing file, save/load round-trips\n  ---\n  duration_ms: 113.154992\n  ...\n# Subtest: CLI end-to-end: add, list, complete\nnot ok 6 - CLI end-to-end: add, list, complete\n  ---\n  duration_ms: 51.447631\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:85:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    add 1 failed:\n    /Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python: can't open file '/private/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-u4NvMd/todo.py': [Errno 2] No such file or directory\n    \n    \n    2 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 2\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:93:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: CLI errors: complete with unknown id exits non-zero\nnot ok 7 - CLI errors: complete with unknown id exits non-zero\n  ---\n  duration_ms: 1.793598\n  location: '/Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:119:1'\n  failureType: 'testCodeFailure'\n  error: 'todo.py missing — cannot validate error handling'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n  stack: |-\n    TestContext.<anonymous> (file:///Users/jeffrey/dev-agent/benchmarks/scenarios/python-todo-cli.check.mjs:121:10)\n    Test.runInAsyncScope (node:async_hooks:206:9)\n    Test.run (node:internal/test_runner/test:796:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:526:18)\n    Test.postRun (node:internal/test_runner/test:889:19)\n    Test.run (node:internal/test_runner/test:835:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)\n  ...\n# Subtest: storage uses .todos.json as the default path\nok 8 - storage uses .todos.json as the default path\n  ---\n  duration_ms: 1.301093\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 3\n# fail 5\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 951.203392\n",
+      "coderRetries": 6,
+      "patchRetries": 0,
+      "subtasksPassed": 2,
+      "subtasksFailed": 3,
+      "phases": [
+        {
+          "phase": "EXECUTION",
+          "msFromStart": 1889
+        },
+        {
+          "phase": "ORCHESTRATING",
+          "msFromStart": 2003
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 2031
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 50612
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 277767
+        },
+        {
+          "phase": "PLANNING",
+          "msFromStart": 294669
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 308703
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 362230
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 414184
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 478601
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 832624
+        },
+        {
+          "phase": "VERIFYING",
+          "msFromStart": 1101623
+        },
+        {
+          "phase": "DEBUGGING",
+          "msFromStart": 1101803
+        }
+      ],
+      "errors": [
+        {
+          "t": 308679,
+          "level": "warning",
+          "text": "⚡ Critic review: 0 risks flagged for coder awareness"
+        },
+        {
+          "t": 463584,
+          "level": "warning",
+          "text": "⚠️ Coder output prose instead of tool calls — auto-retrying with direct instruction"
+        },
+        {
+          "t": 527100,
+          "level": "warning",
+          "text": "⚠️ Coder output prose instead of tool calls — auto-retrying with direct instruction"
+        },
+        {
+          "t": 832711,
+          "level": "warning",
+          "text": "⚠️ Stall on retry 2 — restarting browser session"
+        },
+        {
+          "t": 877444,
+          "level": "warning",
+          "text": "⚠️ Coder output prose instead of tool calls — auto-retrying with direct instruction"
+        }
+      ],
+      "eventCounts": {
+        "system_message": 15,
+        "phase_change": 13,
+        "pipeline_selected": 1,
+        "session_role_update": 15,
+        "message_complete": 7,
+        "progress_update": 3,
+        "subtask_kickoff": 3,
+        "spinner_update": 59,
+        "research_progress": 41,
+        "tool_call_start": 2,
+        "tool_call_end": 2,
+        "browser_context_update": 3,
+        "subtask_status": 5,
+        "github_activity": 2,
+        "session_end": 1
+      },
+      "lastEvents": [
+        {
+          "t": 1355286,
+          "type": "research_progress"
+        },
+        {
+          "t": 1365291,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1365291,
+          "type": "research_progress"
+        },
+        {
+          "t": 1375289,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1375289,
+          "type": "research_progress"
+        },
+        {
+          "t": 1385290,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1385290,
+          "type": "research_progress"
+        },
+        {
+          "t": 1395319,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1395319,
+          "type": "research_progress"
+        },
+        {
+          "t": 1405316,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1405316,
+          "type": "research_progress"
+        },
+        {
+          "t": 1415318,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1415318,
+          "type": "research_progress"
+        },
+        {
+          "t": 1425318,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1425318,
+          "type": "research_progress"
+        },
+        {
+          "t": 1435321,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1435321,
+          "type": "research_progress"
+        },
+        {
+          "t": 1445321,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1445321,
+          "type": "research_progress"
+        },
+        {
+          "t": 1455322,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1455322,
+          "type": "research_progress"
+        },
+        {
+          "t": 1465324,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1465324,
+          "type": "research_progress"
+        },
+        {
+          "t": 1475325,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1475325,
+          "type": "research_progress"
+        },
+        {
+          "t": 1485324,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1485324,
+          "type": "research_progress"
+        },
+        {
+          "t": 1495326,
+          "type": "spinner_update"
+        },
+        {
+          "t": 1495327,
+          "type": "research_progress"
+        },
+        {
+          "t": 1500683,
+          "type": "session_end"
+        }
+      ],
+      "workspace": "/var/folders/kh/g0n6rnhs52s9pjlvb_8ym9wr0000gn/T/bench-python-todo-cli-u4NvMd"
+    }
+  ]
+}
