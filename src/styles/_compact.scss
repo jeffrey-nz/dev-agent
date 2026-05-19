@@ -1,0 +1,27 @@
+// ── Compact Mode Overrides ─────────────────────────────────────────────────
+//
+// When the user enables "compact mode" via the settings dropdown,
+// #chat-main receives the .compact class. This hides the noisy tool-level
+// UI elements so only messages and diffs are shown.
+//
+// Elements hidden in compact mode:
+//   .tcrd          — individual tool call rows
+//   .rg-card       — read-group cards
+//   .pdiv          — phase section dividers
+//   .sc-card       — plan / review collapsible cards
+//   #phase-pills   — phase timeline row
+//   #activity-strip — changed-files left sidebar
+
+#chat-main.compact {
+  .tcrd,
+  .rg-card,
+  .pdiv,
+  .sc-card {
+    display: none !important;
+  }
+
+  #phase-pills,
+  #activity-strip {
+    display: none !important;
+  }
+}

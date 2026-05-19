@@ -1,0 +1,283 @@
+// ── Chat Messages ─────────────────────────────────────────────────────────
+//
+// Styles for all message types shown in the #messages feed:
+//
+//   .msg-u            — user message (right-aligned bubble)
+//   .msg-a            — agent message (left-aligned, with copy button)
+//   .msg-sys          — system info message (italic, muted)
+//   .msg-warn         — warning message (yellow left bar)
+//   .msg-err          — error message (red left bar, monospace)
+//   .msg-ok           — success message (green left bar)
+//   .mab-md / .md-*   — rendered Markdown inside agent messages
+//   .cb / .cb-*       — code block inside Markdown
+//   .ic               — inline code span
+//   .msg-copy         — "copy response" button on hover
+//   .msg-expand-btn   — "Show more / Show less" toggle for long messages
+//   #messages         — scrollable container
+//   #welcome          — welcome screen with example prompts (.w-*)
+//   #scroll-btn       — floating "↓" button when scrolled up
+
+// ── Messages container ────────────────────────────────────────────────────
+
+#messages {
+  flex: 1; overflow-y: auto;
+  padding: 8px 14px 20px;
+  display: flex; flex-direction: column;
+  scroll-behavior: smooth;
+
+  > * { flex-shrink: 0; }
+
+  &::-webkit-scrollbar        { width: 4px; }
+  &::-webkit-scrollbar-track  { background: transparent; }
+  &::-webkit-scrollbar-thumb  { background: var(--bd); border-radius: 2px; }
+}
+
+// ── User message ──────────────────────────────────────────────────────────
+
+.msg-u {
+  margin: 18px 0 2px;
+  display: flex; flex-direction: column; align-items: flex-end;
+  animation: msgIn 0.16s ease;
+}
+
+.msg-sender {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 5px;
+  color: var(--mu); opacity: 0.6;
+
+  &.agent { color: var(--acc); opacity: 0.85; }
+}
+
+// User message bubble
+.msg-body {
+  font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+  color: var(--fg); padding: 9px 14px;
+  background: color-mix(in srgb, var(--acc) 10%, transparent);
+  border-radius: 14px 14px 4px 14px;
+  border: 1px solid color-mix(in srgb, var(--acc) 16%, transparent);
+  max-width: 88%;
+}
+
+// ── Agent message ─────────────────────────────────────────────────────────
+
+.msg-a {
+  margin: 4px 0 2px;
+  animation: msgIn 0.16s ease;
+  position: relative;
+
+  // Show copy button on hover
+  &:hover .msg-copy { opacity: 1; }
+
+  // Streaming cursor — appended to .mab-md::after while generating
+  &.streaming .mab-md::after {
+    content: '▋'; display: inline;
+    animation: stream-cursor 0.75s step-end infinite;
+    color: var(--acc); font-size: 11px; opacity: 0.8;
+    margin-left: 2px; vertical-align: middle;
+  }
+}
+
+// Rendered Markdown container for agent messages
+.mab-md {
+  font-size: 13px; line-height: 1.72; color: var(--fg);
+}
+
+// ── Markdown element styles ───────────────────────────────────────────────
+
+.mab-md .md-p  { margin: 0 0 4px; }
+.mab-md .md-br { height: 7px; }
+
+.mab-md h1 { font-size: 15px; font-weight: 700; margin: 14px 0 5px; }
+.mab-md h2 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; }
+.mab-md h3 { font-size: 13px; font-weight: 700; margin: 10px 0 4px; }
+.mab-md h1.md-h:first-child,
+.mab-md h2.md-h:first-child,
+.mab-md h3.md-h:first-child { margin-top: 2px; }
+
+.mab-md ul, .mab-md ol { padding-left: 20px; margin: 4px 0 8px; }
+.mab-md ul   { list-style-type: disc; }
+.mab-md ol   { list-style-type: decimal; }
+.mab-md li   { margin: 3px 0; line-height: 1.6; }
+
+.mab-md strong { font-weight: 700; }
+.mab-md em     { font-style: italic; }
+
+.mab-md a.md-a {
+  color: var(--acc); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.mab-md blockquote.md-bq {
+  border-left: 3px solid color-mix(in srgb, var(--mu) 35%, transparent);
+  margin: 6px 0; padding: 3px 10px;
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-radius: 0 4px 4px 0;
+}
+
+.mab-md hr.md-hr {
+  border: none; border-top: 1px solid var(--bd); margin: 10px 0; opacity: 0.6;
+}
+
+// Inline code span
+.ic {
+  font-family: var(--mono); font-size: 12px;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  padding: 1px 5px; border-radius: 3px; word-break: break-all;
+}
+
+// Fenced code block
+.cb {
+  border: 1px solid var(--bd); border-radius: var(--r); margin: 8px 0;
+  overflow: hidden;
+  background: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+}
+
+.cb-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 10px; border-bottom: 1px solid var(--bd);
+  background: color-mix(in srgb, var(--fg) 3%, transparent); min-height: 26px;
+}
+
+.cb-lang { font-size: 11px; color: var(--mu); font-family: var(--mono); }
+
+.cb-copy {
+  background: transparent; color: var(--mu);
+  border: 1px solid var(--bd); padding: 2px 8px;
+  border-radius: 3px; font-size: 11px; cursor: pointer;
+  &:hover { background: var(--hov); color: var(--fg); }
+}
+
+.cb-pre  { overflow-x: auto; padding: 10px 12px; margin: 0; }
+.cb-pre code {
+  font-family: var(--mono); font-size: 12px;
+  white-space: pre; color: var(--fg); line-height: 1.55;
+}
+
+// ── Copy button ───────────────────────────────────────────────────────────
+// Floats above the agent message on hover
+
+.msg-copy {
+  position: absolute; top: 22px; right: 0;
+  background: var(--sidebar); border: 1px solid var(--bd); color: var(--mu);
+  border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer;
+  opacity: 0; transition: opacity 0.15s, background 0.1s; line-height: 1.4;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+
+  &:hover { background: var(--hov); color: var(--fg); }
+}
+
+// ── Collapsible long messages ─────────────────────────────────────────────
+// Messages / sc-cards taller than 280px get clipped with a gradient fade
+
+.msg-a.collapsible .mab-md,
+.sc-card.collapsible .sc-body {
+  max-height: 280px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  mask-image:         linear-gradient(to bottom, black 50%, transparent 100%);
+}
+
+.msg-a.collapsible.expanded .mab-md,
+.sc-card.collapsible.expanded .sc-body {
+  max-height: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.msg-expand-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: none; color: var(--acc);
+  font: inherit; font-size: 11px; font-family: var(--mono);
+  cursor: pointer; padding: 4px 0 2px; opacity: 0.7; transition: opacity 0.1s;
+
+  &:hover { opacity: 1; }
+}
+
+// ── System / status messages ──────────────────────────────────────────────
+
+.msg-sys  { font-size: 11px; color: var(--mu); font-style: italic; padding: 3px 2px; opacity: 0.45; }
+
+.msg-warn {
+  font-size: 11px; color: var(--warn); font-style: italic;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--warn) 50%, transparent);
+  border-radius: 4px; margin: 3px 0; opacity: 0.85;
+}
+
+.msg-err {
+  font-size: 12px; color: var(--err);
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 11px;
+  background: color-mix(in srgb, var(--err) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--err) 18%, transparent);
+  border-left: 2px solid var(--err);
+  border-radius: 6px; margin: 6px 0; font-family: var(--mono);
+}
+
+.msg-ok {
+  font-size: 11px; color: var(--ok);
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--ok) 7%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--ok) 45%, transparent);
+  border-radius: 4px; margin: 2px 0; opacity: 0.85; font-family: var(--mono);
+}
+
+// ── Tool group spacing ────────────────────────────────────────────────────
+
+.msg-tools { margin: 6px 0 2px; }
+
+// ── Scroll-to-bottom button ───────────────────────────────────────────────
+
+#scroll-btn {
+  position: absolute; bottom: 78px; right: 14px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--sidebar); border: 1px solid var(--bd); color: var(--mu);
+  font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, background 0.1s, transform 0.2s;
+  z-index: 20; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(4px);
+
+  &.show       { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  &:hover      { background: var(--hov); color: var(--fg); }
+}
+
+// ── Welcome screen ────────────────────────────────────────────────────────
+// Shown when no session is active or the session has no messages yet
+
+#welcome {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+  padding: 32px 8px 20px;
+}
+
+.w-logo  { font-size: 26px; margin-bottom: 14px; opacity: 0.55; line-height: 1; color: var(--acc); }
+.w-title { font-size: 17px; font-weight: 700; margin-bottom: 5px; letter-spacing: -0.4px; }
+.w-sub   {
+  font-size: 12px; color: var(--mu); line-height: 1.65;
+  margin-bottom: 18px; max-width: 300px; opacity: 0.85;
+}
+
+// 2-column grid of example prompt buttons
+.w-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+
+.w-ex {
+  text-align: left; padding: 9px 11px;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  border: 1px solid var(--bd);
+  color: var(--mu); font: inherit; font-size: 11px; cursor: pointer;
+  border-radius: 7px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  display: flex; flex-direction: column; gap: 3px;
+
+  &:hover {
+    background: var(--hov);
+    border-color: color-mix(in srgb, var(--acc) 30%, transparent);
+    color: var(--fg);
+    .w-ex-txt { opacity: 1; }
+  }
+}
+
+.w-ex-icon { font-size: 14px; line-height: 1; opacity: 0.8; }
+.w-ex-txt  { font-size: 11px; font-weight: 500; color: var(--fg); opacity: 0.75; line-height: 1.3; }

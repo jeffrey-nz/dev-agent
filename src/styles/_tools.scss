@@ -1,0 +1,181 @@
+// ── Tool Cards, Read Groups, Run Output, Activity Strip ───────────────────
+//
+// Styles for the inline activity feed inside the messages column:
+//
+//   .tcrd / .tc-*      — individual tool call row (read/write/run)
+//   .rg-card / .rg-*   — collapsed group of read-tool calls
+//   .run-output        — faint snippet showing shell command stdout
+//   #activity-strip    — left sidebar column tracking changed files
+//   .ac-chip / .ac-*   — file chip in the activity strip
+
+// ── Tool card rows ────────────────────────────────────────────────────────
+// Each tool call gets a compact one-liner with: prefix ↳ | label | file | status
+
+.tcrd {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 8px 3px 10px; font-size: 11px; font-family: var(--mono);
+  color: var(--mu); margin: 1px 0; border-radius: 4px;
+  border-left: 2px solid transparent;
+  transition: background 0.1s, border-color 0.15s;
+
+  &:hover { background: var(--hov); }
+
+  // Pending tool call: dimmed until resolved
+  &.pending { opacity: 0.55; }
+
+  // Error state: filename and status turn red
+  &.error .tc-file { color: var(--err); }
+  &.error .tc-st   { color: var(--err); }
+
+  // Left accent per tool type
+  &.write              { border-left-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+  &.write.done         { border-left-color: var(--ok); }
+  &.run                { border-left-color: color-mix(in srgb, var(--cv) 45%, transparent); }
+  &.run.done           { border-left-color: var(--cv); }
+  &.read               { border-left-color: transparent; }
+
+  // Pending prefix blinks to draw attention
+  &.pending .tc-pfx { animation: blink 0.9s ease-in-out infinite; }
+}
+
+.tc-pfx {
+  color: var(--mu); opacity: 0.3; flex-shrink: 0;
+  font-size: 10px; user-select: none;
+}
+
+// Tool type label badge (read / write / run)
+.tc-name {
+  flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 1px 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--mu) 12%, transparent); color: var(--mu);
+
+  .tcrd.write &  { background: color-mix(in srgb, var(--ok) 14%, transparent); color: color-mix(in srgb, var(--ok) 80%, var(--mu)); }
+  .tcrd.run   &  { background: color-mix(in srgb, var(--cv) 14%, transparent); color: color-mix(in srgb, var(--cv) 80%, var(--mu)); }
+  .tcrd.pending & { opacity: 0.65; }
+}
+
+// File path / command summary
+.tc-file {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg); opacity: 0.75; font-size: 11px;
+}
+
+// Status marker (✓ / ✗ / —) with optional elapsed time
+.tc-st {
+  flex-shrink: 0; font-size: 10px; color: var(--ok);
+
+  .tcrd.pending    & { color: var(--mu); opacity: 0.3; }
+  .tcrd.run.done   & { color: var(--cv); }
+}
+
+// ── Run output snippet ────────────────────────────────────────────────────
+// Shows the first ~240 chars of shell command stdout as a faint code block
+
+.run-output {
+  font-family: var(--mono); font-size: 10px; color: var(--mu);
+  white-space: pre-wrap; word-break: break-all;
+  margin: 1px 0 3px 18px; padding: 3px 8px;
+  background: color-mix(in srgb, var(--mu) 5%, transparent);
+  border-radius: 3px; opacity: 0.65;
+  max-height: 80px; overflow: hidden;
+}
+
+// ── Read groups ───────────────────────────────────────────────────────────
+// Multiple consecutive read calls are grouped into a collapsible card
+
+.rg-card {
+  margin: 1px 0; font-family: var(--mono);
+  border-left: 2px solid transparent;
+}
+
+.rg-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px 3px 8px; font-size: 12px;
+  cursor: pointer; user-select: none; color: var(--mu);
+  border-radius: 3px; transition: background 0.1s;
+
+  &:hover          { background: var(--hov); }
+  &:hover .tc-file { opacity: 1; }
+}
+
+.rg-caret {
+  font-size: 9px; color: var(--mu); opacity: 0.4;
+  margin-left: auto; transition: transform 0.2s; flex-shrink: 0;
+
+  .rg-card.open & { transform: rotate(180deg); }
+}
+
+.rg-list {
+  display: none; flex-direction: column; padding: 2px 0 2px 50px;
+  .rg-card.open & { display: flex; }
+}
+
+.rg-item {
+  font-size: 11px; color: var(--mu); opacity: 0.55;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0;
+}
+
+// ── Activity strip ────────────────────────────────────────────────────────
+// Left sidebar column showing changed-file chips in the current session.
+// Chips are 116px wide and scroll independently of the messages column.
+
+#activity-strip {
+  display: flex; flex-direction: column; gap: 3px;
+  width: 116px; flex-shrink: 0;
+  padding: 8px 7px 12px;
+  border-right: 1px solid var(--bd);
+  overflow-y: auto; overflow-x: hidden;
+  background: color-mix(in srgb, var(--bg) 98%, var(--ok) 2%);
+
+  &.hidden { display: none; }
+
+  &::-webkit-scrollbar       { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+}
+
+// "Changed" label above the chip list
+.as-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--mu); opacity: 0.35;
+  font-family: var(--mono); padding: 0 2px; margin-bottom: 2px; flex-shrink: 0;
+}
+
+#activity-chips { display: flex; flex-direction: column; gap: 3px; }
+
+// Individual changed-file chip
+.ac-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 7px 3px 6px; border-radius: 5px;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  border: 1px solid var(--bd);
+  font-family: var(--mono); font-size: 11px;
+  white-space: nowrap; cursor: pointer;
+  transition: background 0.1s, border-color 0.12s;
+  animation: chipIn 0.18s ease;
+
+  &:hover {
+    background: var(--hov);
+    border-color: color-mix(in srgb, var(--mu) 45%, transparent);
+  }
+}
+
+.ac-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; opacity: 0.85; }
+.ac-name {
+  color: var(--fg); opacity: 0.8;
+  max-width: 60px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;
+}
+
+.ac-stats { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.ac-add   { color: var(--ok); font-size: 10px; font-weight: 600; }
+.ac-rem   { color: var(--err); font-size: 10px; font-weight: 600; }
+.ac-new   {
+  color: var(--acc); font-size: 10px; font-weight: 700;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  padding: 0 4px; border-radius: 3px;
+}
+
+// Overflow indicator when there are more chips than MAX_CHIPS
+.as-more {
+  font-size: 10px; color: var(--mu); opacity: 0.55;
+  white-space: nowrap; font-family: var(--mono); padding: 2px;
+}

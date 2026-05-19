@@ -8,8 +8,14 @@
     "vscode": "^1.85.0",
     "node": ">=20.0.0"
   },
-  "categories": ["AI", "Other"],
-  "activationEvents": ["onCommand:devAgent.start", "onStartupFinished"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:devAgent.start",
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.cjs",
   "bin": {
     "dev-agent": "./bin/dev-agent.mjs"
@@ -82,7 +88,8 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.25.0",
-    "@vscode/vsce": "^3.0.0"
+    "sass": "^1.99.0"
   }
 }

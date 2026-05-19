@@ -1,0 +1,218 @@
+// ── File Diff Cards & Changes Summary ─────────────────────────────────────
+//
+// Styles for the diff viewer that appears in the message feed after a write
+// tool completes, and for the "files changed" summary card shown at session end.
+//
+//   .diff-card / .diff-*   — collapsible diff card per file
+//   .dl / .dl-*            — individual diff lines (add / remove / context)
+//   .diff-hunk-sep         — separator between diff hunks
+//   .changes-card / .change-* — session-end summary of all modified files
+//
+// Flash animation when clicking a file chip in the activity strip:
+//   .diff-flash            — briefly outlines the card in green
+
+// ── Diff card ─────────────────────────────────────────────────────────────
+
+.diff-card {
+  border: 1px solid var(--bd);
+  border-left: 2px solid var(--ok);
+  border-radius: 8px; overflow: hidden;
+  margin: 2px 0 6px; font-family: var(--mono);
+  transition: border-color 0.15s;
+  animation: msgIn 0.14s ease;
+
+  // Expanded state: slightly more visible border
+  &.open {
+    border-color: color-mix(in srgb, var(--ok) 28%, var(--bd));
+    border-left-color: var(--ok);
+  }
+}
+
+// Header row: chevron | lang dot | [NEW] badge | filename | dir | stats | open button
+.diff-hdr {
+  display: flex; align-items: center; gap: 7px; padding: 6px 10px;
+  background: color-mix(in srgb, var(--ok) 5%, transparent);
+  cursor: pointer; user-select: none; transition: background 0.1s;
+
+  .diff-card.open &      { background: color-mix(in srgb, var(--ok) 7%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ok) 14%, var(--bd)); }
+  &:hover                { background: color-mix(in srgb, var(--ok) 10%, transparent); }
+}
+
+.diff-chevron {
+  font-size: 9px; color: var(--mu); flex-shrink: 0;
+  transition: transform 0.15s; line-height: 1;
+  .diff-card.open & { transform: rotate(90deg); }
+}
+
+.diff-lang-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; opacity: 0.8; }
+
+// "new" badge for freshly created files
+.diff-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+
+  &.new { color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); }
+  &.mod { display: none; }
+}
+
+.diff-fname {
+  font-size: 12px; font-weight: 600; color: var(--fg);
+  flex-shrink: 0; white-space: nowrap;
+}
+
+// Directory path (right-to-left for long paths, truncated on the left)
+.diff-fdir {
+  font-size: 11px; color: var(--mu); opacity: 0.5; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  direction: rtl; text-align: left;
+}
+
+.diff-stats { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+.ds-add     { font-size: 11px; font-weight: 600; color: var(--ok); }
+.ds-rem     { font-size: 11px; font-weight: 600; color: var(--err); }
+
+// "↗ Open in editor" button
+.diff-open {
+  background: transparent; color: var(--mu); border: none;
+  padding: 2px 4px; border-radius: 3px; font-size: 13px; cursor: pointer;
+  flex-shrink: 0; opacity: 0.55; line-height: 1;
+
+  &:hover { opacity: 1; background: var(--hov); }
+}
+
+// Scrollable diff body (max 440px tall)
+.diff-body {
+  overflow-x: auto; max-height: 440px; overflow-y: auto;
+  display: none;
+  background: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--fg) 2%, var(--bg)));
+
+  &::-webkit-scrollbar       { width: 4px; height: 4px; }
+  &::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+
+  .diff-card.open & { display: block; }
+}
+
+// Hunk gap separator (··· between non-contiguous diff sections)
+.diff-hunk-sep {
+  display: flex; align-items: center; padding: 3px 10px;
+  font-size: 10px; color: var(--mu); opacity: 0.4; letter-spacing: 0.12em;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd);
+}
+
+// ── Individual diff lines ──────────────────────────────────────────────────
+
+.dl {
+  display: flex; align-items: stretch;
+  font-size: 12px; line-height: 1.65; min-width: 0;
+
+  // Added line: green background + green left bar
+  &.add {
+    background: color-mix(in srgb, var(--ok) 9%, transparent);
+    &::before { content: ''; width: 3px; background: var(--ok); flex-shrink: 0; }
+  }
+
+  // Removed line: red background + red left bar
+  &.rem {
+    background: color-mix(in srgb, var(--err) 8%, transparent);
+    &::before { content: ''; width: 3px; background: color-mix(in srgb, var(--err) 70%, transparent); flex-shrink: 0; }
+  }
+
+  // Context line: dimmed
+  &.ctx {
+    opacity: 0.32;
+    &::before { content: ''; width: 3px; flex-shrink: 0; }
+  }
+}
+
+// Line number columns (old and new)
+.dl-lo, .dl-ln {
+  min-width: 32px; padding: 0 6px;
+  text-align: right; color: var(--mu);
+  user-select: none; flex-shrink: 0; font-size: 10px;
+  display: flex; align-items: center; justify-content: flex-end;
+}
+
+.dl-lo { border-right: 1px solid color-mix(in srgb, var(--bd) 45%, transparent); }
+.dl-ln { border-right: 1px solid var(--bd); }
+.dl.add .dl-ln { color: color-mix(in srgb, var(--ok) 60%, var(--mu)); }
+.dl.rem .dl-lo { color: color-mix(in srgb, var(--err) 60%, var(--mu)); }
+
+// Symbol column: + / − / space
+.dl-sym {
+  width: 16px; text-align: center; flex-shrink: 0; color: var(--mu);
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+
+  .dl.add & { color: var(--ok); font-weight: 700; }
+  .dl.rem & { color: var(--err); font-weight: 700; }
+}
+
+// Code content column
+.dl-code {
+  flex: 1; padding: 0 10px;
+  white-space: pre; color: var(--fg);
+  word-break: normal; min-width: 0; overflow: hidden;
+}
+
+// ── Flash animation on activity-chip click ────────────────────────────────
+// Briefly outlines the corresponding diff card in green to locate it
+
+.diff-card.diff-flash { animation: diffFlash 0.75s ease; }
+
+// ── Changes summary card ──────────────────────────────────────────────────
+// Shown at session end with a list of every file written and commands run
+
+.changes-card {
+  border: 1px solid color-mix(in srgb, var(--ok) 20%, transparent);
+  border-left: 2px solid var(--ok);
+  border-radius: 8px; overflow: hidden;
+  margin: 6px 0; font-family: var(--mono); font-size: 12px;
+}
+
+.changes-hdr {
+  display: flex; align-items: center; gap: 8px; padding: 7px 11px;
+  cursor: pointer; user-select: none;
+  background: color-mix(in srgb, var(--ok) 6%, transparent);
+
+  .changes-card.open & {
+    border-bottom: 1px solid color-mix(in srgb, var(--ok) 15%, transparent);
+  }
+}
+
+.changes-title {
+  font-size: 11px; font-weight: 700; color: var(--ok); flex: 1;
+  letter-spacing: 0.02em; text-transform: uppercase;
+}
+
+.changes-count  { font-size: 10px; color: var(--mu); flex-shrink: 0; }
+.changes-caret  {
+  font-size: 9px; color: var(--mu); opacity: 0.45;
+  transition: transform 0.2s; flex-shrink: 0;
+  .changes-card.open & { transform: rotate(180deg); }
+}
+
+.changes-list {
+  display: none;
+  padding: 6px 11px 8px;
+  display: flex; flex-direction: column; gap: 2px;
+
+  .changes-card:not(.open) & { display: none; }
+}
+
+.change-item {
+  display: flex; align-items: baseline; gap: 8px; padding: 2px 0;
+}
+
+.change-sym {
+  flex-shrink: 0; width: 12px; text-align: center; font-size: 11px;
+
+  &.mod { color: var(--warn); }
+  &.new { color: var(--acc); }
+  &.run { color: var(--cv); }
+}
+
+.change-path {
+  color: var(--fg); opacity: 0.8; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px;
+}
+
+.change-tag { font-size: 10px; opacity: 0.45; flex-shrink: 0; }

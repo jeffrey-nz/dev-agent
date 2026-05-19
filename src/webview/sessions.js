@@ -1,0 +1,287 @@
+/**
+ * sessions.js — Session lifecycle management
+ *
+ * Handles creating, switching, saving, finishing, and rendering sessions.
+ * Sessions are stored as plain objects in the shared `sessions` array.
+ *
+ * Each session object:
+ *   { id, prompt, ts, status, html, notes, tools, files?, elapsed?, subtasks? }
+ *
+ * Exports:
+ *   createSession(promptText) — start a new session, returns its ID
+ *   finishSession(status)     — mark the running session done/error/stopped
+ *   switchSession(id)         — restore a previous session's messages
+ *   saveSession(id)           — snapshot current messages into the session
+ *   renderSessions()          — rebuild the session list dropdown
+ *   newChat()                 — clear the UI and start fresh
+ */
+
+import {
+  sessions, activeSid, runningSid, sessionLocked, sidSeq,
+  setActiveSid, setRunningSid, setSessionLocked, setSidSeq,
+  setSessionStartTs, setStoppedByUser, setHadError,
+  _writesThisSession, _sessionStartTs, _subtasksCompleted, _subtasksTotal,
+} from './state.js';
+import { clearNotes, addNoteChip } from './messages.js';
+import { resetSessionTracking } from './activity.js';
+import { stopPhaseTimer, resetProgress } from './phases.js';
+
+// ── Element refs ───────────────────────────────────────────────────────────
+const messages    = document.getElementById('messages');
+const typingEl    = document.getElementById('typing');
+const welcomeEl   = document.getElementById('welcome');
+const sessionList = document.getElementById('session-list');
+const phaseBar    = document.getElementById('phase-bar');
+const phasePillsEl = document.getElementById('phase-pills');
+const activityStrip = document.getElementById('activity-strip');
+const sessionDeltaEl = document.getElementById('session-delta');
+const ctxMeter    = document.getElementById('ctx-meter');
+const taskPin     = document.getElementById('task-pin');
+const phaseSubtask = document.getElementById('phase-subtask');
+const typingLblEl = document.querySelector('#typing .t-lbl');
+const btnSend     = document.getElementById('btn-send');
+const btnStop     = document.getElementById('btn-stop');
+const prompt      = document.getElementById('prompt');
+const scrollBtn   = document.getElementById('scroll-btn');
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Format a date as a relative time string (e.g. "3m ago", "just now").
+ * @param {Date} d
+ * @returns {string}
+ */
+function relTime(d) {
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 5)     return 'just now';
+  if (s < 60)    return s + 's ago';
+  if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+/**
+ * HTML-escape a string.
+ * @param {string} s
+ * @returns {string}
+ */
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Close all open dropdowns (delegated — defined in index.js).
+ * We import via window to avoid a circular dependency with connection.js.
+ */
+function closeDropdowns() { window._closeDropdowns?.(); }
+
+/** Scroll the messages pane to the bottom unless the user has scrolled up. */
+function scrollMsgs() {
+  if (window._userScrolled) return;
+  messages.scrollTop = messages.scrollHeight;
+}
+
+// ── Session lifecycle ──────────────────────────────────────────────────────
+
+/**
+ * Create a new session, reset the UI, and return the new session ID.
+ * Saves the currently active session's HTML before switching.
+ *
+ * @param {string} promptText - The user's task prompt.
+ * @returns {number} The new session's ID.
+ */
+export function createSession(promptText) {
+  if (activeSid !== null) saveSession(activeSid);
+
+  const id = sidSeq + 1;
+  setSidSeq(id);
+
+  setSessionStartTs(Date.now());
+  setStoppedByUser(false);
+  setHadError(false);
+  resetSessionTracking();
+  clearNotes();
+
+  sessions.unshift({
+    id,
+    prompt:  promptText.slice(0, 80),
+    ts:      new Date(),
+    status:  'running',
+    html:    '',
+    notes:   [],
+    tools:   0,
+  });
+
+  setActiveSid(id);
+  setRunningSid(id);
+  setSessionLocked(true);
+  clearMsgs();
+  hideWelcome();
+  renderSessions();
+  return id;
+}
+
+/**
+ * Finalize the running session with a terminal status.
+ * Records elapsed time, file/subtask counts, and unlocks the UI.
+ *
+ * @param {'done'|'error'|'stopped'} status
+ */
+export function finishSession(status) {
+  const s = sessions.find(x => x.id === runningSid);
+  if (s) {
+    s.status = status;
+    if (_sessionStartTs) s.elapsed = Math.round((Date.now() - _sessionStartTs) / 1000);
+    s.files = _writesThisSession.length;
+    if (_subtasksTotal > 1) s.subtasks = { done: _subtasksCompleted, total: _subtasksTotal };
+  }
+  saveSession(activeSid);
+  setRunningSid(null);
+  setSessionLocked(false);
+  renderSessions();
+}
+
+/**
+ * Switch the view to a previous session by restoring its saved HTML.
+ * No-op if the session is locked (a task is running) or already active.
+ *
+ * @param {number} id - Session ID to switch to.
+ */
+export function switchSession(id) {
+  if (sessionLocked || id === activeSid) return;
+  saveSession(activeSid);
+  setActiveSid(id);
+  clearMsgs();
+  clearNotes();
+  const s = sessions.find(x => x.id === id);
+  if (s?.html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = s.html;
+    while (tmp.firstChild) messages.insertBefore(tmp.firstChild, typingEl);
+    hideWelcome();
+  } else {
+    showWelcome();
+  }
+  if (s?.notes?.length) s.notes.forEach(n => addNoteChip(n.type, n.html));
+  scrollMsgs();
+  renderSessions();
+  closeDropdowns();
+}
+
+/**
+ * Start a fresh chat: clear messages, hide controls, reset all state.
+ * No-op if a session is currently locked.
+ */
+export function newChat() {
+  if (sessionLocked) return;
+  if (activeSid !== null) saveSession(activeSid);
+  setActiveSid(null);
+  clearMsgs();
+  showWelcome();
+  hideTyping();
+
+  // Hide all phase/activity chrome
+  phaseBar.classList.add('hidden');
+  phasePillsEl?.classList.add('hidden');
+  activityStrip?.classList.add('hidden');
+  sessionDeltaEl?.classList.add('hidden');
+  ctxMeter?.classList.remove('show');
+  taskPin?.classList.remove('show');
+  if (phaseSubtask) phaseSubtask.classList.remove('show');
+  if (typingLblEl) typingLblEl.textContent = '';
+
+  stopPhaseTimer();
+  setStoppedByUser(false);
+  setHadError(false);
+  window._userScrolled = false;
+  scrollBtn?.classList.remove('show');
+
+  // Reset phase tracking globals via the shared window bindings set in index.js
+  window._resetNewChat?.();
+
+  renderSessions();
+  closeDropdowns();
+  prompt?.focus();
+}
+
+/**
+ * Snapshot the current message feed HTML into the session object
+ * so it can be restored when the user switches back later.
+ *
+ * @param {number|null} id - Session ID to save (no-op if null or not found).
+ */
+export function saveSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+
+  // Collect HTML from all non-chrome children
+  const parts = [];
+  for (const n of messages.children) {
+    if (n === typingEl || n === welcomeEl) continue;
+    parts.push(n.outerHTML);
+  }
+  s.html = parts.join('');
+
+  // Save notes for restoration when the session is revisited
+  const notesList = document.getElementById('notes-list');
+  s.notes = notesList
+    ? Array.from(notesList.querySelectorAll('.note-chip')).map(c => ({
+        type: c.classList.contains('plan') ? 'plan' : 'review',
+        html: c.querySelector('.note-chip-body')?.innerHTML || '',
+      }))
+    : [];
+}
+
+/**
+ * Rebuild the session list dropdown with the current sessions array.
+ * Also updates the session-count badge in the header.
+ */
+export function renderSessions() {
+  const count = sessions.length;
+  const badge = document.getElementById('session-count');
+  if (badge) badge.textContent = count > 1 ? String(count) : '';
+
+  if (!count) {
+    sessionList.innerHTML = '<div class="sb-empty">No sessions yet</div>';
+    return;
+  }
+
+  sessionList.innerHTML = '';
+  sessions.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'sitem' + (s.id === activeSid ? ' active' : '');
+    if (sessionLocked && s.id !== activeSid) btn.disabled = true;
+
+    const metaParts = [relTime(s.ts)];
+    if (s.files) metaParts.push(s.files + ' file' + (s.files !== 1 ? 's' : ''));
+    if (s.tools) metaParts.push(s.tools + ' tools');
+    if (s.subtasks) metaParts.push(s.subtasks.done + '/' + s.subtasks.total + ' subtasks');
+    if (s.elapsed != null) {
+      const m = Math.floor(s.elapsed / 60), sec = s.elapsed % 60;
+      metaParts.push(m ? m + 'm ' + sec + 's' : sec + 's');
+    }
+
+    btn.innerHTML = '<div class="s-dot ' + s.status + '"></div>'
+      + '<div class="s-body">'
+      + '<div class="s-prompt">' + esc(s.prompt) + '</div>'
+      + '<div class="s-meta">' + metaParts.join(' · ') + '</div>'
+      + '</div>';
+    btn.addEventListener('click', () => switchSession(s.id));
+    sessionList.appendChild(btn);
+  });
+}
+
+// Auto-refresh relative timestamps in the session list every 30s
+setInterval(renderSessions, 30000);
+
+// ── Internal DOM helpers ───────────────────────────────────────────────────
+
+function clearMsgs() {
+  Array.from(messages.children).forEach(n => {
+    if (n !== typingEl && n !== welcomeEl) n.remove();
+  });
+}
+
+function showWelcome() { welcomeEl.style.display = ''; }
+function hideWelcome() { welcomeEl.style.display = 'none'; }
+function hideTyping()  { typingEl.style.display = 'none'; }

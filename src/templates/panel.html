@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<title>Dev Agent</title>
+<!-- Init data read by panel-webview.js at startup -->
+<script type="application/json" id="init-data">{{INIT_DATA}}</script>
+<style>{{COMPILED_CSS}}</style>
+</head>
+<body>
+
+<!-- ─── Screen 1: Connect ─── -->
+<!-- Shown while polling for the bridge at startup. Transitions to provider
+     selection, confirm, or chat depending on what the bridge reports. -->
+<div id="scr-connect">
+  <div class="cnc-wrap">
+    <div class="cnc-mark">◉</div>
+    <div class="cnc-title">Dev Agent</div>
+
+    <!-- State: connecting (polling) -->
+    <div id="cnc-connecting">
+      <div class="cnc-row">
+        <div class="cnc-spinner"></div>
+        <span id="cnc-debug">Connecting to bridge…</span>
+      </div>
+    </div>
+
+    <!-- State: waiting (bridge found but browser still starting) -->
+    <div id="cnc-waiting" class="hidden">
+      <div class="cnc-row">
+        <div class="cnc-spinner"></div>
+        <span>Starting browser…</span>
+      </div>
+    </div>
+
+    <!-- State: offline (bridge not reachable) -->
+    <div id="cnc-offline" class="hidden">
+      <div class="cnc-badge">Not running</div>
+      <div class="cnc-label">Start the automation server:</div>
+      <div class="cnc-cmd"><span class="cnc-dollar">$</span><code id="cnc-cmd">dev-agent</code></div>
+      <div class="cnc-poll">
+        <span class="cnc-pulse"></span>
+        <span id="cnc-poll-lbl">Checking…</span>
+      </div>
+    </div>
+
+    <!-- State: error (bridge returned an error) -->
+    <div id="cnc-error" class="hidden">
+      <div class="cnc-badge err">Error</div>
+      <div class="cnc-label" id="cnc-err-txt"></div>
+      <button class="btn-outline" id="btn-cnc-retry">Try again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Screen 2: Provider Selection ─── -->
+<!-- Step 1 of 3: shown when the bridge is in waiting_provider_selection phase -->
+<div id="scr-provider" class="hidden">
+  <div class="setup-hdr">
+    <div class="sh-step"><span class="sh-step-dot"></span>Step 1 of 3</div>
+    <div class="sh-title">Choose an AI</div>
+    <div class="sh-sub">Select which AI the agent will use to complete your tasks.</div>
+  </div>
+  <div class="psel-list" id="psel-list"></div>
+</div>
+
+<!-- ─── Screen 3: Browser Confirmation ─── -->
+<!-- Step 2 of 3: log in to the AI provider in the side browser panel,
+     then confirm here. Shows bridge launch progress while waiting. -->
+<div id="scr-confirm" class="hidden">
+  <div class="setup-hdr">
+    <div class="sh-step"><span class="sh-step-dot"></span>Step 2 of 3</div>
+    <div class="sh-title">Log in</div>
+    <div class="sh-sub">The browser panel on the right shows the AI site. Log in if needed, then confirm.</div>
+  </div>
+  <!-- Bridge launch spinner (visible while browser is starting) -->
+  <div id="bridge-launch">
+    <div class="bl-spinner"></div>
+    <div class="bl-stage" id="bl-stage">Launching browser…</div>
+    <div class="bl-detail" id="bl-detail">Opening browser and starting the automation server</div>
+    <div class="bl-elapsed" id="bl-elapsed"></div>
+    <div class="bl-port" id="bl-port"></div>
+  </div>
+  <!-- Provider confirmation cards (shown once the browser is ready) -->
+  <div class="setup-list hidden" id="pcard-list"></div>
+</div>
+
+<!-- ─── Screen 4: Project Selection ─── -->
+<!-- Step 3 of 3: pick a workspace folder for the agent to operate in -->
+<div id="scr-project" class="hidden">
+  <div class="setup-hdr">
+    <div class="sh-step"><span class="sh-step-dot"></span>Step 3 of 3</div>
+    <div class="sh-title">Select a project</div>
+    <div class="sh-sub">Choose a workspace folder to work in.</div>
+  </div>
+  <div class="proj-list" id="proj-body"></div>
+  <div class="proj-acts">
+    <button class="btn-act" id="btn-browse">Browse…</button>
+    <button class="btn-act" id="btn-new-folder">New folder…</button>
+  </div>
+</div>
+
+<!-- ─── Screen 5: Chat ─── -->
+<!-- Main chat interface. Hidden until the workspace is confirmed. -->
+<div id="scr-chat" class="hidden">
+
+  <!-- Header bar: brand | project/session nav | right actions -->
+  <div id="chat-hdr">
+    <div class="hdr-brand">
+      <span class="hdr-logo">◉</span>
+      <span class="hdr-name">Dev Agent</span>
+    </div>
+    <div class="hdr-left">
+      <span class="hdr-divider"></span>
+      <button class="hdr-btn" id="btn-sessions">
+        <span id="hdr-proj" class="hdr-proj">—</span>
+        <span id="session-count" class="hdr-session-badge"></span>
+        <span class="hdr-drop-arr">▾</span>
+      </button>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-icon-btn" id="btn-notes" title="Plans &amp; reviews">≡ <span id="notes-badge"></span></button>
+      <button class="hdr-new-btn" id="btn-new-chat" title="New session (⌘K)">+ New</button>
+      <button class="hdr-icon-btn" id="btn-settings" title="Settings">⋮</button>
+    </div>
+  </div>
+
+  <!-- Session list dropdown (below "btn-sessions") -->
+  <div id="sessions-drop" class="hidden">
+    <div id="session-list"></div>
+  </div>
+
+  <!-- Settings dropdown (below "⋮") -->
+  <div id="settings-drop" class="hidden">
+    <div class="drop-label">Workspace</div>
+    <button class="drop-item" id="btn-sb-proj">📁 Change project…</button>
+    <div class="drop-sep"></div>
+    <div class="drop-label">View</div>
+    <div class="drop-item drop-item-row" id="btn-compact" style="cursor:pointer">
+      <span>Compact mode</span>
+      <div class="tog-track" id="compact-dot"></div>
+    </div>
+    <button class="drop-item" id="btn-export">📋 Export transcript</button>
+    <div class="drop-sep"></div>
+    <div class="drop-label">Bridge</div>
+    <button class="drop-item" id="btn-sb-prov">↺ Reconnect…</button>
+    <button class="drop-item" id="btn-stop-bridge" style="color:var(--err)">⏹ Stop bridge</button>
+  </div>
+
+  <!-- Main content area -->
+  <div id="chat-main">
+
+    <!-- Phase bar: shown during task execution -->
+    <div id="phase-bar" class="hidden">
+      <div id="phase-steps" style="display:none"></div>
+      <span class="ph-spinner"></span>
+      <span id="phase-lbl">Starting…</span>
+      <span id="phase-subtask" class="phase-subtask"></span>
+      <div class="tool-chip" id="tool-chip"></div>
+      <span class="phase-gap"></span>
+      <span id="session-delta" class="hidden"></span>
+      <div id="ctx-meter">
+        <div class="ctx-bar"><div id="ctx-fill" class="ctx-fill" style="width:0%"></div></div>
+        <span id="ctx-lbl" class="ctx-lbl"></span>
+      </div>
+      <div id="phase-stats"></div>
+    </div>
+
+    <!-- AI sessions bar: primary + auxiliary session indicators -->
+    <div id="ai-sessions-bar">
+      <div class="ai-sess" id="ai-sess-primary">
+        <div class="ai-sess-dot"></div>
+        <span class="ai-sess-badge">Primary</span>
+        <span class="ai-sess-name" id="ai-sess-primary-name">—</span>
+        <span class="ai-sess-task" id="ai-sess-primary-task"></span>
+      </div>
+      <span class="ai-sess-sep">·</span>
+      <div class="ai-sess" id="ai-sess-auxiliary">
+        <div class="ai-sess-dot"></div>
+        <span class="ai-sess-badge">Aux</span>
+        <span class="ai-sess-name" id="ai-sess-auxiliary-name">—</span>
+        <span class="ai-sess-task" id="ai-sess-auxiliary-task"></span>
+      </div>
+    </div>
+
+    <!-- Phase timeline pills: Planning › Researching › Executing › Verifying › Done -->
+    <div id="phase-pills" class="hidden"></div>
+
+    <!-- Thin progress bar (2px) -->
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+
+    <!-- Task pin: shows the user's active prompt during a run -->
+    <div id="task-pin">
+      <span class="tp-badge">Task</span>
+      <span id="task-pin-text"></span>
+      <button id="task-pin-close" title="Dismiss">×</button>
+    </div>
+
+    <!-- Horizontal split: activity strip (left) + messages (right) -->
+    <div id="chat-body">
+
+      <!-- Left column: changed-file chips -->
+      <div id="activity-strip" class="hidden">
+        <span class="as-label">Changed</span>
+        <div id="activity-chips"></div>
+        <span id="activity-overflow" class="as-more hidden"></span>
+      </div>
+
+      <!-- Right column: message feed -->
+      <div id="messages">
+        <!-- Welcome screen (shown when no session is active) -->
+        <div id="welcome">
+          <div class="w-logo">◉</div>
+          <div class="w-title">What can I build for you?</div>
+          <div class="w-sub">Plans, codes, and verifies — no API key needed.</div>
+          <div class="w-examples">
+            <button class="w-ex" data-prompt="Build a React todo app with local storage persistence and filtering by status">
+              <span class="w-ex-icon">⚛</span>
+              <span class="w-ex-txt">New React app</span>
+            </button>
+            <button class="w-ex" data-prompt="Write unit tests for all exported functions with edge case coverage">
+              <span class="w-ex-icon">🧪</span>
+              <span class="w-ex-txt">Write tests</span>
+            </button>
+            <button class="w-ex" data-prompt="Fix all TypeScript errors and add missing type annotations">
+              <span class="w-ex-icon">🔧</span>
+              <span class="w-ex-txt">Fix TS errors</span>
+            </button>
+            <button class="w-ex" data-prompt="Add dark mode with system preference detection and a toggle button">
+              <span class="w-ex-icon">🌙</span>
+              <span class="w-ex-txt">Add dark mode</span>
+            </button>
+            <button class="w-ex" data-prompt="Refactor the codebase to use async/await throughout and add proper error handling">
+              <span class="w-ex-icon">⚡</span>
+              <span class="w-ex-txt">Async refactor</span>
+            </button>
+            <button class="w-ex" data-prompt="Add REST API endpoints with validation, error handling, and OpenAPI documentation">
+              <span class="w-ex-icon">🌐</span>
+              <span class="w-ex-txt">Add REST API</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Typing indicator (shown while AI is generating) -->
+        <div id="typing">
+          <div class="tdots"><span></span><span></span><span></span></div>
+          <span class="t-lbl"></span>
+        </div>
+      </div>
+
+    </div><!-- #chat-body -->
+
+    <!-- Scroll-to-bottom floating button -->
+    <button id="scroll-btn" title="Scroll to bottom">↓</button>
+
+    <!-- Notes drawer (slides in from right) -->
+    <div id="notes-drawer">
+      <div id="notes-hdr">
+        <span id="notes-hdr-lbl">Plans &amp; Reviews</span>
+        <button id="notes-close" title="Close">✕</button>
+      </div>
+      <div id="notes-list">
+        <div id="notes-empty">No plans or reviews yet</div>
+      </div>
+    </div>
+
+    <!-- Input area -->
+    <div class="inp-area">
+      <div id="attach-preview" class="hidden"></div>
+      <div class="inp-wrap">
+        <button class="inp-attach" id="btn-attach" title="Attach image (or paste)">📎</button>
+        <textarea id="prompt" rows="1" placeholder="Describe what to build…"></textarea>
+        <button class="inp-send" id="btn-send" title="Send (Enter)">↑</button>
+        <button class="inp-stop hidden" id="btn-stop" title="Stop">■</button>
+      </div>
+      <div class="inp-foot">
+        <button id="btn-prov" class="prov-chip">
+          <span class="prov-chip-dot"></span>
+          <span id="prov-name">No provider</span>
+          <span class="prov-chip-caret">▾</span>
+        </button>
+        <span class="inp-hint" id="inp-hint">↵ send · ↑ history · 📎 paste image</span>
+        <span class="inp-char" id="inp-char"></span>
+      </div>
+      <div id="prov-drop" class="hidden"></div>
+    </div>
+
+  </div><!-- #chat-main -->
+</div><!-- #scr-chat -->
+
+<script src="{{WEBVIEW_SCRIPT_URI}}"></script>
+</body>
+</html>

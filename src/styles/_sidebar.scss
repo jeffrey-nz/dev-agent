@@ -1,0 +1,164 @@
+// ── Sidebar / Session List / Notes Drawer ─────────────────────────────────
+//
+// Styles for:
+//   - Session list items (.sitem, .s-dot, .s-body, .s-prompt, .s-meta)
+//     shown in the #sessions-drop dropdown
+//   - Notes drawer (#notes-drawer) that slides in from the right with
+//     plan/review note chips (.note-chip, .note-chip-*)
+
+// ── Session list items ─────────────────────────────────────────────────────
+// Each session is a button with a coloured status dot and two-line body
+
+.sitem {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; border-radius: 5px;
+  cursor: pointer; background: transparent;
+  border: 1px solid transparent;
+  width: 100%; text-align: left; font: inherit;
+  transition: background 0.1s;
+
+  &:hover:not(.active):not(:disabled) { background: var(--hov); }
+  &.active    { background: var(--sel); border-color: var(--bd); }
+  &:disabled  { opacity: 0.35; cursor: not-allowed; }
+}
+
+// Coloured dot indicating session run state
+.s-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 4px;
+
+  &.running { background: var(--acc); animation: pulse 0.9s infinite; }
+  &.done    { background: var(--ok); }
+  &.error   { background: var(--err); }
+  &.stopped { background: var(--mu); opacity: 0.4; }
+}
+
+.s-body { flex: 1; min-width: 0; }
+
+// Prompt excerpt (up to 2 lines, then clamp)
+.s-prompt {
+  font-size: 12px; color: var(--fg); font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden; line-height: 1.4; margin-bottom: 3px;
+}
+
+// Meta line: time ago, file count, tool count, elapsed
+.s-meta { font-size: 10px; color: var(--mu); opacity: 0.7; }
+
+// ── Notes drawer ──────────────────────────────────────────────────────────
+// Slides in from the right edge of the chat header area.
+// Contains collapsible plan/review note chips added during a session.
+
+#notes-drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 260px;
+  background: var(--sidebar); border-left: 1px solid var(--bd);
+  display: flex; flex-direction: column; z-index: 50;
+  transform: translateX(100%); transition: transform 0.18s ease;
+  pointer-events: none;
+
+  &.open { transform: translateX(0); pointer-events: auto; }
+}
+
+#notes-hdr {
+  display: flex; align-items: center;
+  padding: 0 10px; height: 36px; flex-shrink: 0;
+  border-bottom: 1px solid var(--bd); gap: 6px;
+}
+
+#notes-hdr-lbl {
+  font-size: 11px; font-weight: 600; color: var(--mu);
+  opacity: 0.75; flex: 1; letter-spacing: 0.02em;
+}
+
+#notes-close {
+  background: transparent; border: none; color: var(--mu);
+  cursor: pointer; font-size: 14px; padding: 2px 5px;
+  border-radius: 4px; line-height: 1; transition: background 0.1s;
+
+  &:hover { background: var(--hov); color: var(--fg); }
+}
+
+#notes-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px 10px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+
+  &::-webkit-scrollbar       { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+}
+
+#notes-empty {
+  font-size: 11px; color: var(--mu); opacity: 0.45;
+  text-align: center; padding: 28px 12px; font-style: italic;
+}
+
+// ── Note chip (plan / review) ──────────────────────────────────────────────
+// Collapsible card inside the notes drawer for plan/review outputs
+
+.note-chip {
+  border: 1px solid var(--bd); border-radius: 7px;
+  overflow: hidden; animation: msgIn 0.14s ease; flex-shrink: 0;
+
+  &.plan   { border-left: 2px solid var(--cp); }
+  &.review { border-left: 2px solid var(--cv); }
+}
+
+.note-chip-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px; cursor: pointer;
+  user-select: none; transition: background 0.1s;
+
+  .note-chip.plan  & { background: color-mix(in srgb, var(--cp) 7%, transparent); }
+  .note-chip.review & { background: color-mix(in srgb, var(--cv) 8%, transparent); }
+  .note-chip.plan  &:hover { background: color-mix(in srgb, var(--cp) 12%, transparent); }
+  .note-chip.review &:hover { background: color-mix(in srgb, var(--cv) 13%, transparent); }
+  .note-chip.open & { border-bottom: 1px solid var(--bd); }
+}
+
+.note-chip-icon {
+  font-size: 11px; flex-shrink: 0;
+
+  .note-chip.plan  & { color: var(--cp); }
+  .note-chip.review & { color: var(--cv); }
+}
+
+.note-chip-label {
+  font-size: 10px; font-weight: 700; flex: 1; letter-spacing: 0.03em;
+
+  .note-chip.plan  & { color: var(--cp); }
+  .note-chip.review & { color: var(--cv); }
+}
+
+.note-chip-seq {
+  font-size: 9px; font-family: var(--mono); color: var(--mu); opacity: 0.4;
+}
+
+.note-chip-caret {
+  font-size: 8px; color: var(--mu); opacity: 0.4;
+  transition: transform 0.15s; flex-shrink: 0;
+
+  .note-chip.open & { transform: rotate(180deg); }
+}
+
+.note-chip-body {
+  display: none;
+  padding: 8px 10px; font-size: 11px; line-height: 1.6;
+  color: var(--fg); overflow-x: auto;
+  max-height: 320px; overflow-y: auto;
+
+  .note-chip.open & { display: block; }
+
+  &::-webkit-scrollbar       { width: 3px; height: 3px; }
+  &::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+}
+
+// Badge on the notes icon button — shows total note count
+#notes-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 8px;
+  background: color-mix(in srgb, var(--cp) 20%, transparent); color: var(--cp);
+  min-width: 14px; text-align: center; line-height: 1.4; display: none;
+
+  &.show { display: inline-block; }
+}

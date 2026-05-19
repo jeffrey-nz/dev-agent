@@ -1,0 +1,43 @@
+// ── Base / Reset / Shared Utilities ───────────────────────────────────────
+//
+// Global resets, body defaults, and utility classes shared across all screens.
+// No component-specific rules belong here.
+
+// Universal box-sizing reset
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+// Body: fill the VS Code webview panel, no overflow
+body {
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Default button reset — component styles add their own appearance
+button {
+  border: none;
+  border-radius: var(--r);
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.1s, opacity 0.12s, color 0.1s;
+}
+
+// Links inherit the accent colour
+a {
+  color: var(--acc);
+}
+
+// .hidden: utility class to completely remove an element from layout.
+// Use !important so it can't be overridden by specificity mistakes.
+.hidden {
+  display: none !important;
+}

@@ -1,0 +1,69 @@
+// ── CSS Custom Properties / Theme Tokens ──────────────────────────────────
+//
+// All design tokens live here as :root custom properties.
+// VS Code theme variables are used as fallbacks so the panel adapts to any
+// installed colour theme (dark, light, high-contrast).
+//
+// Naming convention:
+//   --fg / --bg / --bd   foreground / background / border (general)
+//   --mu                 muted text (descriptions, placeholders)
+//   --hov / --sel        hover / selection backgrounds
+//   --in-*               input element colours
+//   --btn / --btn-fg     primary button background / foreground
+//   --foc / --acc        focus ring / accent (links, highlights)
+//   --ok / --warn / --err  semantic status colours
+//   --sidebar            sidebar panel background
+//   --mono               monospace font stack
+//   --r                  base border radius
+//   --cp / --cr / --ce / --cv / --cd / --ck  phase colours:
+//       planning / researching / execution / verifying / debugging / done
+
+:root {
+  // Foreground / background / border
+  --fg:     var(--vscode-editor-foreground, #d4d4d4);
+  --bg:     var(--vscode-editor-background, #1e1e1e);
+  --bd:     var(--vscode-panel-border, rgba(128, 128, 128, 0.18));
+
+  // Muted text (descriptions, secondary labels)
+  --mu:     var(--vscode-descriptionForeground, #888);
+
+  // List states
+  --hov:    var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.06));
+  --sel:    var(--vscode-list-activeSelectionBackground, rgba(255, 255, 255, 0.08));
+
+  // Input fields
+  --in-bg:  var(--vscode-input-background, #2d2d2d);
+  --in-fg:  var(--vscode-input-foreground, #cccccc);
+  --in-bd:  var(--vscode-input-border, rgba(128, 128, 128, 0.25));
+
+  // Primary button
+  --btn:    var(--vscode-button-background, #0078d4);
+  --btn-fg: var(--vscode-button-foreground, #fff);
+  --btn-h:  var(--vscode-button-hoverBackground, #1484d9);
+
+  // Focus ring / accent colour
+  --foc:    var(--vscode-focusBorder, #007fd4);
+  --acc:    var(--vscode-focusBorder, #58a6ff);
+
+  // Semantic status colours
+  --ok:     #3fb950;
+  --warn:   #d29922;
+  --err:    var(--vscode-errorForeground, #f85149);
+
+  // Sidebar panel background
+  --sidebar: var(--vscode-sideBar-background, #252526);
+
+  // Monospace font stack (used for code, diffs, tool labels, etc.)
+  --mono:   var(--vscode-editor-font-family, 'Menlo', 'Cascadia Code', 'Consolas', monospace);
+
+  // Base border radius
+  --r: 6px;
+
+  // Phase accent colours (matched by JS PHASE_COLORS map)
+  --cp: #7c6af7;   // planning / orchestrating
+  --cr: #4da6ff;   // researching / scoping
+  --ce: #2ecc8a;   // execution / writing
+  --cv: #e5a100;   // verifying / reviewing
+  --cd: #e54545;   // debugging
+  --ck: #3fb950;   // done
+}

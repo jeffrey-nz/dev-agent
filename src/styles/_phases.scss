@@ -1,0 +1,295 @@
+// ── Phase Bar, Progress Bar, Phase Pills, Task Pin, Ctx Meter, AI Sessions ─
+//
+// Everything related to tracking and displaying the agent's current phase:
+//
+//   #phase-bar          — coloured bar at top of chat showing current phase
+//   #progress-bar       — thin 2px line below phase bar showing % progress
+//   #phase-pills        — timeline row (Planning › Researching › Executing …)
+//   #task-pin           — sticky strip pinning the user's task prompt
+//   #ctx-meter          — browser context usage meter (messages/threshold)
+//   #ai-sessions-bar    — primary/auxiliary session indicator bar
+//   .phase-subtask      — subtask counter chip inside the phase bar
+//   .tool-chip          — current tool name shown in the phase bar
+//   #typing             — animated dots + label shown while AI is typing
+
+// ── Phase bar ─────────────────────────────────────────────────────────────
+// The coloured bar is driven by the --phase-color CSS variable which JS sets
+// on the element dynamically as phases change.
+
+#phase-bar {
+  flex-shrink: 0; padding: 0 10px 0 12px; height: 36px;
+  border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--mu);
+  background: color-mix(in srgb, var(--bg) 96%, var(--acc) 4%);
+  border-left: 3px solid var(--phase-color, var(--acc));
+  transition: border-color 0.35s ease, background 0.35s ease;
+}
+
+// Spinner inside the phase bar
+.ph-spinner {
+  width: 11px; height: 11px;
+  border: 1.5px solid color-mix(in srgb, var(--phase-color, var(--acc)) 22%, transparent);
+  border-top-color: var(--phase-color, var(--acc));
+  border-radius: 50%; animation: spin 0.65s linear infinite;
+  flex-shrink: 0; opacity: 0.85; transition: border-color 0.35s;
+}
+
+// Phase label text (e.g. "Executing…" with an elapsed time suffix)
+#phase-lbl {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--phase-color, var(--mu)); transition: color 0.35s;
+}
+
+// Elapsed seconds appended inside the phase label element
+.phase-elapsed {
+  font-family: var(--mono); font-size: 10px;
+  opacity: 0.4; margin-left: 1px; font-weight: 400; color: var(--mu);
+}
+
+// Inline tool name chip (truncated filename/command)
+.tool-chip {
+  display: none; align-items: center;
+  font-family: var(--mono); font-size: 10px; color: var(--mu);
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex-shrink: 0; opacity: 0.6;
+}
+
+// Spacer that pushes right-side widgets to the end
+.phase-gap { flex: 1; }
+
+// Stats cluster (reads / writes / runs counts)
+#phase-stats {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  font-family: var(--mono); font-size: 10px; color: var(--mu); opacity: 0.5;
+}
+
+.pstat      { display: flex; align-items: center; gap: 2px; }
+.pstat-val  { font-weight: 700; }
+
+// ── Session delta (total lines added/removed in current session) ───────────
+.session-delta {
+  display: flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 10px; flex-shrink: 0;
+}
+.sd-add { color: var(--ok); font-weight: 600; }
+.sd-rem { color: var(--err); font-weight: 600; }
+
+// ── Subtask counter chip ──────────────────────────────────────────────────
+// Shows "3 / 7" when the orchestrator is running subtasks
+
+.phase-subtask {
+  display: none; align-items: center;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--phase-color, var(--acc));
+  background: color-mix(in srgb, var(--phase-color, var(--acc)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--phase-color, var(--acc)) 28%, transparent);
+  padding: 1px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 0.02em;
+  transition: background 0.35s, border-color 0.35s, color 0.35s;
+
+  &.show { display: flex; }
+}
+
+// ── Task pin ──────────────────────────────────────────────────────────────
+// Shows the user's submitted prompt during a run so they don't lose context
+
+#task-pin {
+  flex-shrink: 0; display: none; align-items: center; gap: 7px;
+  padding: 5px 12px 5px 15px; border-bottom: 1px solid var(--bd);
+  background: color-mix(in srgb, var(--acc) 5%, var(--sidebar));
+  font-size: 11px;
+
+  &.show { display: flex; }
+}
+
+.tp-badge {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--acc); opacity: 0.7;
+  white-space: nowrap; flex-shrink: 0;
+}
+
+#task-pin-text {
+  flex: 1; min-width: 0; color: var(--mu);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; opacity: 0.9;
+}
+
+#task-pin-close {
+  background: transparent; border: none; color: var(--mu); cursor: pointer;
+  font-size: 12px; padding: 1px 4px; border-radius: 3px; opacity: 0.4;
+  transition: opacity 0.1s, background 0.1s; flex-shrink: 0; line-height: 1;
+
+  &:hover { opacity: 0.8; background: var(--hov); }
+}
+
+// ── Browser context meter ─────────────────────────────────────────────────
+// Shows messageCount/threshold as a small progress bar in the phase bar.
+// Turns yellow > 60%, red > 85% to signal an imminent session rotation.
+
+#ctx-meter {
+  display: none; align-items: center; gap: 5px; flex-shrink: 0;
+  font-family: var(--mono); font-size: 10px; color: var(--mu); opacity: 0.65;
+
+  &.show { display: flex; }
+}
+
+.ctx-bar {
+  width: 36px; height: 4px; border-radius: 2px; overflow: hidden;
+  background: color-mix(in srgb, var(--mu) 15%, transparent); flex-shrink: 0;
+}
+
+.ctx-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 0.4s ease, background 0.4s;
+  background: var(--ok);
+
+  &.warn { background: var(--warn); }
+  &.crit { background: var(--err); }
+}
+
+.ctx-lbl { font-size: 10px; opacity: 0.7; white-space: nowrap; }
+
+// ── AI sessions bar ───────────────────────────────────────────────────────
+// Shows primary + auxiliary AI session status when both are running.
+
+#ai-sessions-bar {
+  flex-shrink: 0; display: none; align-items: center; gap: 6px;
+  padding: 0 12px; height: 30px; border-bottom: 1px solid var(--bd);
+  background: color-mix(in srgb, var(--bg) 97%, var(--acc) 3%);
+  font-size: 10.5px;
+
+  &.show { display: flex; }
+}
+
+.ai-sess {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--bd) 70%, transparent);
+  transition: border-color 0.25s, background 0.25s;
+  flex-shrink: 0; min-width: 0;
+
+  &.active {
+    border-color: color-mix(in srgb, var(--acc) 45%, transparent);
+    background: color-mix(in srgb, var(--acc) 9%, transparent);
+  }
+}
+
+.ai-sess-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: color-mix(in srgb, var(--mu) 25%, transparent);
+  flex-shrink: 0; transition: background 0.25s;
+
+  .ai-sess.active & {
+    background: var(--acc);
+    animation: sess-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+.ai-sess-badge {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--mu); opacity: 0.5; white-space: nowrap;
+
+  .ai-sess.active & { opacity: 0.85; color: var(--acc); }
+}
+
+.ai-sess-name {
+  font-weight: 600; color: var(--fg); opacity: 0.75;
+  font-size: 10.5px; white-space: nowrap;
+
+  .ai-sess.active & { opacity: 1; }
+}
+
+.ai-sess-task {
+  color: var(--mu); opacity: 0.6; font-family: var(--mono); font-size: 10px;
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+
+  .ai-sess.active & { opacity: 0.85; color: var(--fg); }
+}
+
+.ai-sess-sep { color: var(--mu); opacity: 0.2; flex-shrink: 0; font-size: 11px; margin: 0 2px; }
+
+// ── Progress bar ──────────────────────────────────────────────────────────
+// 2px line that fills from 0–100% as phases advance
+
+#progress-bar {
+  height: 2px; background: transparent; flex-shrink: 0;
+  overflow: hidden; position: relative; transition: opacity 0.3s;
+}
+
+#progress-fill {
+  height: 100%;
+  background: var(--phase-color, var(--acc));
+  width: 0;
+  transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1), background 0.35s;
+  box-shadow: 0 0 8px var(--phase-color, var(--acc));
+}
+
+// ── Phase timeline pills ──────────────────────────────────────────────────
+// Horizontal pill row: Planning › Researching › Executing › Verifying › Done
+
+#phase-pills {
+  display: flex; align-items: center; gap: 0;
+  padding: 0 10px; height: 26px; flex-shrink: 0; overflow: hidden;
+  border-bottom: 1px solid var(--bd);
+  background: color-mix(in srgb, var(--bg) 98%, var(--acc) 2%);
+}
+
+// Separator chevron between pills
+.pp-sep { font-size: 10px; color: var(--mu); opacity: 0.18; padding: 0 2px; user-select: none; }
+
+.pp-item {
+  display: flex; align-items: center; gap: 4px; padding: 2px 7px;
+  border-radius: 4px; font-size: 10px; white-space: nowrap;
+  color: var(--mu); opacity: 0.28;
+  transition: opacity 0.25s, background 0.2s, color 0.2s;
+
+  &.done   { opacity: 0.65; color: var(--pc, var(--mu)); }
+  &.active {
+    opacity: 1; color: var(--pc, var(--fg)); font-weight: 700;
+    background: color-mix(in srgb, var(--pc, var(--acc)) 12%, transparent);
+  }
+}
+
+.pp-check { font-size: 9px; color: inherit; flex-shrink: 0; }
+.pp-num   { font-size: 9px; font-family: var(--mono); opacity: 0.5; flex-shrink: 0; }
+
+.pp-pulse {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--pc, var(--acc));
+  animation: pulse 0.85s infinite; flex-shrink: 0;
+}
+
+.pp-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; font-family: var(--mono);
+}
+
+.pp-dur {
+  font-size: 9px; font-family: var(--mono); opacity: 0.5;
+  &.pp-live { opacity: 0.8; color: var(--pc, var(--mu)); }
+}
+
+// ── Typing indicator ──────────────────────────────────────────────────────
+// Three animated dots + an optional label shown while the AI is generating
+
+#typing {
+  display: none; align-items: center; gap: 8px;
+  padding: 8px 2px; font-size: 11px; color: var(--mu);
+}
+
+.tdots { display: flex; gap: 3px; align-items: center; }
+.tdots span {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--phase-color, var(--acc));
+  opacity: 0.35; animation: tb 0.9s infinite;
+
+  &:nth-child(2) { animation-delay: 0.18s; }
+  &:nth-child(3) { animation-delay: 0.36s; }
+}
+
+.t-lbl {
+  font-family: var(--mono); font-size: 10px; opacity: 0.5;
+  letter-spacing: 0.01em;
+  color: var(--phase-color, var(--mu)); transition: color 0.35s;
+}

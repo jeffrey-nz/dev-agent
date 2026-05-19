@@ -1,0 +1,76 @@
+// ── Keyframe Animations ────────────────────────────────────────────────────
+//
+// All @keyframes definitions used across the panel.
+// Keeping them in one file prevents duplication and makes it easy to
+// tune timing without hunting through component files.
+//
+// Animations defined here:
+//   spin          — continuous clockwise rotation (spinners)
+//   pulse         — opacity pulsing (status dots, cnc-pulse)
+//   msgIn         — message / card entry (opacity + slight Y translate)
+//   chipIn        — activity-strip chip entry (scale + opacity)
+//   diffFlash     — brief outline flash on diff cards
+//   stream-cursor — blinking block cursor during AI streaming
+//   blink         — soft opacity blink (pending tool prefix)
+//   tb            — typing bounce dots
+//   sess-pulse    — AI session dot pulse
+//   hc-spin       — single rotation on handoff card icon entry
+
+// Spinner: continuous 360° rotation
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// Status dot: opacity pulsing for "running" / "waiting" states
+@keyframes pulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.9; }
+}
+
+// Message entry: fade up from slightly below
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+// Activity chip entry: scale + fade from slightly below
+@keyframes chipIn {
+  from { opacity: 0; transform: scale(0.88) translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+
+// Diff card highlight: brief outline flash in green when scrolled-to via chip click
+@keyframes diffFlash {
+  0%, 100% { outline: none; }
+  20%       { outline: 2px solid var(--ok); }
+}
+
+// Streaming cursor: step-function blink (on/off, no smooth fade)
+@keyframes stream-cursor {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 0; }
+}
+
+// Pending tool prefix: soft opacity blink
+@keyframes blink {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+// Typing indicator bounce dots
+@keyframes tb {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.25; }
+  30%            { transform: translateY(-4px); opacity: 0.9; }
+}
+
+// AI session dot: subtle scale + opacity pulse when active
+@keyframes sess-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.78); }
+}
+
+// Handoff card icon: single clockwise rotation on card insertion
+@keyframes hc-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

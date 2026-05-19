@@ -1,0 +1,31 @@
+// ── Dev Agent Panel — Main Stylesheet ─────────────────────────────────────
+//
+// Entry point for the panel CSS. Imports all partials in dependency order:
+//   1. _variables   — CSS custom properties / theme tokens
+//   2. _animations  — @keyframes (referenced by all component files)
+//   3. _base        — reset, body, button, a, .hidden
+//   4. _setup       — connect / provider / confirm / project screens
+//   5. _layout      — header, dropdowns, input area, body split
+//   6. _sidebar     — session list, notes drawer
+//   7. _phases      — phase bar, progress, pills, task-pin, ctx-meter
+//   8. _tools       — tool cards, read groups, activity strip
+//   9. _diffs       — diff cards, diff lines, changes summary
+//  10. _messages    — chat messages, markdown, welcome screen
+//  11. _cards       — plan/review cards, handoff card, subtask chip, banners
+//  12. _compact     — compact mode overrides (must be last to win specificity)
+//
+// This file is compiled by the build step to a CSS string and injected into
+// the webview HTML via panel.js → _buildHtml(). See scripts/build.mjs.
+
+@use 'variables';
+@use 'animations';
+@use 'base';
+@use 'setup';
+@use 'layout';
+@use 'sidebar';
+@use 'phases';
+@use 'tools';
+@use 'diffs';
+@use 'messages';
+@use 'cards';
+@use 'compact';
