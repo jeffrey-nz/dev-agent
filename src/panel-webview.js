@@ -2066,7 +2066,8 @@ window.addEventListener('message',e=>{
     case 'pipeline_selected': {
       const lbl = msg.pipelineLabel || msg.taskType || 'unknown';
       _dlog('pipeline_selected: ' + lbl);
-      addSysMsg('Pipeline: ' + lbl, false, false, false);
+      // Update typing label so user sees what pipeline was chosen during ORCHESTRATING phase
+      if (typingLblEl) typingLblEl.textContent = lbl;
       break;
     }
 
