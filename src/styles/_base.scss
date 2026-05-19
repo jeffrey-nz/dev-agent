@@ -31,6 +31,16 @@ button {
   transition: background 0.1s, opacity 0.12s, color 0.1s;
 }
 
+// Global focus-visible ring: keyboard navigation highlight for all interactive elements.
+// Uses outline so it doesn't affect layout; offset keeps it outside the element border.
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 // Links inherit the accent colour
 a {
   color: var(--acc);

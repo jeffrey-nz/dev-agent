@@ -359,6 +359,7 @@ function _addFollowUpSuggestions() {
   }
   if (exts.has('jsx') || exts.has('tsx')) {
     pool.unshift({ icon: '⚛', label: 'Add stories', prompt: 'Create Storybook stories for all React components created or modified, with realistic mock data' });
+    pool.unshift({ icon: '📸', label: 'Visual check', prompt: 'Start the dev server, take a screenshot to see the current UI, check for any visual issues, then fix them' });
   }
   if (exts.has('css') || exts.has('scss') || exts.has('less')) {
     pool.unshift({ icon: '🌙', label: 'Dark mode',   prompt: 'Add a dark mode theme: CSS variables for colours, a toggle button, and persist the preference in localStorage' });
@@ -374,6 +375,27 @@ function _addFollowUpSuggestions() {
   }
   if (exts.has('ts') || exts.has('tsx')) {
     pool.unshift({ icon: '⌨', label: 'Fix TS types', prompt: 'Fix all TypeScript type errors and add precise type annotations to every new function and interface' });
+  }
+  if (exts.has('go')) {
+    pool.unshift({ icon: '🔵', label: 'Go benchmarks', prompt: 'Add Go benchmark functions (Benchmark*) and table-driven tests for the changed packages. Run go test -bench=. to confirm they pass' });
+  }
+  if (exts.has('java') || exts.has('kt')) {
+    pool.unshift({ icon: '☕', label: 'Add Javadoc', prompt: 'Add complete Javadoc/KDoc comments to all public classes and methods, including @param, @return, and @throws tags' });
+  }
+  if (exts.has('rs')) {
+    pool.unshift({ icon: '🦀', label: 'Audit lifetimes', prompt: 'Review all lifetime annotations and ownership patterns in the new Rust code. Ensure no unnecessary clones and that error types implement std::error::Error' });
+  }
+  if (exts.has('rb')) {
+    pool.unshift({ icon: '💎', label: 'RSpec tests', prompt: 'Generate RSpec tests for all new Ruby classes and methods, covering happy paths, edge cases, and error conditions' });
+  }
+  if (exts.has('php')) {
+    pool.unshift({ icon: '🐘', label: 'Security audit', prompt: 'Audit the new PHP code for SQL injection, XSS, CSRF, and missing input validation. Fix any vulnerabilities found' });
+  }
+  if (exts.has('swift')) {
+    pool.unshift({ icon: '🍎', label: 'Swift tests', prompt: 'Add XCTest unit tests for all new Swift types and functions, using async/await for async code and mock dependencies where needed' });
+  }
+  if (exts.has('cs')) {
+    pool.unshift({ icon: '#', label: 'Add XML docs', prompt: 'Add XML documentation comments (<summary>, <param>, <returns>, <exception>) to all public C# members and generate a documentation page' });
   }
 
   const chosen = pool.slice(0, 4);
@@ -421,6 +443,7 @@ export function addStopBanner() {
   let label = '✗ Stopped' + _bannerTime();
   const fileCount = _writesThisSession.length;
   if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '');
+  if (_subtasksTotal > 1) label += ' · ' + _subtasksCompleted + '/' + _subtasksTotal + ' subtasks';
   if (_totalAdded || _totalRemoved) {
     const delta = (_totalAdded ? '+' + _totalAdded : '') + (_totalRemoved ? ' −' + _totalRemoved : '');
     label += ' · ' + delta + ' lines';
@@ -449,6 +472,11 @@ export function addErrorBanner(lastPrompt) {
   let label = '⚠ Task failed' + _bannerTime();
   const fileCount = _writesThisSession.length;
   if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '') + ' changed before error';
+  if (_subtasksTotal > 1) label += ' · ' + _subtasksCompleted + '/' + _subtasksTotal + ' subtasks done';
+  if (_totalAdded || _totalRemoved) {
+    const delta = (_totalAdded ? '+' + _totalAdded : '') + (_totalRemoved ? ' −' + _totalRemoved : '');
+    label += ' · ' + delta + ' lines';
+  }
   d.innerHTML = '<div class="err-line"></div><span>' + label + '</span><div class="err-line"></div>';
   ibt(d);
 

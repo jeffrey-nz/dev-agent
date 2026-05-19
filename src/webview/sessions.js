@@ -207,6 +207,9 @@ export function switchSession(id) {
     showWelcome();
   }
   if (s?.notes?.length) s.notes.forEach(n => addNoteChip(n.type, n.html));
+  // Always scroll to bottom on session switch regardless of prior scroll state
+  window._userScrolled = false;
+  scrollBtn?.classList.remove('show');
   scrollMsgs();
   renderSessions();
   closeDropdowns();
@@ -239,6 +242,12 @@ export function newChat() {
   setHadError(false);
   window._userScrolled = false;
   scrollBtn?.classList.remove('show');
+
+  // Close notes drawer if open
+  const notesDrawer = document.getElementById('notes-drawer');
+  const btnNotes = document.getElementById('btn-notes');
+  notesDrawer?.classList.remove('open');
+  btnNotes?.classList.remove('active');
 
   // Reset phase tracking globals via the shared window bindings set in index.js
   window._resetNewChat?.();

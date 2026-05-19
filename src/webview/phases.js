@@ -40,11 +40,12 @@ const typingEl    = document.getElementById('typing');
 // Each step groups related phase names and provides a label + accent colour.
 
 export const STEPS = [
-  { label: 'Planning',   phases: ['PLANNING', 'ORCHESTRATING'],          color: 'var(--cp)' },
-  { label: 'Researching', phases: ['RESEARCHING', 'SCOPING'],             color: 'var(--cr)' },
-  { label: 'Executing',  phases: ['EXECUTION', 'WRITING'],                color: 'var(--ce)' },
-  { label: 'Verifying',  phases: ['VERIFYING', 'REVIEWING', 'DEBUGGING'], color: 'var(--cv)' },
-  { label: 'Done',       phases: [],                                      color: 'var(--ck)' },
+  { label: 'Planning',   phases: ['PLANNING', 'ORCHESTRATING'],  color: 'var(--cp)' },
+  { label: 'Researching', phases: ['RESEARCHING', 'SCOPING'],    color: 'var(--cr)' },
+  { label: 'Executing',  phases: ['EXECUTION', 'WRITING'],       color: 'var(--ce)' },
+  { label: 'Verifying',  phases: ['VERIFYING', 'REVIEWING'],     color: 'var(--cv)' },
+  { label: 'Debugging',  phases: ['DEBUGGING'],                  color: 'var(--cd)' },
+  { label: 'Done',       phases: [],                             color: 'var(--ck)' },
 ];
 
 // ── Phase colour map ───────────────────────────────────────────────────────

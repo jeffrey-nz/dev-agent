@@ -21,8 +21,9 @@
  *   system_message
  *   debug_snapshot_request
  *   session_end, task_complete
- *   subtask_kickoff, subtask_status
- *   progress_update, research_progress, pipeline_selected
+ *   subtask_kickoff, subtask_status, plan_revision
+ *   progress_update, research_progress, spinner_update, pipeline_selected
+ *   github_activity
  *   browser_context_update
  *   session_handoff, copilot365_segment_boundary
  *   session_role_update
@@ -107,6 +108,31 @@ function _chipText(s) {
 // Batches chunk renders to ~30fps so rapid streaming doesn't thrash the DOM
 
 let _streamRenderTimer = null;
+
+// ── Bridge watchdog ───────────────────────────────────────────────────────
+// Fires if no pipeline events arrive for 90s during an active task, which
+// indicates the bridge may have crashed or the connection dropped.
+
+let _watchdogTimer = null;
+
+function _armWatchdog() {
+  if (!window._runningSid) return;
+  clearTimeout(_watchdogTimer);
+  _watchdogTimer = setTimeout(() => {
+    if (!window._runningSid) return;
+    addSysMsg(
+      'No response from the agent for 90 seconds. The bridge may have stalled. ' +
+      'Click Stop to cancel, then restart the automation server.',
+      true,
+    );
+    showToast('Bridge stalled — no activity for 90s', 'err', 8000);
+  }, 90_000);
+}
+
+function _disarmWatchdog() {
+  clearTimeout(_watchdogTimer);
+  _watchdogTimer = null;
+}
 
 // ── Debug log helper ───────────────────────────────────────────────────────
 
@@ -368,11 +394,8 @@ function _handleMessage(msg) {
       break;
 
     case 'phase_change': {
+      _armWatchdog();
       const ph = msg.phase || '';
-      import('./state.js').then(({ lastPhase: lp }) => {
-        if (ph === lp) return;
-      });
-      // Use captured refs to avoid re-importing
       if (ph === window._lastPhase) break;
       flushReads();
       window._lastPhase = ph;
@@ -406,6 +429,7 @@ function _handleMessage(msg) {
     }
 
     case 'tool_call_start':
+      _armWatchdog();
       if (msg.tool) {
         _dlog('tool_start: ' + msg.tool + ' ' + (msg.paramsSummary || '').slice(0, 40));
         const ts_ = toolStyle(msg.tool);
@@ -457,7 +481,7 @@ function _handleMessage(msg) {
         if (toolChip) toolChip.style.display = 'none';
       } else {
         flushReads();
-        resolveCard(!!msg.isError, msg.elapsed);
+        resolveCard(!!msg.isError, msg.elapsed, msg.errorSummary || msg.error);
         if (toolChip) toolChip.style.display = 'none';
         if (!isWrite || msg.isError) showTyping();
         if (msg.isError) {
@@ -512,6 +536,7 @@ function _handleMessage(msg) {
     }
 
     case 'message_chunk': {
+      _armWatchdog();
       const chunk = msg.text || msg.chunk || '';
       if (!chunk) break;
       const newBuf = _streamingBuf + chunk;
@@ -539,7 +564,10 @@ function _handleMessage(msg) {
           _streamRenderTimer = null;
           const mdEl2 = _streamingEl?.querySelector('.mab-md');
           if (mdEl2) {
-            mdEl2.innerHTML = renderMarkdown(_streamingBuf);
+            // Close any incomplete fenced code block so backticks don't render as raw text
+            const fences = (_streamingBuf.match(/```/g) || []).length;
+            const renderBuf = fences % 2 !== 0 ? _streamingBuf + '\n```' : _streamingBuf;
+            mdEl2.innerHTML = renderMarkdown(renderBuf);
             if (!window._userScrolled) {
               const messages = document.getElementById('messages');
               if (messages) messages.scrollTop = messages.scrollHeight;
@@ -658,6 +686,7 @@ function _handleMessage(msg) {
 
     case 'session_end':
     case 'task_complete': {
+      _disarmWatchdog();
       // Drop stale events from a replaced session
       if (msg._taskId && _activeTaskId && msg._taskId !== _activeTaskId) break;
       _dlog('session_end type=' + msg.type + ' stopped=' + _stoppedByUser + ' err=' + _hadError);
@@ -728,6 +757,7 @@ function _handleMessage(msg) {
 
       addDoneBanner();
       addChangesSummary();
+      showToast('Task complete', 'ok', 2500);
       finishSession('done');
       if (btnSend) btnSend.classList.remove('hidden');
       if (btnStop) { btnStop.classList.add('hidden'); btnStop.disabled = false; }
@@ -831,6 +861,23 @@ function _handleMessage(msg) {
       break;
     }
 
+    case 'plan_revision': {
+      // planReviewNode revised the remaining subtasks after a PASS.
+      // Update the "X / Y" counter so it reflects the new (possibly smaller) total.
+      const revision = msg.revision;
+      if (revision && typeof revision.subtaskIndex === 'number' && Array.isArray(revision.newRemaining)) {
+        const completedCount = revision.subtaskIndex + 1; // subtaskIndex is 0-based index of just-finished subtask
+        const newTotal = completedCount + revision.newRemaining.length;
+        _dlog('plan_revision: new total=' + newTotal + ' (was ' + (window._subtasksTotal || '?') + ')');
+        window._subtasksTotal = newTotal;
+        import('./state.js').then(m => m.setSubtasksTotal(newTotal));
+        if (phaseSubtask) {
+          phaseSubtask.textContent = completedCount + ' / ' + newTotal;
+        }
+      }
+      break;
+    }
+
     case 'research_progress': {
       const { step, maxSteps, elapsed } = msg;
       _dlog('research_progress: step=' + step + (maxSteps ? '/' + maxSteps : ''));
@@ -843,6 +890,39 @@ function _handleMessage(msg) {
           typingLblEl.textContent = 'step ' + step + (maxSteps ? '/' + maxSteps : '')
             + (elapsed != null ? ' · ' + elapsed + 's' : '');
         }
+      }
+      break;
+    }
+
+    case 'spinner_update': {
+      // Live status from long-running phases (researcher, scoper, coder, stuckAnalyzer).
+      // Updates the typing indicator label with more context than the phase name alone.
+      // During EXECUTION phase this becomes "Add null checks · 30s" instead of "Executing · 30s"
+      // because coderNode emits spinner_update (task label) before research_progress (elapsed).
+      if (typingLblEl && msg.status) {
+        typingLblEl.textContent = msg.status.slice(0, 60);
+      }
+      break;
+    }
+
+    case 'github_activity': {
+      // Transient notification for GitHub actions (branch push, sub-issue close, PR create).
+      // Show as a brief dim toast so progress is visible without cluttering the chat.
+      const text = msg.text || msg.action || '';
+      if (text) {
+        _dlog('github_activity: ' + msg.action + ' — ' + text.slice(0, 60));
+        showToast('⬆ ' + text, 'info', 3000);
+      }
+      break;
+    }
+
+    case 'reflexion_memory_update': {
+      // A lesson was recorded after a subtask failure.
+      // Show as a brief informational toast so users know the system is learning.
+      const lesson = msg.lesson || '';
+      if (lesson) {
+        _dlog('reflexion_memory_update: ' + lesson.slice(0, 60));
+        showToast('📝 Lesson: ' + lesson.slice(0, 80), 'info', 4000);
       }
       break;
     }

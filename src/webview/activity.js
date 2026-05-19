@@ -259,9 +259,12 @@ export function addChangesSummary() {
     const sym   = f.isNew ? 'new' : 'mod';
     const glyph = f.isNew ? '+' : '✎';
     const tag   = f.isNew ? '<span class="change-tag">new</span>' : '';
-    return '<div class="change-item clickable" data-fp="' + escLocal(f.path) + '" title="Open in editor">'
+    // Show at most 2 path segments (parent/file.ext) — full path stays in tooltip + data-fp
+    const parts = f.path.replace(/\\/g, '/').split('/').filter(Boolean);
+    const displayPath = parts.length > 2 ? parts.slice(-2).join('/') : f.path;
+    return '<div class="change-item clickable" data-fp="' + escLocal(f.path) + '" title="' + escLocal(f.path) + '">'
       + '<span class="change-sym ' + sym + '">' + glyph + '</span>'
-      + '<span class="change-path">' + escLocal(f.path) + '</span>'
+      + '<span class="change-path">' + escLocal(displayPath) + '</span>'
       + tag
       + '</div>';
   });

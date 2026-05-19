@@ -46,7 +46,7 @@ function renderCodeBlock(code, lang) {
   return '<div class="cb"><div class="cb-hdr">'
     + (lang ? '<span class="cb-lang">' + esc(lang) + '</span>' : '<span class="cb-lang"></span>')
     + (linesStr ? '<span class="cb-lines">' + linesStr + '</span>' : '')
-    + '<button class="cb-copy" onclick="copyCode(this)">Copy</button>'
+    + '<button class="cb-copy" aria-label="Copy code" onclick="copyCode(this)">Copy</button>'
     + '</div><pre class="cb-pre"><code>' + escaped + '</code></pre></div>';
 }
 
@@ -68,14 +68,23 @@ function _renderTable(rows) {
     return rows.map(r => '<div class="md-p">' + r + '</div>').join('');
   }
   const headers  = parsed[0];
+  const sepRow   = parsed[1];
   const dataRows = parsed.slice(2);
+  // Parse alignment from separator row: :--- = left, ---: = right, :---: = center
+  const aligns = sepRow.map(c => {
+    if (/^:.*:$/.test(c)) return 'center';
+    if (/^:/.test(c)) return 'left';
+    if (/:$/.test(c)) return 'right';
+    return '';
+  });
+  const styleAttr = (i) => aligns[i] ? ` style="text-align:${aligns[i]}"` : '';
   // Note: headers and cells are already HTML-escaped (step 2 ran before table accumulation)
   let html = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
-  html += headers.map(h => '<th>' + h + '</th>').join('');
+  html += headers.map((h, i) => '<th' + styleAttr(i) + '>' + h + '</th>').join('');
   html += '</tr></thead><tbody>';
   dataRows.forEach(row => {
     const cells = headers.map((_, i) => row[i] ?? '');
-    html += '<tr>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+    html += '<tr>' + cells.map((c, i) => '<td' + styleAttr(i) + '>' + c + '</td>').join('') + '</tr>';
   });
   html += '</tbody></table></div>';
   return html;

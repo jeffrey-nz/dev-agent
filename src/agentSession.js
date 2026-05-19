@@ -70,12 +70,22 @@ class AgentSession extends EventEmitter {
         "session_handoff", "session_role_update",
         // Subtask-level progress — carries index/total/label for the counter chip
         "subtask_kickoff", "subtask_status", "progress_update",
+        // Plan revision — emitted by planReviewNode when remaining subtasks are re-ordered/pruned.
+        // Keeps the webview's "X / Y" counter accurate when the total decreases mid-run.
+        "plan_revision",
         // Research step counter — updates typing label during RESEARCHING phase
         "research_progress",
         // Pipeline classification result — shows which agent pipeline was selected
         "pipeline_selected",
         // Rate limiting — shown as a countdown toast rather than a chat message
         "rate_limit",
+        // Live status text from long-running agent phases (researcher, coder, stuckAnalyzer)
+        // Updates the typing indicator with the current step context
+        "spinner_update",
+        // GitHub actions (branch push, sub-issue close, PR create) — shown as transient indicator
+        "github_activity",
+        // Reflexion memory — fired when a lesson is recorded after a subtask failure
+        "reflexion_memory_update",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {
@@ -149,7 +159,8 @@ class AgentSession extends EventEmitter {
   }
 
   stop() {
-    this._abortController.abort();
+    const reason = Object.assign(new Error("Task stopped by user"), { name: "AbortError" });
+    this._abortController.abort(reason);
     this._running = false;
   }
 }

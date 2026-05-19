@@ -237,10 +237,11 @@
   position: absolute; top: 22px; right: 0;
   background: var(--sidebar); border: 1px solid var(--bd); color: var(--mu);
   border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer;
-  opacity: 0; transition: opacity 0.15s, background 0.1s; line-height: 1.4;
+  opacity: 0; transition: opacity 0.15s, background 0.1s, transform 0.08s; line-height: 1.4;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 
-  &:hover { background: var(--hov); color: var(--fg); }
+  &:hover  { background: var(--hov); color: var(--fg); }
+  &:active { transform: scale(0.94); background: var(--sel); }
 }
 
 // ── Collapsible long messages ─────────────────────────────────────────────
@@ -286,7 +287,11 @@
 
 // ── System / status messages ──────────────────────────────────────────────
 
-.msg-sys  { font-size: 11px; color: var(--mu); font-style: italic; padding: 3px 2px; opacity: 0.45; }
+.msg-sys {
+  font-size: 11px; color: var(--mu); font-style: italic; padding: 3px 2px; opacity: 0.45;
+  max-height: 160px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--bd) transparent;
+}
 
 .msg-warn {
   font-size: 11px; color: var(--warn); font-style: italic;
@@ -338,7 +343,7 @@
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
   transition: opacity 0.2s, background 0.1s, transform 0.2s, min-width 0.2s;
-  z-index: 20; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: var(--z-scroll); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(4px);
 
   &.show       { opacity: 1; pointer-events: auto; transform: translateY(0); }
@@ -468,7 +473,7 @@
 
 #msg-search {
   display: flex; align-items: center; gap: 4px;
-  position: sticky; top: -8px; z-index: 10;
+  position: sticky; top: -8px; z-index: var(--z-base);
   // Bleed to #messages edges (compensates for padding: 8px 14px)
   margin: -8px -14px 8px;
   padding: 5px 14px;

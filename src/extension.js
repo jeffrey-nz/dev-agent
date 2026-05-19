@@ -8,7 +8,7 @@ const { computeFileDiff } = require("./diffUtils");
 const bridge = require("./bridgeLauncher");
 
 function isWriteTool(name) {
-  return /write|creat|patch|edit|updat|modif|apply|put/i.test(name || "");
+  return /write|creat|patch|edit|updat|modif|apply|put|revert|move_file/i.test(name || "");
 }
 
 function resolveToolPath(paramsSummary, workspaceRoot) {

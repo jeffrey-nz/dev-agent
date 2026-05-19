@@ -28,6 +28,20 @@
 // acquireVsCodeApi() is a webview-only global injected by VS Code.
 // It must be called exactly once per webview lifetime.
 const vscode = acquireVsCodeApi();
+
+// ── Safe localStorage helpers ──────────────────────────────────────────────
+// VS Code webviews can run in restricted contexts where localStorage throws.
+const _ls = {
+  get(k, fallback = null) {
+    try { return localStorage.getItem(k) ?? fallback; } catch { return fallback; }
+  },
+  set(k, v) {
+    try { localStorage.setItem(k, v); } catch {}
+  },
+  remove(k) {
+    try { localStorage.removeItem(k); } catch {}
+  },
+};
 window._vscode = vscode;
 
 // ── SCSS colour map (used by connection.js / events.js) ────────────────────
@@ -219,6 +233,19 @@ window._ibt = function _ibt(el) {
   if (!_userScrolled) messages.scrollTop = messages.scrollHeight;
 };
 
+// ── New-chat reset hook (called by sessions.js newChat()) ─────────────────
+// Resets input-area state that sessions.js can't reach (no circular dep).
+window._resetNewChat = function () {
+  setHistIdx(-1);
+  setHistSaved('');
+  setPendingImages([]);
+  if (attachPreview) attachPreview.classList.add('hidden');
+  if (prompt) { prompt.value = ''; prompt.style.height = ''; }
+  if (btnSend) btnSend.disabled = true;
+  if (inpChar) inpChar.textContent = '';
+  if (inpHint) inpHint.style.display = '';
+};
+
 // ── stateRefs snapshot (used by export.js debugSnapshot) ──────────────────
 window._snapshotState = function () {
   return {
@@ -391,7 +418,7 @@ provDrop?.addEventListener('click', e => e.stopPropagation());
 
 // ── compact mode ───────────────────────────────────────────────────────────
 
-let _compact = localStorage.getItem('da-compact') === '1';
+let _compact = _ls.get('da-compact') === '1';
 
 function applyCompact() {
   chatMain?.classList.toggle('compact', _compact);
@@ -402,7 +429,7 @@ applyCompact();
 document.getElementById('btn-compact')?.addEventListener('click', e => {
   e.stopPropagation();
   _compact = !_compact;
-  localStorage.setItem('da-compact', _compact ? '1' : '0');
+  _ls.set('da-compact', _compact ? '1' : '0');
   applyCompact();
 });
 
@@ -542,7 +569,7 @@ btnSend?.addEventListener('click', () => {
   prompt.value = '';
   prompt.style.height = '';
   btnSend.disabled = true;
-  localStorage.removeItem(_DRAFT_KEY);
+  _ls.remove(_DRAFT_KEY);
   setPendingImages([]);
   renderAttachPreviews();
   btnSend.classList.add('hidden');
@@ -632,8 +659,8 @@ prompt?.addEventListener('input', () => {
   if (inpChar) inpChar.textContent = len > 60 ? len + ' chars' : '';
   if (inpHint) inpHint.style.display = len > 60 ? 'none' : '';
   // Persist draft (or clear when empty)
-  if (prompt.value.trim()) localStorage.setItem(_DRAFT_KEY, prompt.value);
-  else localStorage.removeItem(_DRAFT_KEY);
+  if (prompt.value.trim()) _ls.set(_DRAFT_KEY, prompt.value);
+  else _ls.remove(_DRAFT_KEY);
 });
 
 if (btnSend) btnSend.disabled = true;
@@ -644,7 +671,7 @@ if (btnSend) btnSend.disabled = true;
 const _DRAFT_KEY = 'da-prompt-draft';
 
 (function _restoreDraft() {
-  const saved = localStorage.getItem(_DRAFT_KEY);
+  const saved = _ls.get(_DRAFT_KEY);
   if (saved && prompt && !sessionLocked) {
     prompt.value = saved;
     prompt.dispatchEvent(new Event('input'));
@@ -795,6 +822,12 @@ document.addEventListener('keydown', e => {
     prompt?.focus();
     prompt?.select();
   }
+  // Cmd/Ctrl+Shift+N — toggle notes/plans drawer
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'n') {
+    e.preventDefault();
+    btnNotes?.click();
+    return;
+  }
   // Cmd/Ctrl+Shift+I — debug snapshot
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'i') {
     e.preventDefault(); debugSnapshot();
@@ -803,7 +836,7 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'm' && document.activeElement !== prompt) {
     e.preventDefault();
     _compact = !_compact;
-    localStorage.setItem('da-compact', _compact ? '1' : '0');
+    _ls.set('da-compact', _compact ? '1' : '0');
     applyCompact();
   }
   // Cmd/Ctrl+Shift+C — copy the last agent response to clipboard

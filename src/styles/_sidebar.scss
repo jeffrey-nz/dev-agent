@@ -119,7 +119,7 @@
 #notes-drawer {
   position: absolute; top: 0; right: 0; bottom: 0; width: 260px;
   background: var(--sidebar); border-left: 1px solid var(--bd);
-  display: flex; flex-direction: column; z-index: 50;
+  display: flex; flex-direction: column; z-index: var(--z-floating);
   transform: translateX(100%); transition: transform 0.18s ease;
   pointer-events: none;
 

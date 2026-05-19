@@ -66,4 +66,11 @@
   --cv: #e5a100;   // verifying / reviewing
   --cd: #e54545;   // debugging
   --ck: #3fb950;   // done
+
+  // Z-index layers (use these instead of magic numbers)
+  --z-base:     10;   // sticky headers, inline badges
+  --z-floating: 50;   // sidebar panels, tooltips
+  --z-dropdown: 200;  // session/provider dropdowns
+  --z-scroll:   20;   // scroll-to-bottom button
+  --z-toast:    9999; // toast notifications (always on top)
 }

@@ -22,9 +22,17 @@
 export function langColor(ext) {
   const m = {
     js: '#f7c948', ts: '#3178c6', tsx: '#61dafb', jsx: '#61dafb',
+    mjs: '#f7c948', cjs: '#f7c948',
     py: '#3776ab', json: '#f97316', css: '#264de4', scss: '#cf649a',
     html: '#e34f26', md: '#888', sh: '#89e051', go: '#00add8',
-    rs: '#dea584', java: '#f89820', cpp: '#f34b7d', c: '#aaa',
+    rs: '#dea584', java: '#f89820', cpp: '#f34b7d', c: '#aaa', h: '#aaa',
+    php: '#777bb4', rb: '#cc342d', cs: '#178600', swift: '#fa7343',
+    kt: '#7f52ff', vue: '#41b883', svelte: '#ff3e00', astro: '#ff5d01',
+    yaml: '#cb171e', yml: '#cb171e', toml: '#9c4221', xml: '#0060ac',
+    sql: '#336791', graphql: '#e10098', sass: '#cf649a', less: '#1d365d',
+    ss: '#7c6af7', // SilverStripe templates
+    lua: '#000080', r: '#276dc3',
+    env: '#888', ini: '#888', cfg: '#888', conf: '#888',
   };
   return m[(ext || '').toLowerCase()] || '#888';
 }
@@ -97,7 +105,7 @@ export function addFileDiff(data) {
 
   // "↗ Open in editor" button — only shown if we have an absolute path
   const openBtn = data.filePath
-    ? `<button class="diff-open" title="Open in editor" onclick="event.stopPropagation();openFile(this.dataset.fp)" data-fp="${esc(data.filePath)}">↗</button>`
+    ? `<button class="diff-open" title="Open in editor" aria-label="Open in editor" onclick="event.stopPropagation();openFile(this.dataset.fp)" data-fp="${esc(data.filePath)}">↗</button>`
     : '';
 
   // Auto-open (expand) only when there are actual line changes
@@ -124,6 +132,7 @@ export function addFileDiff(data) {
   const copyBtn = document.createElement('button');
   copyBtn.className = 'diff-copy';
   copyBtn.title = 'Copy diff';
+  copyBtn.setAttribute('aria-label', 'Copy diff');
   copyBtn.textContent = '⎘';
   copyBtn.addEventListener('click', e => {
     e.stopPropagation();

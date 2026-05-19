@@ -61,7 +61,8 @@ const session = new AgentSession({
     } else if (e.type === "tool_call_start") {
       log(`[tool] ${e.tool}${e.paramsSummary ? ": " + e.paramsSummary.slice(0, 80) : ""}`);
     } else if (e.type === "tool_call_end" && e.isError) {
-      log(`[tool-err] ${e.tool}: ${e.error || "error"}`);
+      const summary = e.errorSummary || e.error || "error";
+      log(`[tool-err] ${e.tool}: ${summary.slice(0, 120)}`);
     } else if (e.type === "message_complete" && e.text) {
       log(`[msg] ${e.text.slice(0, 300)}${e.text.length > 300 ? "..." : ""}`);
     } else if (e.type === "session_end") {

@@ -39,11 +39,26 @@ function ibt(el) { window._ibt?.(el); }
  */
 export function toolStyle(name) {
   const t = (name || '').toLowerCase();
-  if (/read|list|search|glob|get|find|cat|view|ls/.test(t))
+  // Browser/visual tools
+  if (/screenshot|inspect_page|start_dev|stop_dev|list_dev|get_dev_server|evaluate_js|click_element|wait_for_selector/.test(t))
+    return { icon: '🌐', color: 'var(--cp)', label: 'browser' };
+  // Git tools
+  if (/^git_/.test(t))
+    return { icon: '⑂', color: '#6a737d', label: 'git' };
+  // HTTP request
+  if (/http_request/.test(t))
+    return { icon: '🔗', color: 'var(--cr)', label: 'http' };
+  // Memory tools
+  if (/memory_/.test(t))
+    return { icon: '💾', color: '#888', label: 'memory' };
+  // Read operations
+  if (/read|list|search|glob|get|find|cat|view|ls|grep|outline/.test(t))
     return { icon: '📖', color: 'var(--cr)', label: 'read' };
-  if (/write|creat|patch|edit|updat|delet|remov|modif|apply|put/.test(t))
+  // Write operations
+  if (/write|creat|patch|edit|updat|delet|remov|modif|apply|put|revert|move/.test(t))
     return { icon: '✏️', color: 'var(--ce)', label: 'write' };
-  if (/run|exec|bash|shell|command|cmd|spawn|npm|test/.test(t))
+  // Shell / run
+  if (/run|exec|bash|shell|command|cmd|spawn|npm|test|composer|phpunit|lint/.test(t))
     return { icon: '⚡', color: 'var(--cv)', label: 'run' };
   return { icon: '🔧', color: '#888', label: 'tool' };
 }
@@ -153,10 +168,13 @@ export function addToolCard(name, summary) {
  * @param {boolean} isErr    - True if the tool call resulted in an error.
  * @param {number}  elapsed  - Tool execution time in milliseconds.
  */
-export function resolveCard(isErr, elapsed) {
+export function resolveCard(isErr, elapsed, errorMsg) {
   if (!pendingCard) return;
   pendingCard.classList.remove('pending');
-  if (isErr) pendingCard.classList.add('error');
+  if (isErr) {
+    pendingCard.classList.add('error');
+    if (errorMsg) pendingCard.title = errorMsg.slice(0, 200);
+  }
 
   const stEl = pendingCard.querySelector('.tc-st');
   const mark = isErr ? '✗' : '✓';
