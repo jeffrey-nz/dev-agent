@@ -116,9 +116,10 @@
   opacity: 0.75; flex: 1; letter-spacing: 0.02em;
 }
 
+.notes-copy-btn,
 #notes-close {
   background: transparent; border: none; color: var(--mu);
-  cursor: pointer; font-size: 14px; padding: 2px 5px;
+  cursor: pointer; font-size: 13px; padding: 2px 5px;
   border-radius: 4px; line-height: 1; transition: background 0.1s;
 
   &:hover { background: var(--hov); color: var(--fg); }

@@ -306,6 +306,19 @@ document.getElementById('notes-close')?.addEventListener('click', () => {
   btnNotes?.classList.remove('active');
 });
 
+document.getElementById('notes-copy')?.addEventListener('click', () => {
+  const chips = document.querySelectorAll('.note-chip');
+  const parts = Array.from(chips).map(c => {
+    const type = c.classList.contains('plan') ? 'Plan' : 'Review';
+    const body = c.querySelector('.note-chip-body')?.innerText?.trim() || '';
+    return '## ' + type + '\n\n' + body;
+  });
+  if (!parts.length) return;
+  navigator.clipboard.writeText(parts.join('\n\n---\n\n'))
+    .then(() => showToast('Notes copied', 'ok', 1800))
+    .catch(() => {});
+});
+
 notesDrawer?.addEventListener('click', e => e.stopPropagation());
 
 // ── Provider chip / dropdown ───────────────────────────────────────────────

@@ -298,21 +298,23 @@ export function renderPhasePills() {
       item.innerHTML = '<span class="pp-num">' + (i + 1) + '</span>'
         + '<span class="pp-label">' + step.label + '</span>';
     }
-    // Clicking a done pill jumps to that phase's first divider in the feed
+    // Clicking (or pressing Enter/Space on) a done pill jumps to its phase divider
     if (isDone) {
       item.style.cursor = 'pointer';
       item.title = 'Jump to ' + step.label + ' section';
-      item.addEventListener('click', () => {
-        const label = step.label.toUpperCase();
-        // Find the first pdlabel whose text starts with this step's phase label
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      const jumpFn = () => {
         const dividers = Array.from(messages.querySelectorAll('.pdlabel'));
         const target   = dividers.find(el => {
           const txt = el.textContent.trim().toUpperCase();
           return step.phases.some(ph => txt.startsWith(ph.toUpperCase()));
         });
-        if (target) {
-          target.closest('.pdiv')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (target) target.closest('.pdiv')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      item.addEventListener('click', jumpFn);
+      item.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpFn(); }
       });
     }
 

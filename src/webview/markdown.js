@@ -112,6 +112,9 @@ export function renderMarkdown(md) {
     .replace(/\*([^*\n]+)\*/g,     '<em>$1</em>')
     .replace(/~~([^~\n]+)~~/g,     '<s class="md-s">$1</s>')
     .replace(/`([^`]+)`/g,         '<code class="ic">$1</code>')
+    // Markdown links: [text](url) — must run before bare-URL transform
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-a">$1</a>')
     // Bare URLs: only http/https (no arbitrary schemes to prevent injection)
     .replace(/(https?:\/\/[^\s<>"]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer" class="md-a">$1</a>');
