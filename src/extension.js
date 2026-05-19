@@ -266,6 +266,19 @@ function setStatusDone() {
   statusBar.text = "$(pass) Dev Agent · Done";
   statusBar.backgroundColor = undefined;
   setTimeout(setStatusIdle, 4000);
+
+  // Notify if the panel is not visible (user may be working elsewhere)
+  const panelVisible = DevAgentPanel.currentPanel?._panel?.visible ?? false;
+  if (!panelVisible) {
+    vscode.window.showInformationMessage(
+      "Dev Agent: Task complete",
+      "Open Chat"
+    ).then(action => {
+      if (action === "Open Chat") {
+        DevAgentPanel.currentPanel?._panel?.reveal(vscode.ViewColumn.One);
+      }
+    });
+  }
 }
 
 function setStatusIdle() {
