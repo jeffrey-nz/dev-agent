@@ -821,6 +821,18 @@ a{color:var(--acc)}
 .mab-md li{margin:3px 0;line-height:1.6}
 .mab-md strong{font-weight:700}
 .mab-md em{font-style:italic}
+.mab-md a.md-a{color:var(--acc);text-decoration:none}
+.mab-md a.md-a:hover{text-decoration:underline}
+.mab-md blockquote.md-bq{
+  border-left:3px solid color-mix(in srgb,var(--mu) 35%,transparent);
+  margin:6px 0;padding:3px 10px;
+  color:color-mix(in srgb,var(--fg) 70%,transparent);
+  background:color-mix(in srgb,var(--fg) 4%,transparent);
+  border-radius:0 4px 4px 0;
+}
+.mab-md hr.md-hr{
+  border:none;border-top:1px solid var(--bd);margin:10px 0;opacity:.6;
+}
 .ic{font-family:var(--mono);font-size:12px;
     background:color-mix(in srgb,var(--fg) 8%,transparent);
     padding:1px 5px;border-radius:3px;word-break:break-all}

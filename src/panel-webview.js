@@ -146,33 +146,45 @@ function renderMarkdown(md) {
   text = text
     .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code class="ic">$1</code>');
+    .replace(/`([^`]+)`/g, '<code class="ic">$1</code>')
+    // Bare URLs → clickable links (http/https only, no arbitrary schemes)
+    .replace(/(https?:\/\/[^\s<>"]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="md-a">$1</a>');
   const lines = text.split('\n');
   const out = [];
-  let inList = null;
+  let inList = null, inBq = false;
   const closeList = () => { if (inList) { out.push('</'+inList+'>'); inList = null; } };
+  const closeBq = () => { if (inBq) { out.push('</blockquote>'); inBq = false; } };
   for (const line of lines) {
-    if (line.includes(CB_S)) { closeList(); out.push(line); continue; }
+    if (line.includes(CB_S)) { closeBq(); closeList(); out.push(line); continue; }
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) { closeBq(); closeList(); out.push('<hr class="md-hr"/>'); continue; }
     const hm = line.match(/^(#{1,3}) (.+)/);
     const ulm = line.match(/^[-*] (.+)/);
     const olm = line.match(/^\d+\. (.+)/);
+    const bqm = line.match(/^&gt; ?(.*)/);
     if (hm) {
-      closeList();
+      closeBq(); closeList();
       const lv = hm[1].length;
       out.push('<h'+lv+' class="md-h">'+hm[2]+'</h'+lv+'>');
+    } else if (bqm) {
+      closeList();
+      if (!inBq) { out.push('<blockquote class="md-bq">'); inBq = true; }
+      out.push('<div class="md-p">'+bqm[1]+'</div>');
     } else if (ulm) {
+      closeBq();
       if (inList !== 'ul') { closeList(); out.push('<ul>'); inList = 'ul'; }
       out.push('<li>'+ulm[1]+'</li>');
     } else if (olm) {
+      closeBq();
       if (inList !== 'ol') { closeList(); out.push('<ol>'); inList = 'ol'; }
       out.push('<li>'+olm[1]+'</li>');
     } else if (!line.trim()) {
-      closeList(); out.push('<div class="md-br"></div>');
+      closeBq(); closeList(); out.push('<div class="md-br"></div>');
     } else {
-      closeList(); out.push('<div class="md-p">'+line+'</div>');
+      closeBq(); closeList(); out.push('<div class="md-p">'+line+'</div>');
     }
   }
-  closeList();
+  closeBq(); closeList();
   text = out.join('');
   blocks.forEach((b, i) => {
     text = text.replace(CB_S + i + CB_E, renderCodeBlock(b.code, b.lang));
@@ -1331,8 +1343,21 @@ function exportSession() {
       const fname = node.querySelector('.diff-fname')?.textContent || '';
       const st = node.querySelector('.diff-stats')?.textContent || '';
       lines.push('`' + dir + fname + '`' + (st ? '  ' + st : ''));
+    } else if (node.classList.contains('sc-card')) {
+      const label = node.querySelector('.sc-label')?.textContent || 'Plan';
+      const body = node.querySelector('.sc-body')?.innerText || '';
+      if (body.trim()) lines.push('**' + label + '**\n' + body.trim());
+    } else if (node.classList.contains('msg-ok') || node.classList.contains('msg-sys')) {
+      const t = node.textContent?.trim();
+      if (t) lines.push('> ' + t);
+    } else if (node.classList.contains('msg-warn')) {
+      const t = node.textContent?.trim();
+      if (t) lines.push('> ⚠ ' + t);
     } else if (node.classList.contains('done-banner') || node.classList.contains('stop-banner')) {
       lines.push('---\n' + (node.querySelector('span')?.textContent || '').trim());
+    } else if (node.classList.contains('changes-card')) {
+      const items = Array.from(node.querySelectorAll('.change-item .change-path')).map(e=>e.textContent.trim());
+      if (items.length) lines.push('**Files changed:** ' + items.join(', '));
     }
   }
   const text = lines.join('\n\n');
