@@ -563,7 +563,10 @@ btnStop?.addEventListener('click', () => {
 // ── Prompt textarea ────────────────────────────────────────────────────────
 
 prompt?.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); btnSend?.click(); return; }
+  // Enter sends; Shift+Enter inserts newline; ⌘/Ctrl+Enter also sends
+  if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
+    e.preventDefault(); btnSend?.click(); return;
+  }
 
   // Tab when empty — accept the current rotating placeholder into the input
   if (e.key === 'Tab' && !prompt.value.trim()) {

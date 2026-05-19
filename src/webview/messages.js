@@ -22,6 +22,7 @@ import {
   sessions, runningSid, activeSid, _sessionStartTs,
   _writesThisSession, _subtasksCompleted, _subtasksTotal,
   _notesSeq, setNotesSeq,
+  _totalAdded, _totalRemoved,
 } from './state.js';
 import { _history } from './state.js';
 
@@ -369,6 +370,10 @@ export function addDoneBanner() {
   if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '') + (newCount ? ' (' + newCount + ' new)' : '');
   if (sess?.tools) label += ' · ' + sess.tools + ' tools';
   if (_subtasksTotal > 1) label += ' · ' + _subtasksCompleted + '/' + _subtasksTotal + ' subtasks';
+  if (_totalAdded || _totalRemoved) {
+    const delta = (_totalAdded ? '+' + _totalAdded : '') + (_totalRemoved ? ' −' + _totalRemoved : '');
+    label += ' · ' + delta + ' lines';
+  }
   d.innerHTML = '<div class="done-line"></div><span>' + label + '</span><div class="done-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
@@ -384,6 +389,10 @@ export function addStopBanner() {
   let label = '✗ Stopped' + _bannerTime();
   const fileCount = _writesThisSession.length;
   if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '');
+  if (_totalAdded || _totalRemoved) {
+    const delta = (_totalAdded ? '+' + _totalAdded : '') + (_totalRemoved ? ' −' + _totalRemoved : '');
+    label += ' · ' + delta + ' lines';
+  }
   d.innerHTML = '<div class="stop-line"></div><span>' + label + '</span><div class="stop-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
@@ -490,6 +499,7 @@ export function updateCtxMeter(messageCount, threshold, segmentIndex) {
   ctxFill.classList.toggle('crit', pct >= 85);
   ctxMeter.classList.toggle('ctx-warn',   pct >= 60 && pct < 85);
   ctxMeter.classList.toggle('ctx-danger', pct >= 85);
+  ctxMeter.title = pct + '% context used · ' + messageCount + '/' + threshold + ' messages';
 
   // Label: "S2 · 78%" — segment prefix only on non-first segments
   const segPfx = segmentIndex > 1 ? 'S' + segmentIndex + ' · ' : '';

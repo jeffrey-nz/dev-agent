@@ -92,9 +92,13 @@ export function exportSession() {
     if (node === typingEl || node === welcomeEl) continue;
 
     if (node.classList.contains('msg-u')) {
-      lines.push('**You**\n' + (node.querySelector('.msg-body')?.textContent || '').trim());
+      const ts   = node.querySelector('.msg-sender')?.title || '';
+      const body = (node.querySelector('.msg-body')?.textContent || '').trim();
+      lines.push('**You**' + (ts ? ' · ' + ts : '') + '\n' + body);
     } else if (node.classList.contains('msg-a')) {
-      lines.push('**Dev Agent**\n' + (node.querySelector('.mab-md')?.innerText || '').trim());
+      const ts   = node.querySelector('.msg-sender')?.title || '';
+      const body = (node.querySelector('.mab-md')?.innerText || '').trim();
+      lines.push('**Dev Agent**' + (ts ? ' · ' + ts : '') + '\n' + body);
     } else if (node.classList.contains('diff-card')) {
       const dir   = node.querySelector('.diff-fdir')?.textContent || '';
       const fname = node.querySelector('.diff-fname')?.textContent || '';
