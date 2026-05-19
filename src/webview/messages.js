@@ -250,6 +250,8 @@ export function addSpecialCard(type, text) {
   const renderedHtml = renderMarkdown(text);
   const d = document.createElement('div');
   d.className = 'sc-card ' + type + ' open';
+  // seq = _notesSeq + 1 (addNoteChip will increment it after we set this)
+  d.dataset.noteSeq = String(_notesSeq + 1);
   d.innerHTML = '<div class="sc-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
     + '<span class="sc-icon" style="color:' + cfg.color + '">' + cfg.icon + '</span>'
     + '<span class="sc-label">' + cfg.label + '</span>'
@@ -379,7 +381,10 @@ export function addDoneBanner() {
 export function addStopBanner() {
   const d = document.createElement('div');
   d.className = 'stop-banner';
-  d.innerHTML = '<div class="stop-line"></div><span>✗ Stopped' + _bannerTime() + '</span><div class="stop-line"></div>';
+  let label = '✗ Stopped' + _bannerTime();
+  const fileCount = _writesThisSession.length;
+  if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '');
+  d.innerHTML = '<div class="stop-line"></div><span>' + label + '</span><div class="stop-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
 }
@@ -524,13 +529,43 @@ export function addNoteChip(type, html) {
 
   const chip = document.createElement('div');
   chip.className = 'note-chip ' + type + ' open';
-  chip.innerHTML = '<div class="note-chip-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
-    + '<span class="note-chip-icon">' + cfg.icon + '</span>'
+  chip.dataset.seq = seq;
+
+  const hdr = document.createElement('div');
+  hdr.className = 'note-chip-hdr';
+  hdr.innerHTML = '<span class="note-chip-icon">' + cfg.icon + '</span>'
     + '<span class="note-chip-label">' + cfg.label + '</span>'
-    + '<span class="note-chip-seq">#' + seq + '</span>'
-    + '<span class="note-chip-caret">▾</span>'
-    + '</div>'
-    + '<div class="note-chip-body mab-md">' + html + '</div>';
+    + '<span class="note-chip-seq">#' + seq + '</span>';
+
+  // "Jump to in feed" button — scrolls to the matching sc-card in the messages pane
+  const jumpBtn = document.createElement('button');
+  jumpBtn.className = 'note-chip-jump';
+  jumpBtn.title = 'Jump to in feed';
+  jumpBtn.textContent = '↗';
+  jumpBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const target = document.querySelector('.sc-card.' + type + '[data-note-seq="' + seq + '"]');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.style.outline = '2px solid var(--acc)';
+      setTimeout(() => { target.style.outline = ''; }, 700);
+    }
+  });
+  hdr.appendChild(jumpBtn);
+
+  const caret = document.createElement('span');
+  caret.className = 'note-chip-caret';
+  caret.textContent = '▾';
+  hdr.appendChild(caret);
+
+  hdr.addEventListener('click', () => chip.classList.toggle('open'));
+
+  const body = document.createElement('div');
+  body.className = 'note-chip-body mab-md';
+  body.innerHTML = html;
+
+  chip.appendChild(hdr);
+  chip.appendChild(body);
   notesList?.appendChild(chip);
 
   if (notesBadge) { notesBadge.textContent = String(seq); notesBadge.classList.add('show'); }

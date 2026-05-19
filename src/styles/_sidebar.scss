@@ -180,6 +180,17 @@
   font-size: 9px; font-family: var(--mono); color: var(--mu); opacity: 0.4;
 }
 
+// Jump-to-message button inside note chip header
+.note-chip-jump {
+  background: transparent; border: none; color: var(--mu);
+  cursor: pointer; font-size: 11px; padding: 1px 4px; border-radius: 3px;
+  opacity: 0; transition: opacity 0.1s, background 0.1s;
+  flex-shrink: 0; line-height: 1;
+
+  .note-chip-hdr:hover & { opacity: 0.6; }
+  &:hover { opacity: 1 !important; background: var(--hov); color: var(--fg); }
+}
+
 .note-chip-caret {
   font-size: 8px; color: var(--mu); opacity: 0.4;
   transition: transform 0.15s; flex-shrink: 0;
