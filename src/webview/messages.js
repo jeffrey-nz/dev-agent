@@ -353,18 +353,27 @@ function _addFollowUpSuggestions() {
     { icon: '♿', label: 'Accessibility',  prompt: 'Audit and improve accessibility: ARIA labels, keyboard navigation, colour contrast' },
   ];
 
-  // Prepend context-specific suggestions
-  if (exts.has('ts') || exts.has('tsx')) {
-    pool.unshift({ icon: '⌨', label: 'Fix TS types', prompt: 'Fix all TypeScript type errors and add precise type annotations to every new function and interface' });
-  }
-  if (exts.has('py')) {
-    pool.unshift({ icon: '📎', label: 'Type hints', prompt: 'Add comprehensive type hints and Google-style docstrings to all Python functions and classes' });
+  // Prepend context-specific suggestions (higher priority = inserted later so it wins)
+  if (writes.some(f => f.isNew)) {
+    pool.unshift({ icon: '🐳', label: 'Dockerise',  prompt: 'Create a production-ready Dockerfile, docker-compose.yml, and .dockerignore for this project' });
   }
   if (exts.has('jsx') || exts.has('tsx')) {
     pool.unshift({ icon: '⚛', label: 'Add stories', prompt: 'Create Storybook stories for all React components created or modified, with realistic mock data' });
   }
-  if (writes.some(f => f.isNew)) {
-    pool.unshift({ icon: '🐳', label: 'Dockerise',  prompt: 'Create a production-ready Dockerfile, docker-compose.yml, and .dockerignore for this project' });
+  if (exts.has('css') || exts.has('scss') || exts.has('less')) {
+    pool.unshift({ icon: '🌙', label: 'Dark mode',   prompt: 'Add a dark mode theme: CSS variables for colours, a toggle button, and persist the preference in localStorage' });
+  }
+  if (exts.has('sql') || writes.some(f => /migrat|model|schema/i.test(f.path))) {
+    pool.unshift({ icon: '🗃', label: 'Add indexes',  prompt: 'Analyse the database queries and add appropriate indexes to improve performance' });
+  }
+  if (writes.some(f => /route|api|endpoint|controller/i.test(f.path))) {
+    pool.unshift({ icon: '📡', label: 'Document API', prompt: 'Generate OpenAPI / Swagger documentation for all API endpoints, including request and response schemas' });
+  }
+  if (exts.has('py')) {
+    pool.unshift({ icon: '📎', label: 'Type hints', prompt: 'Add comprehensive type hints and Google-style docstrings to all Python functions and classes' });
+  }
+  if (exts.has('ts') || exts.has('tsx')) {
+    pool.unshift({ icon: '⌨', label: 'Fix TS types', prompt: 'Fix all TypeScript type errors and add precise type annotations to every new function and interface' });
   }
 
   const chosen = pool.slice(0, 4);
