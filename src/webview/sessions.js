@@ -21,6 +21,7 @@ import {
   setActiveSid, setRunningSid, setSessionLocked, setSidSeq,
   setSessionStartTs, setStoppedByUser, setHadError,
   _writesThisSession, _sessionStartTs, _subtasksCompleted, _subtasksTotal,
+  _selectedProvider,
 } from './state.js';
 import { clearNotes, addNoteChip } from './messages.js';
 import { resetSessionTracking } from './activity.js';
@@ -104,12 +105,13 @@ export function createSession(promptText) {
 
   sessions.unshift({
     id,
-    prompt:  promptText.slice(0, 80),
-    ts:      new Date(),
-    status:  'running',
-    html:    '',
-    notes:   [],
-    tools:   0,
+    prompt:   promptText.slice(0, 80),
+    ts:       new Date(),
+    status:   'running',
+    html:     '',
+    notes:    [],
+    tools:    0,
+    provider: _selectedProvider || null,
   });
 
   setActiveSid(id);
@@ -261,11 +263,21 @@ export function renderSessions() {
       metaParts.push(m ? m + 'm ' + sec + 's' : sec + 's');
     }
 
+    const PROV_SHORT = {
+      chatgpt: 'GPT', gemini: 'Gem', deepseek: 'DSK',
+      grok: 'Grk', copilot: 'Cop', copilot365: 'C365', claude: 'Cld',
+    };
+    const provBadge = s.provider
+      ? '<span class="s-prov" data-prov="' + s.provider + '">'
+        + (PROV_SHORT[s.provider] || s.provider.slice(0, 3).toUpperCase())
+        + '</span>'
+      : '';
     btn.innerHTML = '<div class="s-dot ' + s.status + '"></div>'
       + '<div class="s-body">'
       + '<div class="s-prompt">' + esc(s.prompt) + '</div>'
       + '<div class="s-meta">' + metaParts.join(' · ') + '</div>'
-      + '</div>';
+      + '</div>'
+      + provBadge;
     btn.addEventListener('click', () => switchSession(s.id));
     sessionList.appendChild(btn);
   });

@@ -237,7 +237,7 @@ export function addChangesSummary() {
     const sym   = f.isNew ? 'new' : 'mod';
     const glyph = f.isNew ? '+' : '✎';
     const tag   = f.isNew ? '<span class="change-tag">new</span>' : '';
-    return '<div class="change-item">'
+    return '<div class="change-item clickable" data-fp="' + escLocal(f.path) + '" title="Open in editor">'
       + '<span class="change-sym ' + sym + '">' + glyph + '</span>'
       + '<span class="change-path">' + escLocal(f.path) + '</span>'
       + tag
@@ -259,5 +259,14 @@ export function addChangesSummary() {
     + '<span class="changes-caret">▾</span>'
     + '</div>'
     + '<div class="changes-list">' + items.join('') + '</div>';
+
+  // Wire up "open in editor" clicks on file rows
+  d.querySelectorAll('.change-item.clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const fp = el.dataset.fp;
+      if (fp) window.openFile?.(fp);
+    });
+  });
+
   ibt(d);
 }

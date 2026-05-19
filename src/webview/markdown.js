@@ -2,8 +2,9 @@
  * markdown.js — Markdown renderer
  *
  * Converts a subset of Markdown to HTML for rendering agent messages.
- * Supports: headings, bold, italic, inline code, fenced code blocks,
- * unordered lists, ordered lists, blockquotes, horizontal rules, and bare URLs.
+ * Supports: headings, bold, italic, strikethrough, inline code, fenced code
+ * blocks, task lists, unordered lists, ordered lists, blockquotes, tables,
+ * horizontal rules, and bare URLs.
  *
  * Code blocks are extracted first (to prevent inline rules from matching
  * inside them), replaced with placeholder tokens, and restored at the end.
@@ -29,7 +30,7 @@ function esc(s) {
 
 /**
  * Render a fenced code block as a styled <div class="cb"> element.
- * The header includes a language label and a "Copy" button.
+ * The header includes a language label, a line count, and a "Copy" button.
  *
  * @param {string} code - The code text (un-escaped).
  * @param {string} lang - The language hint (e.g. "javascript", "").
@@ -40,13 +41,43 @@ function renderCodeBlock(code, lang) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  const lineCount = code.split('\n').filter((_, i, a) => i < a.length - 1 || code.trimEnd() !== code).length || code.split('\n').length;
+  const lineCount = code.split('\n').length;
   const linesStr = lineCount > 1 ? lineCount + ' lines' : '';
   return '<div class="cb"><div class="cb-hdr">'
     + (lang ? '<span class="cb-lang">' + esc(lang) + '</span>' : '<span class="cb-lang"></span>')
     + (linesStr ? '<span class="cb-lines">' + linesStr + '</span>' : '')
     + '<button class="cb-copy" onclick="copyCode(this)">Copy</button>'
     + '</div><pre class="cb-pre"><code>' + escaped + '</code></pre></div>';
+}
+
+/**
+ * Render a buffered set of pipe-delimited table rows as an HTML table.
+ * Requires: first row = headers, second row = separator (---), rest = data.
+ *
+ * @param {string[]} rows - Trimmed table rows (each starts and ends with |).
+ * @returns {string} HTML table string, or plain-text fallback.
+ */
+function _renderTable(rows) {
+  const parsed = rows.map(r => r.slice(1, -1).split('|').map(c => c.trim()));
+  if (parsed.length < 2) {
+    return parsed.map(r => '<div class="md-p">' + r.join(' | ') + '</div>').join('');
+  }
+  // Second row must be a separator: cells are only dashes and colons
+  const isSep = r => r.length > 0 && r.every(c => /^[-: ]+$/.test(c));
+  if (!isSep(parsed[1])) {
+    return rows.map(r => '<div class="md-p">' + r + '</div>').join('');
+  }
+  const headers  = parsed[0];
+  const dataRows = parsed.slice(2);
+  let html = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
+  html += headers.map(h => '<th>' + h + '</th>').join('');
+  html += '</tr></thead><tbody>';
+  dataRows.forEach(row => {
+    const cells = headers.map((_, i) => row[i] ?? '');
+    html += '<tr>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
 }
 
 /**
@@ -78,6 +109,7 @@ export function renderMarkdown(md) {
   text = text
     .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g,     '<em>$1</em>')
+    .replace(/~~([^~\n]+)~~/g,     '<s class="md-s">$1</s>')
     .replace(/`([^`]+)`/g,         '<code class="ic">$1</code>')
     // Bare URLs: only http/https (no arbitrary schemes to prevent injection)
     .replace(/(https?:\/\/[^\s<>"]+)/g,
@@ -86,28 +118,49 @@ export function renderMarkdown(md) {
   // ── Step 4: Block-level rendering ─────────────────────────────────────
   const lines = text.split('\n');
   const out = [];
-  let inList = null; // 'ul' | 'ol' | null
-  let inBq = false;
+  let inList  = null; // 'ul' | 'ol' | 'task' | null
+  let inBq    = false;
+  let tableRows = []; // accumulated pipe-table rows
 
-  const closeList = () => {
-    if (inList) { out.push('</' + inList + '>'); inList = null; }
+  const closeList  = () => {
+    if (inList) { out.push('</' + (inList === 'task' ? 'ul' : inList) + '>'); inList = null; }
   };
-  const closeBq = () => {
+  const closeBq    = () => {
     if (inBq) { out.push('</blockquote>'); inBq = false; }
+  };
+  const closeTable = () => {
+    if (tableRows.length) { out.push(_renderTable(tableRows)); tableRows = []; }
   };
 
   for (const line of lines) {
     // Code-block placeholder — pass through unchanged
-    if (line.includes(CB_S)) { closeBq(); closeList(); out.push(line); continue; }
+    if (line.includes(CB_S)) { closeBq(); closeList(); closeTable(); out.push(line); continue; }
 
     // Horizontal rule
     if (/^---+$/.test(line.trim())) {
-      closeBq(); closeList(); out.push('<hr class="md-hr"/>'); continue;
+      closeBq(); closeList(); closeTable();
+      out.push('<hr class="md-hr"/>'); continue;
     }
 
-    const hm  = line.match(/^(#{1,3}) (.+)/);
-    const ulm = line.match(/^[-*] (.+)/);
+    // Pipe table row: starts AND ends with | after trim
+    const tline = line.trim();
+    if (tline.length > 2 && tline.startsWith('|') && tline.endsWith('|')) {
+      closeBq(); closeList();
+      tableRows.push(tline);
+      continue;
+    } else if (tableRows.length) {
+      closeTable();
+    }
+
+    // Heading
+    const hm = line.match(/^(#{1,3}) (.+)/);
+    // Task list item (must be checked BEFORE regular ul)
+    const taskm = line.match(/^[-*] \[([xX ])\] (.+)/);
+    // Regular unordered list (only if not a task item)
+    const ulm = !taskm && line.match(/^[-*] (.+)/);
+    // Ordered list
     const olm = line.match(/^\d+\. (.+)/);
+    // Blockquote (escaped > from step 2)
     const bqm = line.match(/^&gt; ?(.*)/);
 
     if (hm) {
@@ -118,6 +171,15 @@ export function renderMarkdown(md) {
       closeList();
       if (!inBq) { out.push('<blockquote class="md-bq">'); inBq = true; }
       out.push('<div class="md-p">' + bqm[1] + '</div>');
+    } else if (taskm) {
+      closeBq();
+      if (inList !== 'task') { closeList(); out.push('<ul class="task-list">'); inList = 'task'; }
+      const checked = taskm[1].toLowerCase() === 'x';
+      out.push('<li class="task-item">'
+        + '<span class="md-cb' + (checked ? ' checked' : '') + '">'
+        + (checked ? '✓' : '○') + '</span>'
+        + taskm[2]
+        + '</li>');
     } else if (ulm) {
       closeBq();
       if (inList !== 'ul') { closeList(); out.push('<ul>'); inList = 'ul'; }
@@ -133,7 +195,7 @@ export function renderMarkdown(md) {
     }
   }
 
-  closeBq(); closeList();
+  closeBq(); closeList(); closeTable();
   text = out.join('');
 
   // ── Step 5: Restore code blocks ────────────────────────────────────────

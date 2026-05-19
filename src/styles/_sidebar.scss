@@ -47,6 +47,21 @@
 // Meta line: time ago, file count, tool count, elapsed
 .s-meta { font-size: 10px; color: var(--mu); opacity: 0.7; }
 
+.s-prov {
+  flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 1px 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc); opacity: 0.65;
+
+  &[data-prov="chatgpt"]                        { background: color-mix(in srgb, #10a37f 12%, transparent); color: #10a37f; }
+  &[data-prov="gemini"]                         { background: color-mix(in srgb, #4285f4 12%, transparent); color: #4285f4; }
+  &[data-prov="deepseek"]                       { background: color-mix(in srgb, #4f8ef7 12%, transparent); color: #4f8ef7; }
+  &[data-prov="grok"]                           { background: color-mix(in srgb, #9b59b6 12%, transparent); color: #9b59b6; }
+  &[data-prov="copilot"], &[data-prov="copilot365"] { background: color-mix(in srgb, #0078d4 12%, transparent); color: #0078d4; }
+  &[data-prov="claude"]                         { background: color-mix(in srgb, #d4956a 12%, transparent); color: #d4956a; }
+}
+
 // ── Notes drawer ──────────────────────────────────────────────────────────
 // Slides in from the right edge of the chat header area.
 // Contains collapsible plan/review note chips added during a session.

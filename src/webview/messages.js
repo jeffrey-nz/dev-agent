@@ -420,9 +420,14 @@ export function updateCtxMeter(messageCount, threshold, segmentIndex) {
   ctxFill.style.width = pct + '%';
   ctxFill.classList.toggle('warn', pct >= 60 && pct < 85);
   ctxFill.classList.toggle('crit', pct >= 85);
-  // Show segment prefix ("S2 · 45/60") when on a non-first segment
+  ctxMeter.classList.toggle('ctx-warn',   pct >= 60 && pct < 85);
+  ctxMeter.classList.toggle('ctx-danger', pct >= 85);
+
+  // Label: "S2 · 78%" — segment prefix only on non-first segments
   const segPfx = segmentIndex > 1 ? 'S' + segmentIndex + ' · ' : '';
-  ctxLbl.textContent = segPfx + messageCount + '/' + threshold;
+  const remaining = threshold - messageCount;
+  ctxLbl.textContent = segPfx + pct + '%';
+  ctxLbl.title = messageCount + '/' + threshold + ' messages · ~' + remaining + ' remaining';
   ctxMeter.classList.add('show');
 }
 
