@@ -163,7 +163,16 @@
 .as-label {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--mu); opacity: 0.35;
-  font-family: var(--mono); padding: 0 2px; margin-bottom: 2px; flex-shrink: 0;
+  font-family: var(--mono); padding: 0 2px; margin-bottom: 0; flex-shrink: 0;
+}
+
+// Expand-all / collapse-all toggle button
+.as-toggle {
+  background: transparent; border: none; color: var(--mu);
+  font-size: 13px; cursor: pointer; padding: 0 2px;
+  border-radius: 3px; line-height: 1; flex-shrink: 0; align-self: flex-start;
+  opacity: 0.35; transition: opacity 0.12s, background 0.1s, color 0.1s;
+  &:hover { opacity: 1; background: var(--hov); color: var(--fg); }
 }
 
 #activity-chips { display: flex; flex-direction: column; gap: 3px; }

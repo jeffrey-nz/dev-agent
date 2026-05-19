@@ -38,6 +38,20 @@ const phaseStats       = document.getElementById('phase-stats');
 const ctxMeter         = document.getElementById('ctx-meter');
 const phasePillsEl     = document.getElementById('phase-pills');
 
+// ── Expand-all toggle ───────────────────────────────────────────────────────
+let _diffsExpanded = false;
+document.getElementById('btn-as-toggle')?.addEventListener('click', () => {
+  _diffsExpanded = !_diffsExpanded;
+  document.querySelectorAll('.diff-card').forEach(el =>
+    el.classList.toggle('open', _diffsExpanded)
+  );
+  const btn = document.getElementById('btn-as-toggle');
+  if (btn) {
+    btn.textContent = _diffsExpanded ? '⊟' : '⊞';
+    btn.title = _diffsExpanded ? 'Collapse all diffs' : 'Expand all diffs';
+  }
+});
+
 /**
  * Escape HTML special characters.
  * @param {string} s
@@ -196,6 +210,9 @@ export function resetSessionTracking() {
   setTotalRemoved(0);
   _chipMap.clear();
   setHiddenChipsCount(0);
+  _diffsExpanded = false;
+  const toggleBtn = document.getElementById('btn-as-toggle');
+  if (toggleBtn) { toggleBtn.textContent = '⊞'; toggleBtn.title = 'Expand all diffs'; }
 
   if (activityChips) activityChips.innerHTML = '';
   activityOverflow?.classList.add('hidden');

@@ -122,13 +122,18 @@ export function renderMarkdown(md) {
   // ── Step 4: Block-level rendering ─────────────────────────────────────
   const lines = text.split('\n');
   const out = [];
-  let inList  = null; // 'ul' | 'ol' | 'task' | null
+  // listStack: [{type: 'ul'|'ol'|'task', depth: number}]
+  let listStack = [];
   let inBq    = false;
   let tableRows = []; // accumulated pipe-table rows
 
-  const closeList  = () => {
-    if (inList) { out.push('</' + (inList === 'task' ? 'ul' : inList) + '>'); inList = null; }
+  const _closeListTag = (type) => '</' + (type === 'task' ? 'ul' : type) + '>';
+  const closeListsToDepth = (depth) => {
+    while (listStack.length > 0 && listStack[listStack.length - 1].depth >= depth) {
+      out.push(_closeListTag(listStack.pop().type));
+    }
   };
+  const closeList  = () => closeListsToDepth(0);
   const closeBq    = () => {
     if (inBq) { out.push('</blockquote>'); inBq = false; }
   };
@@ -156,14 +161,19 @@ export function renderMarkdown(md) {
       closeTable();
     }
 
+    // Detect leading indent (2 spaces = 1 depth level)
+    const indent = line.search(/\S/);
+    const depth  = indent < 0 ? 0 : Math.floor(indent / 2);
+    const stripped = indent > 0 ? line.slice(indent) : line;
+
     // Heading
-    const hm = line.match(/^(#{1,3}) (.+)/);
+    const hm = stripped.match(/^(#{1,3}) (.+)/);
     // Task list item (must be checked BEFORE regular ul)
-    const taskm = line.match(/^[-*] \[([xX ])\] (.+)/);
+    const taskm = stripped.match(/^[-*] \[([xX ])\] (.+)/);
     // Regular unordered list (only if not a task item)
-    const ulm = !taskm && line.match(/^[-*] (.+)/);
+    const ulm = !taskm && stripped.match(/^[-*] (.+)/);
     // Ordered list
-    const olm = line.match(/^\d+\. (.+)/);
+    const olm = stripped.match(/^\d+\. (.+)/);
     // Blockquote (escaped > from step 2)
     const bqm = line.match(/^&gt; ?(.*)/);
 
@@ -177,7 +187,12 @@ export function renderMarkdown(md) {
       out.push('<div class="md-p">' + bqm[1] + '</div>');
     } else if (taskm) {
       closeBq();
-      if (inList !== 'task') { closeList(); out.push('<ul class="task-list">'); inList = 'task'; }
+      closeListsToDepth(depth + 1);
+      const top = listStack.length > 0 ? listStack[listStack.length - 1] : null;
+      if (!top || top.type !== 'task' || top.depth !== depth) {
+        out.push('<ul class="task-list">');
+        listStack.push({ type: 'task', depth });
+      }
       const checked = taskm[1].toLowerCase() === 'x';
       out.push('<li class="task-item">'
         + '<span class="md-cb' + (checked ? ' checked' : '') + '">'
@@ -186,11 +201,21 @@ export function renderMarkdown(md) {
         + '</li>');
     } else if (ulm) {
       closeBq();
-      if (inList !== 'ul') { closeList(); out.push('<ul>'); inList = 'ul'; }
+      closeListsToDepth(depth + 1);
+      const top = listStack.length > 0 ? listStack[listStack.length - 1] : null;
+      if (!top || top.type !== 'ul' || top.depth !== depth) {
+        out.push('<ul>');
+        listStack.push({ type: 'ul', depth });
+      }
       out.push('<li>' + ulm[1] + '</li>');
     } else if (olm) {
       closeBq();
-      if (inList !== 'ol') { closeList(); out.push('<ol>'); inList = 'ol'; }
+      closeListsToDepth(depth + 1);
+      const top = listStack.length > 0 ? listStack[listStack.length - 1] : null;
+      if (!top || top.type !== 'ol' || top.depth !== depth) {
+        out.push('<ol>');
+        listStack.push({ type: 'ol', depth });
+      }
       out.push('<li>' + olm[1] + '</li>');
     } else if (!line.trim()) {
       closeBq(); closeList(); out.push('<div class="md-br"></div>');
