@@ -70,6 +70,8 @@ class AgentSession extends EventEmitter {
         "session_handoff", "session_role_update",
         // Subtask-level progress — carries index/total/label for the counter chip
         "subtask_kickoff", "subtask_status", "progress_update",
+        // Research step counter — updates typing label during RESEARCHING phase
+        "research_progress",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {

@@ -1992,6 +1992,17 @@ window.addEventListener('message',e=>{
       break;
     }
 
+    case 'research_progress': {
+      const { step, maxSteps, elapsed } = msg;
+      _dlog('research_progress: step=' + step + (maxSteps ? '/' + maxSteps : '') + (elapsed ? ' elapsed='+elapsed+'s' : ''));
+      // Update typing label to show research step progress instead of just the phase name
+      if (typingLblEl && step != null) {
+        const elapsedStr = elapsed != null ? ' · ' + elapsed + 's' : '';
+        typingLblEl.textContent = 'step ' + step + (maxSteps ? '/' + maxSteps : '') + elapsedStr;
+      }
+      break;
+    }
+
     case 'browser_context_update':
       updateCtxMeter(msg.messageCount, msg.threshold, msg.segmentIndex);
       break;
