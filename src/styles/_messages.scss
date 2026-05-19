@@ -141,6 +141,11 @@
 
 .cb-lang { font-size: 11px; color: var(--mu); font-family: var(--mono); }
 
+.cb-lines {
+  font-size: 10px; color: var(--mu); opacity: 0.4; font-family: var(--mono);
+  margin-right: auto; padding-left: 8px; flex-shrink: 0;
+}
+
 .cb-copy {
   background: transparent; color: var(--mu);
   border: 1px solid var(--bd); padding: 2px 8px;
@@ -243,6 +248,62 @@
   &.show       { opacity: 1; pointer-events: auto; transform: translateY(0); }
   &:hover      { background: var(--hov); color: var(--fg); }
 }
+
+// ── Provider attribution badge on agent messages ───────────────────────────
+// Shows "via ChatGPT" (etc.) next to "Dev Agent" in the sender label.
+// Color is set via data-prov attribute to match the provider's brand color.
+
+.msg-via-prov {
+  font-size: 10px; font-weight: 500; margin-left: 3px;
+  opacity: 0.7;
+
+  &::before { content: 'via '; font-weight: 400; opacity: 0.7; }
+
+  &[data-prov="chatgpt"]                        { color: #10a37f; }
+  &[data-prov="gemini"]                         { color: #4285f4; }
+  &[data-prov="deepseek"]                       { color: #4f8ef7; }
+  &[data-prov="grok"]                           { color: #9b59b6; }
+  &[data-prov="copilot"], &[data-prov="copilot365"] { color: #0078d4; }
+  &[data-prov="claude"]                         { color: #d4956a; }
+}
+
+// ── Stopped-partial message ────────────────────────────────────────────────
+// .msg-a.stopped-partial keeps the partial streaming content with a small
+// badge so the user can see what the AI had generated before they stopped it.
+
+.stopped-partial { opacity: 0.8; }
+
+.stream-stopped-badge {
+  display: inline-block; margin-left: 8px;
+  font-size: 10px; color: var(--mu); opacity: 0.5;
+  font-family: var(--mono); font-style: italic; vertical-align: middle;
+}
+
+// ── Follow-up suggestion grid ─────────────────────────────────────────────
+// Shown below the done banner: 4 context-aware quick-action chips.
+
+.fu-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  margin: 2px 0 12px;
+}
+
+.fu-btn {
+  display: flex; align-items: center; gap: 6px;
+  text-align: left; padding: 7px 10px;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  border: 1px solid var(--bd);
+  color: var(--mu); font: inherit; font-size: 11px; cursor: pointer;
+  border-radius: 6px; transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  &:hover {
+    background: var(--hov);
+    border-color: color-mix(in srgb, var(--acc) 25%, transparent);
+    color: var(--fg);
+    .fu-icon { opacity: 1; }
+  }
+}
+
+.fu-icon { font-size: 13px; line-height: 1; flex-shrink: 0; opacity: 0.75; transition: opacity 0.12s; }
 
 // ── Welcome screen ────────────────────────────────────────────────────────
 // Shown when no session is active or the session has no messages yet

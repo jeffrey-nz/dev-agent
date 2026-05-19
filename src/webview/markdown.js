@@ -40,8 +40,11 @@ function renderCodeBlock(code, lang) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+  const lineCount = code.split('\n').filter((_, i, a) => i < a.length - 1 || code.trimEnd() !== code).length || code.split('\n').length;
+  const linesStr = lineCount > 1 ? lineCount + ' lines' : '';
   return '<div class="cb"><div class="cb-hdr">'
-    + (lang ? '<span class="cb-lang">' + esc(lang) + '</span>' : '<span></span>')
+    + (lang ? '<span class="cb-lang">' + esc(lang) + '</span>' : '<span class="cb-lang"></span>')
+    + (linesStr ? '<span class="cb-lines">' + linesStr + '</span>' : '')
     + '<button class="cb-copy" onclick="copyCode(this)">Copy</button>'
     + '</div><pre class="cb-pre"><code>' + escaped + '</code></pre></div>';
 }

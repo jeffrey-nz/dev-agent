@@ -188,30 +188,8 @@ function chooseFolder(f) {
 }
 
 // ── Provider chip / dropdown ───────────────────────────────────────────────
-
-/**
- * Apply the provider chip visual state (colour + connected class + check mark).
- * Exposed on window for use by connection.js.
- *
- * @param {string} id - Provider ID (e.g. 'deepseek').
- */
-window._applyProviderChip = function applyProviderChip(id) {
-  const btnProv  = document.getElementById('btn-prov');
-  const provName = document.getElementById('prov-name');
-  const provDrop = document.getElementById('prov-drop');
-  const COLORS   = window._PROV_COLORS || {};
-  if (!btnProv) return;
-  const color = COLORS[id] || 'var(--ce)';
-  const label = _availableProviders.find(p => p.id === id)?.name || id;
-  btnProv.style.setProperty('--prov-color', color);
-  btnProv.classList.toggle('connected', !!id);
-  if (provName) provName.textContent = id ? label : 'No provider';
-  if (provDrop) {
-    provDrop.querySelectorAll('.pi-item').forEach(el =>
-      el.classList.toggle('active', el.dataset.id === id)
-    );
-  }
-};
+// window._applyProviderChip is defined in index.js (entry point) where the
+// DOM refs for btn-prov / prov-name / prov-drop are available as module-level vars.
 
 // ── Main message handler ───────────────────────────────────────────────────
 
@@ -478,7 +456,14 @@ function _handleMessage(msg) {
         // First chunk — create a streaming element and hide typing
         const el = document.createElement('div');
         el.className = 'msg-a streaming';
-        el.innerHTML = '<div class="msg-sender agent">Dev Agent</div><div class="mab-md"></div>';
+        // Tag with the active provider so the badge survives finalization
+        const prov = _selectedProvider || '';
+        if (prov) el.dataset.prov = prov;
+        const provLabel = _PROVIDER_LABELS[prov] || prov;
+        const provBadge = prov
+          ? ' <span class="msg-via-prov" data-prov="' + prov + '">' + provLabel + '</span>'
+          : '';
+        el.innerHTML = '<div class="msg-sender agent">Dev Agent' + provBadge + '</div><div class="mab-md"></div>';
         hideTyping();
         ibt(el);
         setStreamingEl(el);
@@ -514,11 +499,12 @@ function _handleMessage(msg) {
       }
 
       if (_streamingEl) {
-        // Finalize the streaming element
+        // Finalize the streaming element — preserve the sender div (has provider badge)
         const finalText = _streamingBuf || extractAgentText(raw);
         _streamingEl.classList.remove('streaming');
-        _streamingEl.innerHTML =
-          '<div class="msg-sender agent">Dev Agent</div>'
+        const senderEl  = _streamingEl.querySelector('.msg-sender');
+        const senderHtml = senderEl ? senderEl.outerHTML : '<div class="msg-sender agent">Dev Agent</div>';
+        _streamingEl.innerHTML = senderHtml
           + '<div class="mab-md">' + renderMarkdown(finalText) + '</div>'
           + '<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
         const body = _streamingEl.querySelector('.mab-md');
@@ -538,7 +524,7 @@ function _handleMessage(msg) {
       if (!cleaned.trim()) break;
       if (currentPhase === 'PLANNING')   addSpecialCard('plan', cleaned);
       else if (currentPhase === 'REVIEWING') addSpecialCard('review', cleaned);
-      else addAgentMsg(cleaned);
+      else addAgentMsg(cleaned, _selectedProvider || undefined);
       break;
     }
 
@@ -585,7 +571,6 @@ function _handleMessage(msg) {
 
       flushReads(); hideTyping();
       if (toolChip) toolChip.style.display = 'none';
-      if (_streamingEl) { _streamingEl.remove(); setStreamingEl(null); setStreamingBuf(''); }
       taskPin?.classList.remove('show');
       if (phaseSubtask) phaseSubtask.classList.remove('show');
       if (typingLblEl) typingLblEl.textContent = '';
@@ -593,6 +578,20 @@ function _handleMessage(msg) {
 
       if (_stoppedByUser) {
         setStoppedByUser(false);
+        // Preserve any partial response the AI had started rather than discarding it
+        if (_streamingEl && _streamingBuf) {
+          _streamingEl.classList.remove('streaming');
+          _streamingEl.classList.add('stopped-partial');
+          const senderEl2  = _streamingEl.querySelector('.msg-sender');
+          const senderHtml2 = senderEl2 ? senderEl2.outerHTML : '<div class="msg-sender agent">Dev Agent</div>';
+          _streamingEl.innerHTML = senderHtml2
+            + '<div class="mab-md">' + renderMarkdown(_streamingBuf) + '</div>'
+            + '<span class="stream-stopped-badge">(stopped)</span>';
+        } else if (_streamingEl) {
+          _streamingEl.remove();
+        }
+        setStreamingEl(null);
+        setStreamingBuf('');
         if (btnStop) { btnStop.classList.add('hidden'); btnStop.disabled = false; }
         if (btnSend) btnSend.classList.remove('hidden');
         setTimeout(() => {
@@ -602,6 +601,8 @@ function _handleMessage(msg) {
         }, 50);
         break;
       }
+
+      if (_streamingEl) { _streamingEl.remove(); setStreamingEl(null); setStreamingBuf(''); }
 
       if (_hadError) {
         setHadError(false);
@@ -645,7 +646,9 @@ function _handleMessage(msg) {
         if (pb2) pb2.style.opacity = '';
         resetProgress();
         resetAiSessionBar();
-      }, 1400);
+        // Auto-focus prompt so the user can immediately type a follow-up
+        document.getElementById('prompt')?.focus();
+      }, 1500);
       break;
     }
 

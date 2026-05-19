@@ -583,6 +583,16 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'i') {
     e.preventDefault(); debugSnapshot();
   }
+  // Cmd/Ctrl+Shift+C — copy the last agent response to clipboard
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'c') {
+    e.preventDefault();
+    const msgs = document.querySelectorAll('.msg-a');
+    const lastMsg = msgs[msgs.length - 1];
+    if (lastMsg) {
+      const text = lastMsg.querySelector('.mab-md')?.innerText?.trim() || '';
+      if (text) navigator.clipboard.writeText(text).catch(() => {});
+    }
+  }
 });
 
 // ── Header bar actions ─────────────────────────────────────────────────────

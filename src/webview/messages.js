@@ -123,17 +123,28 @@ export function _addExpandToggle(container, bodyEl) {
   container.appendChild(btn);
 }
 
+const _PROV_LABELS = {
+  deepseek: 'DeepSeek', chatgpt: 'ChatGPT', gemini: 'Gemini',
+  grok: 'Grok', copilot: 'Copilot', copilot365: 'Copilot', claude: 'Claude',
+};
+
 /**
  * Add an agent message to the feed with rendered Markdown.
  * Long messages (> 320px) get a "Show more" collapse toggle.
  *
- * @param {string} text - Raw text or Markdown from the agent.
+ * @param {string}  text     - Raw text or Markdown from the agent.
+ * @param {string}  [provider] - Provider ID that generated the message.
  */
-export function addAgentMsg(text) {
+export function addAgentMsg(text, provider) {
   if (!text?.trim()) return;
+  const provLabel = provider ? (_PROV_LABELS[provider] || provider) : null;
+  const provBadge = provLabel
+    ? '<span class="msg-via-prov" data-prov="' + provider + '">' + provLabel + '</span>'
+    : '';
   const d = document.createElement('div');
   d.className = 'msg-a';
-  d.innerHTML = '<div class="msg-sender agent">Dev Agent</div>'
+  if (provider) d.dataset.prov = provider;
+  d.innerHTML = '<div class="msg-sender agent">Dev Agent' + (provBadge ? ' ' + provBadge : '') + '</div>'
     + '<div class="mab-md">' + renderMarkdown(text) + '</div>'
     + '<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
   ibt(d);
@@ -243,6 +254,53 @@ function _addBannerActs(lastPrompt) {
 }
 
 /**
+ * Generate context-aware follow-up suggestion chips below the done banner.
+ * Picks 4 suggestions from a context-sensitive pool based on written files.
+ */
+function _addFollowUpSuggestions() {
+  const writes = _writesThisSession;
+  if (!writes.length && !_history[0]) return;
+
+  const exts = new Set(writes.map(f => (f.path.split('.').pop() || '').toLowerCase()));
+
+  // Build a pool ordered by relevance; first 4 are always shown
+  const pool = [
+    { icon: '🧪', label: 'Write tests',    prompt: 'Write comprehensive tests for all the changes made, covering edge cases and error paths' },
+    { icon: '🔍', label: 'Code review',    prompt: 'Carefully review all the changes for bugs, edge cases, security issues, and potential improvements' },
+    { icon: '📝', label: 'Add docs',       prompt: 'Add clear documentation comments and update the README for all the changes' },
+    { icon: '🔒', label: 'Harden it',      prompt: 'Add input validation, error handling, and defensive checks to all the new code' },
+    { icon: '🚀', label: 'Optimise',       prompt: 'Profile and optimise the new code for performance, memory usage, and bundle size' },
+    { icon: '♿', label: 'Accessibility',  prompt: 'Audit and improve accessibility: ARIA labels, keyboard navigation, colour contrast' },
+  ];
+
+  // Prepend context-specific suggestions
+  if (exts.has('ts') || exts.has('tsx')) {
+    pool.unshift({ icon: '⌨', label: 'Fix TS types', prompt: 'Fix all TypeScript type errors and add precise type annotations to every new function and interface' });
+  }
+  if (exts.has('py')) {
+    pool.unshift({ icon: '📎', label: 'Type hints', prompt: 'Add comprehensive type hints and Google-style docstrings to all Python functions and classes' });
+  }
+  if (exts.has('jsx') || exts.has('tsx')) {
+    pool.unshift({ icon: '⚛', label: 'Add stories', prompt: 'Create Storybook stories for all React components created or modified, with realistic mock data' });
+  }
+  if (writes.some(f => f.isNew)) {
+    pool.unshift({ icon: '🐳', label: 'Dockerise',  prompt: 'Create a production-ready Dockerfile, docker-compose.yml, and .dockerignore for this project' });
+  }
+
+  const chosen = pool.slice(0, 4);
+  const wrap = document.createElement('div');
+  wrap.className = 'fu-grid';
+  chosen.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'fu-btn';
+    btn.addEventListener('click', () => window.fillPrompt?.(s.prompt));
+    btn.innerHTML = '<span class="fu-icon">' + s.icon + '</span><span>' + s.label + '</span>';
+    wrap.appendChild(btn);
+  });
+  ibt(wrap);
+}
+
+/**
  * Insert a green "Task complete" banner with action buttons.
  */
 export function addDoneBanner() {
@@ -255,6 +313,7 @@ export function addDoneBanner() {
   d.innerHTML = '<div class="done-line"></div><span>' + label + '</span><div class="done-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
+  _addFollowUpSuggestions();
 }
 
 /**
