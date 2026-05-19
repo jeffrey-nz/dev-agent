@@ -792,6 +792,19 @@ function _handleMessage(msg) {
           phaseSubtask.style.filter = 'brightness(1.5)';
           setTimeout(() => { if (phaseSubtask) phaseSubtask.style.filter = ''; }, 700);
         }
+        // Mark the most recent pending subtask chip as done
+        const messagesEl = document.getElementById('messages');
+        const pendingChips = messagesEl?.querySelectorAll('.subtask-chip:not(.done)');
+        const lastChip = pendingChips?.[pendingChips.length - 1];
+        if (lastChip) {
+          lastChip.classList.add('done');
+          const numEl = lastChip.querySelector('.stc-num');
+          const check = document.createElement('span');
+          check.className = 'stc-check';
+          check.textContent = '✓';
+          if (numEl) lastChip.insertBefore(check, numEl);
+          else lastChip.prepend(check);
+        }
       } else if (retries > 0) {
         const shortLabel = label.length > 42 ? label.slice(0, 42) + '…' : label;
         const notice = document.createElement('div');
@@ -801,6 +814,8 @@ function _handleMessage(msg) {
           + (shortLabel ? ' <span class="rn-label" title="' + esc(label) + '">· ' + esc(shortLabel) + '</span>' : '')
           + (score != null ? '<span class="rn-score">' + score + '%</span>' : '');
         ibt(notice);
+        // Stop the spinner after 8 s (the retry has likely resolved by then)
+        setTimeout(() => notice.querySelector('.rn-icon')?.style.setProperty('animation', 'none'), 8000);
       }
       break;
     }

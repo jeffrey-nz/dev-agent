@@ -178,6 +178,17 @@
     border-radius: 10px; white-space: nowrap; flex-shrink: 0;
   }
   .stc-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8; flex: 1; }
+
+  &.done {
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 6%, transparent);
+    border-left-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  }
+}
+
+// Checkmark prepended to a done subtask chip
+.stc-check {
+  color: var(--ok); font-size: 10px; flex-shrink: 0; font-weight: 700;
 }
 
 // ── Retry notice ──────────────────────────────────────────────────────────
