@@ -1114,12 +1114,12 @@ a{color:var(--acc)}
   border-left:2px solid color-mix(in srgb,var(--ce) 40%,transparent);
   border-radius:4px;animation:msgIn .15s ease;
 }
-.sc-num{
+.subtask-chip .stc-num{
   font-size:9px;opacity:.55;padding:1px 5px;
   background:color-mix(in srgb,var(--ce) 15%,transparent);
   border-radius:10px;white-space:nowrap;flex-shrink:0;
 }
-.sc-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8;flex:1}
+.subtask-chip .stc-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8;flex:1}
 
 /* system / error messages */
 .msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:3px 2px;opacity:.45}

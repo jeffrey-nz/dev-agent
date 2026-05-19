@@ -398,7 +398,6 @@ let _stepTimes = []; // [{start, end|null}] indexed by STEPS index
 const _chipMap = new Map(); // relPath → {chip, added, removed}
 let _hiddenChipsCount = 0;
 let _totalAdded = 0, _totalRemoved = 0;
-let _lastRunSummary = null;
 const MAX_CHIPS = 7;
 let _notesSeq = 0;
 
@@ -450,7 +449,7 @@ function updatePhaseStats() {
 function resetSessionTracking() {
   _writesThisSession = []; _readsThisSession = new Set(); _runsThisSession = 0;
   _subtasksCompleted = 0; _subtasksTotal = 0;
-  _totalAdded = 0; _totalRemoved = 0; _lastRunSummary = null;
+  _totalAdded = 0; _totalRemoved = 0;
   _chipMap.clear(); _hiddenChipsCount = 0;
   if (activityChips) activityChips.innerHTML = '';
   activityOverflow?.classList.add('hidden');
@@ -1351,8 +1350,8 @@ function exportSession() {
       const t = node.textContent?.trim();
       if (t) lines.push('```\n' + t + '\n```');
     } else if (node.classList.contains('subtask-chip')) {
-      const num = node.querySelector('.sc-num')?.textContent || '';
-      const lbl = node.querySelector('.sc-label')?.textContent || '';
+      const num = node.querySelector('.stc-num')?.textContent || '';
+      const lbl = node.querySelector('.stc-label')?.textContent || '';
       if (lbl) lines.push('**Subtask ' + num + ':** ' + lbl);
     } else if (node.classList.contains('retry-notice')) {
       const t = node.textContent?.trim().replace(/\s+/g, ' ');
@@ -1779,7 +1778,6 @@ window.addEventListener('message',e=>{
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else if(ts_.label==='run'){
           _runsThisSession++;
-          _lastRunSummary = msg.paramsSummary || null;
           hideTyping(); addToolCard(msg.tool,msg.paramsSummary);
           toolChip.style.display='flex'; toolChip.textContent='↳ '+(msg.paramsSummary||msg.tool).slice(0,36);
         } else {
@@ -1994,8 +1992,8 @@ window.addEventListener('message',e=>{
       if (typeof total === 'number' && total > 1 && label) {
         const chip = document.createElement('div'); chip.className = 'subtask-chip';
         const shortLabel = label.length > 60 ? label.slice(0, 60) + '…' : label;
-        chip.innerHTML = '<span class="sc-num">' + idx + ' / ' + total + '</span>'
-          + '<span class="sc-label" title="' + esc(label) + '">' + esc(shortLabel) + '</span>';
+        chip.innerHTML = '<span class="stc-num">' + idx + ' / ' + total + '</span>'
+          + '<span class="stc-label" title="' + esc(label) + '">' + esc(shortLabel) + '</span>';
         ibt(chip);
       }
       // Update typing label to show what's being worked on
