@@ -1,0 +1,7 @@
+{
+  "name": "Go Fibonacci",
+  "language": "go",
+  "timeoutMs": 300000,
+  "description": "Implement a Fibonacci function in Go with table-driven tests.",
+  "prompt": "Build a Go Fibonacci package.\n\n1. Initialize a Go module:\n   go mod init fibonacci\n\n2. Create fibonacci.go with package main and a function:\n   func Fib(n int) int\n   The function returns the nth Fibonacci number (0-indexed):\n   Fib(0)=0, Fib(1)=1, Fib(2)=1, Fib(3)=2, Fib(10)=55, Fib(20)=6765\n\n3. Create fibonacci_test.go with package main and at least 8 table-driven test cases:\n   - Test cases must include: Fib(0)=0, Fib(1)=1, Fib(2)=1, Fib(10)=55\n   - Use testing.T and t.Run for subtests\n\n4. Create a main() function in fibonacci.go (or main.go) that prints Fib(10) to stdout.\n\n5. Run the tests and confirm they all pass:\n   go test -v ./...\n\nDo not use stubs — implement real Fibonacci logic (iterative or recursive)."
+}

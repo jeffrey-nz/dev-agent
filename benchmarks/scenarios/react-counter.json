@@ -1,0 +1,7 @@
+{
+  "name": "React Counter (Vite + TS)",
+  "language": "react",
+  "timeoutMs": 480000,
+  "description": "Build a React counter component with Vitest tests using Vite + TypeScript.",
+  "prompt": "Build a React counter application with Vite and TypeScript.\n\n1. Scaffold the project:\n   npm create vite@latest . -- --template react-ts\n   npm install\n   npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom\n\n2. Configure Vitest in vite.config.ts:\n   Add test: { globals: true, environment: 'jsdom', setupFiles: ['./src/setupTests.ts'] } to the defineConfig\n\n3. Create src/setupTests.ts with:\n   import '@testing-library/jest-dom';\n\n4. Create src/Counter.tsx with a Counter component that:\n   - Has a numeric count state (starts at 0)\n   - Shows the count in a <span data-testid=\"count\">{count}</span>\n   - Has an Increment button that adds 1 to count (data-testid=\"increment\")\n   - Has a Decrement button that subtracts 1 (data-testid=\"decrement\")\n   - Has a Reset button that sets count back to 0 (data-testid=\"reset\")\n\n5. Create src/Counter.test.tsx that tests:\n   - Initial count is 0\n   - Increment button increases count by 1\n   - Decrement button decreases count by 1\n   - Reset button resets count to 0\n\n6. Add to package.json scripts: \"test\": \"vitest run\"\n\n7. Run and confirm tests pass:\n   npm test\n\nDo not use stubs. Implement real state management with useState."
+}

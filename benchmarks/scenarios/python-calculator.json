@@ -1,0 +1,7 @@
+{
+  "name": "Python Calculator",
+  "language": "python",
+  "timeoutMs": 360000,
+  "description": "Build a Calculator class with four arithmetic methods and pytest tests.",
+  "prompt": "Build a Python calculator library.\n\n1. Create calculator.py with a Calculator class that has four methods:\n   - add(a, b) -> returns a + b\n   - subtract(a, b) -> returns a - b\n   - multiply(a, b) -> returns a * b\n   - divide(a, b) -> returns a / b, raises ValueError if b is 0\n\n2. Create test_calculator.py with pytest tests covering:\n   - All four operations with at least two test cases each\n   - ValueError is raised when dividing by zero\n\n3. Create a requirements.txt that includes pytest.\n\n4. Set up a virtual environment at .venv and install the requirements:\n   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -q\n\n5. Run the tests and confirm they all pass:\n   .venv/bin/python -m pytest -v\n\nDo not use stubs — implement real arithmetic logic."
+}

@@ -80,7 +80,9 @@
     "package": "vsce package",
     "lint": "eslint src/",
     "start": "node bin/dev-agent.mjs",
-    "sync-modules": "rsync -a --delete ../agent-core/src/ node_modules/agent-core/src/ && rsync -a ../agent-core/package.json node_modules/agent-core/package.json && rsync -a --delete ../browser-ai-bridge/src/ node_modules/browser-ai-bridge/src/ && rsync -a --delete ../browser-ai-bridge/bin/ node_modules/browser-ai-bridge/bin/ && rsync -a ../browser-ai-bridge/package.json node_modules/browser-ai-bridge/package.json && npm install --prefix node_modules/browser-ai-bridge --no-save 2>/dev/null || true"
+    "sync-modules": "rsync -a --delete ../agent-core/src/ node_modules/agent-core/src/ && rsync -a ../agent-core/package.json node_modules/agent-core/package.json && rsync -a --delete ../browser-ai-bridge/src/ node_modules/browser-ai-bridge/src/ && rsync -a --delete ../browser-ai-bridge/bin/ node_modules/browser-ai-bridge/bin/ && rsync -a ../browser-ai-bridge/package.json node_modules/browser-ai-bridge/package.json && npm install --prefix node_modules/browser-ai-bridge --no-save 2>/dev/null || true",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:list": "node scripts/benchmark.mjs --list"
   },
   "dependencies": {
     "agent-core": "github:jeffrey-nz/agent-core",

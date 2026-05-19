@@ -1,0 +1,7 @@
+{
+  "name": "Ruby String Utils",
+  "language": "ruby",
+  "timeoutMs": 360000,
+  "description": "Build a StringUtils module with three methods and RSpec tests.",
+  "prompt": "Build a Ruby string utility library.\n\n1. Create string_utils.rb with a StringUtils module that has three methods:\n   - palindrome?(str) -> returns true if the string is a palindrome (case-insensitive, ignoring spaces and punctuation), false otherwise\n   - word_count(str) -> returns the number of words in the string (split on whitespace)\n   - capitalize_words(str) -> returns the string with each word capitalized (first letter uppercase, rest lowercase)\n\n2. Create a Gemfile that includes:\n   source 'https://rubygems.org'\n   gem 'rspec'\n\n3. Create spec/string_utils_spec.rb with RSpec tests:\n   - At least 3 it-blocks for palindrome? (including 'racecar', 'hello', and a phrase like 'A man a plan a canal Panama')\n   - At least 3 it-blocks for word_count (empty string, single word, multiple words)\n   - At least 3 it-blocks for capitalize_words\n\n4. Install dependencies:\n   bundle install --path vendor/bundle\n\n5. Run the tests and confirm they all pass:\n   bundle exec rspec spec/ -f documentation\n\nDo not use stubs. Implement real string processing logic."
+}
