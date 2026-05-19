@@ -959,11 +959,16 @@ function addToolCard(name,summary){
     +'<span class="tc-st">—</span>';
   ibt(c); pendingCard=c;
 }
-function resolveCard(isErr){
+function resolveCard(isErr, elapsed){
   if(!pendingCard) return;
   pendingCard.classList.remove('pending');
   if(isErr) pendingCard.classList.add('error');
-  pendingCard.querySelector('.tc-st').textContent=isErr?'✗':'✓'; pendingCard=null;
+  const stEl = pendingCard.querySelector('.tc-st');
+  const mark = isErr ? '✗' : '✓';
+  // Show elapsed time when slow (> 800ms) — helps identify bottlenecks
+  const elapsedStr = (!isErr && elapsed > 800) ? (' ' + (elapsed >= 1000 ? (elapsed/1000).toFixed(1)+'s' : elapsed+'ms')) : '';
+  if (stEl) stEl.textContent = mark + elapsedStr;
+  pendingCard = null;
 }
 
 /* ── message helpers ── */
@@ -1797,7 +1802,7 @@ window.addEventListener('message',e=>{
       if(isRead){
         toolChip.style.display='none';
       } else {
-        flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none';
+        flushReads(); resolveCard(!!msg.isError, msg.elapsed); toolChip.style.display='none';
         // Write tools: suppress typing — the file_diff card follows immediately
         if(!isWrite || msg.isError) showTyping();
         if(msg.isError){
