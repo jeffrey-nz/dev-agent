@@ -34,7 +34,7 @@ import {
   setActiveTaskId, setStoppedByUser, setHadError,
   _stoppedByUser, _hadError, currentPhase, setCurrentPhase, setLastPhase,
   _streamingEl, _streamingBuf, setStreamingEl, setStreamingBuf,
-  _stepTimes, setStepTimes,
+  _stepTimes, setStepTimes, _history,
 } from './state.js';
 
 import { renderMarkdown, extractAgentText } from './markdown.js';
@@ -49,7 +49,7 @@ import { toolStyle, addToolCard, resolveCard, flushReads, readBuf } from './tool
 import { addActivityChip, updateSessionDelta, updatePhaseStats, addChangesSummary } from './activity.js';
 import {
   addUserMsg, addAgentMsg, addSysMsg, addAttachmentMsg,
-  addSpecialCard, addDoneBanner, addStopBanner, addHandoffCard,
+  addSpecialCard, addDoneBanner, addStopBanner, addErrorBanner, addHandoffCard,
   updateCtxMeter, ibt, showTyping, hideTyping, _addExpandToggle,
 } from './messages.js';
 import {
@@ -690,6 +690,7 @@ function _handleMessage(msg) {
 
       if (_hadError) {
         setHadError(false);
+        addErrorBanner(_history?.[0]);
         finishSession('error');
         if (btnStop) { btnStop.classList.add('hidden'); btnStop.disabled = false; }
         if (btnSend) btnSend.classList.remove('hidden');

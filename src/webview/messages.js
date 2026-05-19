@@ -12,6 +12,7 @@
  *   addSpecialCard(type, text) — collapsible plan/review card
  *   addDoneBanner()            — session-complete green banner
  *   addStopBanner()            — user-stopped red banner
+ *   addErrorBanner(lastPrompt) — task-failed amber banner with recovery actions
  *   addHandoffCard(msg)        — browser session rotation card
  *   addNoteChip(type, html)    — plan/review entry in the notes drawer
  *   clearNotes()               — clear the notes drawer
@@ -403,7 +404,7 @@ export function addDoneBanner() {
 }
 
 /**
- * Insert a red "Stopped" banner with action buttons.
+ * Insert a red "Stopped" banner with action buttons and a "Continue" suggestion chip.
  */
 export function addStopBanner() {
   const d = document.createElement('div');
@@ -418,6 +419,39 @@ export function addStopBanner() {
   d.innerHTML = '<div class="stop-line"></div><span>' + label + '</span><div class="stop-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
+  // "Continue" chip below stop banner
+  const cont = document.createElement('div');
+  cont.className = 'fu-grid';
+  cont.innerHTML =
+    '<button class="fu-btn" onclick="fillPrompt(\'Continue where you left off and complete the remaining work\')"><span class="fu-icon">▶</span><span>Continue</span></button>'
+    + '<button class="fu-btn" onclick="fillPrompt(\'Fix any errors or issues, then complete the task\')"><span class="fu-icon">🔧</span><span>Fix &amp; finish</span></button>'
+    + '<button class="fu-btn" onclick="fillPrompt(\'Review what was done so far and summarise the progress\')"><span class="fu-icon">📋</span><span>Review progress</span></button>';
+  ibt(cont);
+}
+
+/**
+ * Insert an amber error banner with "Try again" and recovery action buttons.
+ *
+ * @param {string} [lastPrompt] - The prompt that caused the error.
+ */
+export function addErrorBanner(lastPrompt) {
+  const d = document.createElement('div');
+  d.className = 'error-banner';
+  let label = '⚠ Task failed' + _bannerTime();
+  const fileCount = _writesThisSession.length;
+  if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '') + ' changed before error';
+  d.innerHTML = '<div class="err-line"></div><span>' + label + '</span><div class="err-line"></div>';
+  ibt(d);
+
+  if (lastPrompt) {
+    const acts = document.createElement('div');
+    acts.className = 'banner-acts';
+    acts.innerHTML =
+      '<button class="bact primary" data-p="' + esc(lastPrompt) + '" onclick="retryPrompt(this)">↺ Try again</button>'
+      + '<button class="bact" onclick="fillPrompt(\'Diagnose and fix the error that just occurred, then complete the original task\')">🔧 Fix error</button>'
+      + '<button class="bact" onclick="fillPrompt(\'Explain the error that occurred and suggest how to resolve it\')">Explain error</button>';
+    ibt(acts);
+  }
 }
 
 // ── Handoff card ───────────────────────────────────────────────────────────

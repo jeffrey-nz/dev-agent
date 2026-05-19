@@ -235,7 +235,7 @@
 // ── Done / Stop banners ───────────────────────────────────────────────────
 // Session-end banners shown in the message feed
 
-.done-banner, .stop-banner {
+.done-banner, .stop-banner, .error-banner {
   display: flex; align-items: center; gap: 9px;
   padding: 7px 12px; margin: 14px 0 4px;
   font-size: 11px; font-family: var(--mono);
@@ -257,8 +257,17 @@
   border-left: 2px solid var(--err);
 }
 
+// Amber warning color for task-failed state (distinct from user-stopped red)
+.error-banner {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 22%, transparent);
+  border-left: 2px solid var(--warn);
+}
+
 .done-line { flex: 1; height: 1px; background: color-mix(in srgb, var(--ok) 18%, transparent); }
 .stop-line { flex: 1; height: 1px; background: color-mix(in srgb, var(--err) 15%, transparent); }
+.err-line  { flex: 1; height: 1px; background: color-mix(in srgb, var(--warn) 18%, transparent); }
 
 // ── Banner action row ─────────────────────────────────────────────────────
 // Quick-action buttons shown below done/stop banners
