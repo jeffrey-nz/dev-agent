@@ -65,18 +65,25 @@ export function flushReads() {
   if (!readBuf.length) return;
 
   if (readBuf.length === 1) {
+    const raw = (readBuf[0].s || readBuf[0].n);
+    const fname = raw.includes('/') ? raw.split('/').pop().slice(0, 60) : raw.slice(0, 80);
     const c = document.createElement('div');
     c.className = 'tcrd done';
     c.innerHTML = '<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
-      + '<span class="tc-file">' + esc((readBuf[0].s || readBuf[0].n).slice(0, 80)) + '</span>'
+      + '<span class="tc-file" title="' + esc(raw.split('\n')[0]) + '">' + esc(fname) + '</span>'
       + '<span class="tc-st">✓</span>';
     ibt(c);
   } else {
+    // Multi-read: show just the filenames, full path in tooltip
+    const items = readBuf
+      .map(r => {
+        const raw = (r.s || r.n).split('\n')[0];
+        const fname = raw.includes('/') ? raw.split('/').pop() : raw;
+        return '<div class="rg-item" title="' + esc(raw) + '">' + esc(fname.slice(0, 60)) + '</div>';
+      })
+      .join('');
     const g = document.createElement('div');
     g.className = 'rg-card';
-    const items = readBuf
-      .map(r => '<div class="rg-item">' + esc((r.s || r.n).slice(0, 70)) + '</div>')
-      .join('');
     g.innerHTML = '<div class="rg-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
       + '<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
       + '<span class="tc-file">' + readBuf.length + ' files</span>'
@@ -99,9 +106,29 @@ export function addToolCard(name, summary) {
   const s = toolStyle(name);
   const c = document.createElement('div');
   c.className = 'tcrd pending ' + s.label;
+
+  // Show just the filename part of the summary for better readability
+  const rawSummary = summary || name;
+  const displaySummary = rawSummary.includes('/')
+    ? rawSummary.split('/').pop().split('\n')[0].slice(0, 60) || rawSummary.slice(0, 80)
+    : rawSummary.slice(0, 80);
+
   c.innerHTML = '<span class="tc-pfx">↳</span><span class="tc-name">' + s.label + '</span>'
-    + '<span class="tc-file">' + esc(summary ? summary.slice(0, 80) : name) + '</span>'
+    + '<span class="tc-file" title="' + esc(rawSummary.split('\n')[0].slice(0, 120)) + '">'
+    + esc(displaySummary)
+    + '</span>'
     + '<span class="tc-st">—</span>';
+
+  // Write tool cards are clickable to open the file in the editor
+  if (s.label === 'write' && summary) {
+    const fp = summary.split('\n')[0].trim();
+    if (fp) {
+      c.style.cursor = 'pointer';
+      c.title = 'Open ' + fp;
+      c.addEventListener('click', () => window.openFile?.(fp));
+    }
+  }
+
   ibt(c);
   pendingCard = c;
 }

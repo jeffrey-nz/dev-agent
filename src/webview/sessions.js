@@ -278,6 +278,16 @@ let _sessionFilter = '';
     renderSessions();
   });
   inp.addEventListener('click', e => e.stopPropagation());
+  // Arrow key navigation: move focus from search to session items
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const first = sessionList.querySelector('.sitem:not(:disabled)');
+      first?.focus();
+    } else if (e.key === 'Escape') {
+      window._closeDropdowns?.();
+    }
+  });
   wrap.appendChild(inp);
   drop.insertBefore(wrap, drop.firstChild);
 })();
@@ -346,6 +356,21 @@ export function renderSessions() {
       + '</div>'
       + provBadge;
     btn.addEventListener('click', () => switchSession(s.id));
+    // Arrow key navigation within the list
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = btn.nextElementSibling;
+        if (next) next.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = btn.previousElementSibling;
+        if (prev) prev.focus();
+        else document.querySelector('.ss-search')?.focus();
+      } else if (e.key === 'Escape') {
+        window._closeDropdowns?.();
+      }
+    });
     sessionList.appendChild(btn);
   });
 }
