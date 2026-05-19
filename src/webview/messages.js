@@ -48,6 +48,15 @@ function scrollMsgs() {
   if (!window._userScrolled) messages.scrollTop = messages.scrollHeight;
 }
 
+// Track unseen messages while the user has scrolled up
+let _unreadCount = 0;
+
+/** Reset the unread counter and notify the scroll-button updater. */
+export function resetUnread() {
+  _unreadCount = 0;
+  window._onUnreadIncrement?.(0);
+}
+
 /**
  * Insert a node before the typing indicator, then scroll to bottom.
  * Exposed on window as _ibt so other modules can call it without circular deps.
@@ -55,7 +64,13 @@ function scrollMsgs() {
  * @param {HTMLElement} el - Element to insert.
  */
 export function ibt(el) {
-  if (el) messages.insertBefore(el, typingEl);
+  if (el) {
+    messages.insertBefore(el, typingEl);
+    if (window._userScrolled) {
+      _unreadCount++;
+      window._onUnreadIncrement?.(_unreadCount);
+    }
+  }
   scrollMsgs();
 }
 

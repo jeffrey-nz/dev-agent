@@ -135,7 +135,10 @@
 
 .rg-item {
   font-size: 11px; color: var(--mu); opacity: 0.55;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 2px 6px; border-radius: 3px; transition: background 0.1s, opacity 0.1s;
+
+  &:hover { opacity: 0.9; background: var(--hov); }
 }
 
 // ── Activity strip ────────────────────────────────────────────────────────

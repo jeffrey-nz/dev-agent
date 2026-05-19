@@ -317,12 +317,13 @@
 
 #scroll-btn {
   position: absolute; bottom: 78px; right: 14px;
-  width: 30px; height: 30px; border-radius: 50%;
+  min-width: 30px; height: 30px; border-radius: 15px;
+  padding: 0 8px;
   background: var(--sidebar); border: 1px solid var(--bd); color: var(--mu);
-  font-size: 14px; cursor: pointer;
+  font-size: 11px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.2s, background 0.1s, transform 0.2s;
+  transition: opacity 0.2s, background 0.1s, transform 0.2s, min-width 0.2s;
   z-index: 20; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(4px);
 
@@ -385,6 +386,29 @@
 }
 
 .fu-icon { font-size: 13px; line-height: 1; flex-shrink: 0; opacity: 0.75; transition: opacity 0.12s; }
+
+// ── "Continue last session" on welcome screen ─────────────────────────────
+
+#w-recent { margin-bottom: 14px; }
+
+.w-recent-hdr {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--mu); opacity: 0.35;
+  font-family: var(--mono); margin-bottom: 6px;
+}
+
+.w-recent-btn {
+  width: 100%; text-align: left; padding: 9px 12px;
+  background: color-mix(in srgb, var(--acc) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 20%, var(--bd));
+  border-radius: 7px; color: var(--fg); font: inherit; font-size: 12px;
+  cursor: pointer; opacity: 0.85; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background 0.12s, opacity 0.12s, border-color 0.12s;
+
+  &::before { content: '↩ '; color: var(--acc); font-size: 13px; }
+  &:hover   { background: var(--hov); opacity: 1; border-color: color-mix(in srgb, var(--acc) 40%, transparent); }
+}
 
 // ── Welcome screen ────────────────────────────────────────────────────────
 // Shown when no session is active or the session has no messages yet

@@ -90,7 +90,7 @@ import {
   ibt, showTyping, hideTyping,
   addUserMsg, addAttachmentMsg, addAgentMsg, addSysMsg,
   addSpecialCard, addDoneBanner, addStopBanner, addHandoffCard,
-  updateCtxMeter, clearNotes,
+  updateCtxMeter, clearNotes, resetUnread,
 } from './messages.js';
 
 import {
@@ -244,15 +244,22 @@ function scrollMsgs() {
   if (!_userScrolled) messages.scrollTop = messages.scrollHeight;
 }
 
+// Scroll-button label: shows unread count when the user is scrolled up
+window._onUnreadIncrement = (count) => {
+  if (scrollBtn) scrollBtn.textContent = count > 0 ? count + ' new ↓' : '↓';
+};
+
 messages.addEventListener('scroll', () => {
   const threshold = 80;
   const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < threshold;
   setUserScrolled(!atBottom);
   scrollBtn?.classList.toggle('show', !atBottom);
+  if (atBottom) resetUnread();
 });
 
 scrollBtn?.addEventListener('click', () => {
   setUserScrolled(false);
+  resetUnread();
   scrollBtn.classList.remove('show');
   messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
 });

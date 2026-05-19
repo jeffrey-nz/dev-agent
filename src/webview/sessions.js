@@ -301,6 +301,20 @@ export function renderSessions() {
   const badge = document.getElementById('session-count');
   if (badge) badge.textContent = count > 1 ? String(count) : '';
 
+  // Welcome screen: show "Continue last session" when sessions exist but none is active
+  const wRecent    = document.getElementById('w-recent');
+  const wRecentBtn = document.getElementById('btn-w-recent');
+  if (wRecent && wRecentBtn) {
+    const last = activeSid === null && sessions[0];
+    if (last) {
+      wRecentBtn.textContent = last.prompt;
+      wRecentBtn.onclick = () => switchSession(last.id);
+      wRecent.classList.remove('hidden');
+    } else {
+      wRecent.classList.add('hidden');
+    }
+  }
+
   const filtered = _sessionFilter
     ? sessions.filter(s => s.prompt.toLowerCase().includes(_sessionFilter))
     : sessions;

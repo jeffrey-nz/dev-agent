@@ -104,8 +104,10 @@ export function exportSession() {
       const label = node.querySelector('.sc-label')?.textContent || 'Plan';
       const body  = node.querySelector('.sc-body')?.innerText || '';
       if (body.trim()) lines.push('**' + label + '**\n' + body.trim());
-    } else if (node.classList.contains('run-output')) {
-      const t = node.textContent?.trim();
+    } else if (node.classList.contains('run-output') || node.classList.contains('run-output-wrap')) {
+      const t = (node.classList.contains('run-output-wrap')
+        ? node.querySelector('.run-output')?.textContent
+        : node.textContent)?.trim();
       if (t) lines.push('```\n' + t + '\n```');
     } else if (node.classList.contains('subtask-chip')) {
       const num = node.querySelector('.stc-num')?.textContent || '';

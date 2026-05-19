@@ -223,6 +223,12 @@
           <div class="w-logo">◉</div>
           <div class="w-title">What can I build?</div>
           <div class="w-sub">Plans, codes, and verifies — powered by browser AI.</div>
+          <!-- "Continue last session" — populated dynamically by sessions.js -->
+          <div id="w-recent" class="hidden">
+            <div class="w-recent-hdr">Recent</div>
+            <button class="w-recent-btn" id="btn-w-recent"></button>
+          </div>
+
           <div class="w-examples">
             <button class="w-ex" data-prompt="Build a React todo app with local storage persistence and filtering by status">
               <span class="w-ex-icon">⚛</span>
