@@ -120,5 +120,26 @@ export function addFileDiff(data) {
   // Toggle open/closed on header click
   d.querySelector('.diff-hdr').addEventListener('click', () => d.classList.toggle('open'));
 
+  // "⎘ Copy diff" button — appended after the open/chevron button
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'diff-copy';
+  copyBtn.title = 'Copy diff';
+  copyBtn.textContent = '⎘';
+  copyBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const lines = ['--- ' + rel, '+++ ' + rel];
+    d.querySelectorAll('.dl').forEach(row => {
+      const rawSym = row.querySelector('.dl-sym')?.textContent?.trim() || ' ';
+      const sym    = rawSym === '−' ? '-' : rawSym === '+' ? '+' : ' ';
+      const code   = row.querySelector('.dl-code')?.textContent || '';
+      lines.push(sym + code);
+    });
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      copyBtn.textContent = '✓';
+      setTimeout(() => { copyBtn.textContent = '⎘'; }, 1400);
+    }).catch(() => {});
+  });
+  d.querySelector('.diff-hdr').appendChild(copyBtn);
+
   return d;
 }

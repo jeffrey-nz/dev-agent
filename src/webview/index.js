@@ -159,6 +159,23 @@ const compactDot   = document.getElementById('compact-dot');
 const inpChar      = document.getElementById('inp-char');
 const inpHint      = document.getElementById('inp-hint');
 
+// ── Platform detection ────────────────────────────────────────────────────
+// VS Code webview UA includes "Mac OS X" on macOS, else "Windows NT" or "Linux".
+
+const _isMac = /Mac/.test(navigator.platform || navigator.userAgent);
+const _metaKey = _isMac ? '⌘' : 'Ctrl+';
+
+// Update static keyboard labels to match the platform
+if (inpHint) inpHint.textContent = `↵ send · ↑↓ history · Tab fill · ${_metaKey}K new`;
+(function _patchShortcutLabels() {
+  if (_isMac) return; // panel.html already uses ⌘ symbols
+  const spans = document.querySelectorAll('.drop-shortcuts span');
+  // Grid order: ⌘K, New session, ⌘⇧C, Copy last reply, ⌘⇧I, Debug, ↑↓, History
+  if (spans[0]) spans[0].textContent = 'Ctrl+K';
+  if (spans[2]) spans[2].textContent = 'Ctrl+⇧C';
+  if (spans[4]) spans[4].textContent = 'Ctrl+⇧I';
+})();
+
 // ── Expose state refs on window ────────────────────────────────────────────
 // events.js and other modules access these via window._ to avoid circular deps.
 
@@ -661,6 +678,13 @@ document.addEventListener('keydown', e => {
   // Cmd/Ctrl+Shift+I — debug snapshot
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'i') {
     e.preventDefault(); debugSnapshot();
+  }
+  // Cmd/Ctrl+M — toggle compact mode
+  if ((e.metaKey || e.ctrlKey) && e.key === 'm' && document.activeElement !== prompt) {
+    e.preventDefault();
+    _compact = !_compact;
+    localStorage.setItem('da-compact', _compact ? '1' : '0');
+    applyCompact();
   }
   // Cmd/Ctrl+Shift+C — copy the last agent response to clipboard
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'c') {
