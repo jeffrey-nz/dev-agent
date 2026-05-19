@@ -66,29 +66,42 @@ export function flushReads() {
 
   if (readBuf.length === 1) {
     const raw = (readBuf[0].s || readBuf[0].n);
-    const fname = raw.includes('/') ? raw.split('/').pop().slice(0, 60) : raw.slice(0, 80);
+    const fp  = raw.split('\n')[0].trim();
+    const fname = fp.includes('/') ? fp.split('/').pop().slice(0, 60) : fp.slice(0, 80);
     const c = document.createElement('div');
     c.className = 'tcrd done';
     c.innerHTML = '<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
-      + '<span class="tc-file" title="' + esc(raw.split('\n')[0]) + '">' + esc(fname) + '</span>'
+      + '<span class="tc-file" title="' + esc(fp) + '">' + esc(fname) + '</span>'
       + '<span class="tc-st">✓</span>';
+    if (fp) {
+      c.style.cursor = 'pointer';
+      c.addEventListener('click', () => window.openFile?.(fp));
+    }
     ibt(c);
   } else {
-    // Multi-read: show just the filenames, full path in tooltip
-    const items = readBuf
-      .map(r => {
-        const raw = (r.s || r.n).split('\n')[0];
-        const fname = raw.includes('/') ? raw.split('/').pop() : raw;
-        return '<div class="rg-item" title="' + esc(raw) + '">' + esc(fname.slice(0, 60)) + '</div>';
-      })
-      .join('');
+    // Multi-read: show just the filenames; each item is clickable
     const g = document.createElement('div');
     g.className = 'rg-card';
-    g.innerHTML = '<div class="rg-hdr" onclick="this.parentElement.classList.toggle(\'open\')">'
-      + '<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
+    const hdr = document.createElement('div');
+    hdr.className = 'rg-hdr';
+    hdr.innerHTML = '<span class="tc-pfx">↳</span><span class="tc-name">read</span>'
       + '<span class="tc-file">' + readBuf.length + ' files</span>'
-      + '<span class="rg-caret">▾</span></div>'
-      + '<div class="rg-list">' + items + '</div>';
+      + '<span class="rg-caret">▾</span>';
+    hdr.addEventListener('click', () => g.classList.toggle('open'));
+    const list = document.createElement('div');
+    list.className = 'rg-list';
+    readBuf.forEach(r => {
+      const raw   = (r.s || r.n).split('\n')[0];
+      const fname = raw.includes('/') ? raw.split('/').pop() : raw;
+      const item  = document.createElement('div');
+      item.className = 'rg-item';
+      item.title = raw;
+      item.textContent = fname.slice(0, 60);
+      if (raw) { item.style.cursor = 'pointer'; item.addEventListener('click', e => { e.stopPropagation(); window.openFile?.(raw); }); }
+      list.appendChild(item);
+    });
+    g.appendChild(hdr);
+    g.appendChild(list);
     ibt(g);
   }
   readBuf = [];

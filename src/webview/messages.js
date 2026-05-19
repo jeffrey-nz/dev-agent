@@ -82,11 +82,27 @@ export function hideTyping() {
  * @param {string} text - The user's prompt text.
  */
 export function addUserMsg(text) {
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const d = document.createElement('div');
   d.className = 'msg-u';
-  d.innerHTML = '<div class="msg-sender">You</div>'
+  d.innerHTML = '<div class="msg-sender" title="' + timeStr + '">You</div>'
     + '<div class="msg-body">' + esc(text) + '</div>';
   ibt(d);
+  // Collapse very long user messages
+  requestAnimationFrame(() => {
+    const body = d.querySelector('.msg-body');
+    if (body && body.scrollHeight > 160) {
+      d.classList.add('msg-u-long');
+      const btn = document.createElement('button');
+      btn.className = 'msg-expand-btn';
+      btn.textContent = 'Show more ▾';
+      btn.addEventListener('click', () => {
+        const expanded = d.classList.toggle('expanded');
+        btn.textContent = expanded ? 'Show less ▴' : 'Show more ▾';
+      });
+      d.appendChild(btn);
+    }
+  });
 }
 
 /**
@@ -137,6 +153,7 @@ const _PROV_LABELS = {
  */
 export function addAgentMsg(text, provider) {
   if (!text?.trim()) return;
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const provLabel = provider ? (_PROV_LABELS[provider] || provider) : null;
   const provBadge = provLabel
     ? '<span class="msg-via-prov" data-prov="' + provider + '">' + provLabel + '</span>'
@@ -144,7 +161,7 @@ export function addAgentMsg(text, provider) {
   const d = document.createElement('div');
   d.className = 'msg-a';
   if (provider) d.dataset.prov = provider;
-  d.innerHTML = '<div class="msg-sender agent">Dev Agent' + (provBadge ? ' ' + provBadge : '') + '</div>'
+  d.innerHTML = '<div class="msg-sender agent" title="' + timeStr + '">Dev Agent' + (provBadge ? ' ' + provBadge : '') + '</div>'
     + '<div class="mab-md">' + renderMarkdown(text) + '</div>'
     + '<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
   ibt(d);
@@ -184,6 +201,17 @@ export function addSysMsg(text, isErr, isWarn, isOk) {
       d.style.opacity = '0.5';
       setTimeout(() => { d.style.opacity = prev || ''; }, 300);
     });
+  }
+  // Errors get a subtle "Try again" link when a previous prompt exists
+  if (isErr && _history[0]) {
+    const retry = document.createElement('button');
+    retry.className = 'msg-err-retry';
+    retry.textContent = '↺ Try again';
+    retry.addEventListener('click', e => {
+      e.stopPropagation();
+      window.fillPrompt?.(_history[0]);
+    });
+    d.appendChild(retry);
   }
   ibt(d);
 }
@@ -319,6 +347,9 @@ export function addDoneBanner() {
   d.className = 'done-banner';
   let label = '✓ Task complete' + _bannerTime();
   const sess = sessions.find(x => x.id === runningSid || x.id === activeSid);
+  const fileCount = _writesThisSession.length;
+  const newCount  = _writesThisSession.filter(f => f.isNew).length;
+  if (fileCount) label += ' · ' + fileCount + ' file' + (fileCount !== 1 ? 's' : '') + (newCount ? ' (' + newCount + ' new)' : '');
   if (sess?.tools) label += ' · ' + sess.tools + ' tools';
   if (_subtasksTotal > 1) label += ' · ' + _subtasksCompleted + '/' + _subtasksTotal + ' subtasks';
   d.innerHTML = '<div class="done-line"></div><span>' + label + '</span><div class="done-line"></div>';

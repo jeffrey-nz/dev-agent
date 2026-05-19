@@ -255,6 +255,21 @@
   &:hover { opacity: 1; }
 }
 
+// ── Collapsible long user messages ────────────────────────────────────────
+// Very long prompts are capped at ~5 lines; a "Show more" toggle reveals all.
+
+.msg-u-long .msg-body {
+  max-height: 120px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  mask-image:         linear-gradient(to bottom, black 55%, transparent 100%);
+}
+
+.msg-u-long.expanded .msg-body {
+  max-height: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
 // ── System / status messages ──────────────────────────────────────────────
 
 .msg-sys  { font-size: 11px; color: var(--mu); font-style: italic; padding: 3px 2px; opacity: 0.45; }
@@ -283,6 +298,15 @@
   background: color-mix(in srgb, var(--ok) 7%, transparent);
   border-left: 2px solid color-mix(in srgb, var(--ok) 45%, transparent);
   border-radius: 4px; margin: 2px 0; opacity: 0.85; font-family: var(--mono);
+}
+
+// "↺ Try again" link inside error messages
+.msg-err-retry {
+  background: transparent; border: none;
+  color: color-mix(in srgb, var(--err) 80%, var(--fg));
+  font: inherit; font-size: 10px; cursor: pointer;
+  padding: 0 0 0 10px; opacity: 0.6; letter-spacing: 0.02em;
+  &:hover { opacity: 1; text-decoration: underline; }
 }
 
 // ── Tool group spacing ────────────────────────────────────────────────────

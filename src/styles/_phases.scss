@@ -209,6 +209,15 @@
 
 .ai-sess-sep { color: var(--mu); opacity: 0.2; flex-shrink: 0; font-size: 11px; margin: 0 2px; }
 
+// Provider-specific dot colors for the active AI session indicator
+.ai-sess.active[data-prov="chatgpt"]                              .ai-sess-dot { background: #10a37f; }
+.ai-sess.active[data-prov="gemini"]                               .ai-sess-dot { background: #4285f4; }
+.ai-sess.active[data-prov="deepseek"]                             .ai-sess-dot { background: #4f8ef7; }
+.ai-sess.active[data-prov="grok"]                                 .ai-sess-dot { background: #9b59b6; }
+.ai-sess.active[data-prov="copilot"],
+.ai-sess.active[data-prov="copilot365"]                           { .ai-sess-dot { background: #0078d4; } .ai-sess-badge, .ai-sess-name { color: #0078d4; } }
+.ai-sess.active[data-prov="claude"]                               .ai-sess-dot { background: #d4956a; }
+
 // ── Progress bar ──────────────────────────────────────────────────────────
 // 2px line that fills from 0–100% as phases advance
 

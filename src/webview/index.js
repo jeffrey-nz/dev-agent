@@ -101,6 +101,7 @@ import {
 } from './connection.js';
 
 import { clipboardWrite, copyMsg, copyCode, exportSession, debugSnapshot } from './export.js';
+import { showToast } from './toast.js';
 
 import { registerMessageHandler } from './events.js';
 
@@ -544,6 +545,16 @@ btnStop?.addEventListener('click', () => {
 prompt?.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); btnSend?.click(); return; }
 
+  // Tab when empty — accept the current rotating placeholder into the input
+  if (e.key === 'Tab' && !prompt.value.trim()) {
+    e.preventDefault();
+    prompt.value = prompt.placeholder;
+    prompt.style.height = '';
+    prompt.style.height = Math.min(prompt.scrollHeight, 160) + 'px';
+    if (btnSend) btnSend.disabled = false;
+    return;
+  }
+
   // History navigation (ArrowUp/Down when cursor is at start of first line)
   const atLineStart = prompt.selectionStart === 0;
   if (e.key === 'ArrowUp' && atLineStart && _history.length) {
@@ -635,7 +646,11 @@ document.addEventListener('keydown', e => {
     const lastMsg = msgs[msgs.length - 1];
     if (lastMsg) {
       const text = lastMsg.querySelector('.mab-md')?.innerText?.trim() || '';
-      if (text) navigator.clipboard.writeText(text).catch(() => {});
+      if (text) {
+        navigator.clipboard.writeText(text)
+          .then(() => showToast('Last reply copied', 'ok', 1800))
+          .catch(() => {});
+      }
     }
   }
 });

@@ -94,6 +94,15 @@ const ctxMeterEl  = document.getElementById('ctx-meter');
 
 let _lastSysMsg = { text: '', ts: 0 };
 
+// ── Tool chip text helper ──────────────────────────────────────────────────
+// Shows just the filename (not full path) in the narrow phase-bar chip.
+
+function _chipText(s) {
+  const t = (s || '').split('\n')[0].trim();
+  const disp = t.includes('/') ? t.split('/').pop() : t;
+  return ('↳ ' + disp).slice(0, 40);
+}
+
 // ── Streaming render throttle ──────────────────────────────────────────────
 // Batches chunk renders to ~30fps so rapid streaming doesn't thrash the DOM
 
@@ -139,6 +148,7 @@ function updateAiSessionBar(role, status, provider, task) {
   const taskEl = el.querySelector('.ai-sess-task');
   const isActive = status === 'active';
   el.classList.toggle('active', isActive);
+  if (provider) el.dataset.prov = provider; else delete el.dataset.prov;
   if (nameEl) nameEl.textContent = _providerLabel(provider);
   if (taskEl) taskEl.textContent = isActive && task ? task : '';
   aiSessionsBar.classList.add('show');
@@ -395,7 +405,7 @@ function _handleMessage(msg) {
             window._readsThisSession?.add(msg.paramsSummary.split('\n')[0].trim());
           }
           readBuf.push({ n: msg.tool, s: msg.paramsSummary || '' });
-          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = '↳ ' + (msg.paramsSummary || msg.tool).slice(0, 36); }
+          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = _chipText(msg.paramsSummary || msg.tool); }
         } else if (ts_.label === 'write') {
           if (msg.paramsSummary) {
             const p = msg.paramsSummary.split('\n')[0].trim();
@@ -404,14 +414,14 @@ function _handleMessage(msg) {
             }
           }
           hideTyping(); addToolCard(msg.tool, msg.paramsSummary);
-          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = '↳ ' + (msg.paramsSummary || msg.tool).slice(0, 36); }
+          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = _chipText(msg.paramsSummary || msg.tool); }
         } else if (ts_.label === 'run') {
           if (window._runsThisSession != null) window._runsThisSession++;
           hideTyping(); addToolCard(msg.tool, msg.paramsSummary);
-          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = '↳ ' + (msg.paramsSummary || msg.tool).slice(0, 36); }
+          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = _chipText(msg.paramsSummary || msg.tool); }
         } else {
           hideTyping(); addToolCard(msg.tool, msg.paramsSummary);
-          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = '↳ ' + (msg.paramsSummary || msg.tool).slice(0, 36); }
+          if (toolChip) { toolChip.style.display = 'flex'; toolChip.textContent = _chipText(msg.paramsSummary || msg.tool); }
         }
         updatePhaseStats();
       }
