@@ -388,16 +388,21 @@ let _lastRunSummary = null;
 const MAX_CHIPS = 7;
 let _notesSeq = 0;
 
-const progressFill   = document.getElementById('progress-fill');
-const phaseStats     = document.getElementById('phase-stats');
-const ctxMeter       = document.getElementById('ctx-meter');
-const ctxFill        = document.getElementById('ctx-fill');
-const ctxLbl         = document.getElementById('ctx-lbl');
-const phasePillsEl   = document.getElementById('phase-pills');
-const activityStrip  = document.getElementById('activity-strip');
-const activityChips  = document.getElementById('activity-chips');
-const activityOverflow = document.getElementById('activity-overflow');
-const sessionDeltaEl = document.getElementById('session-delta');
+const progressFill      = document.getElementById('progress-fill');
+const phaseStats        = document.getElementById('phase-stats');
+const ctxMeter          = document.getElementById('ctx-meter');
+const ctxFill           = document.getElementById('ctx-fill');
+const ctxLbl            = document.getElementById('ctx-lbl');
+const phasePillsEl      = document.getElementById('phase-pills');
+const activityStrip     = document.getElementById('activity-strip');
+const activityChips     = document.getElementById('activity-chips');
+const activityOverflow  = document.getElementById('activity-overflow');
+const sessionDeltaEl    = document.getElementById('session-delta');
+const phaseSubtask      = document.getElementById('phase-subtask');
+const taskPin           = document.getElementById('task-pin');
+const taskPinText       = document.getElementById('task-pin-text');
+const taskPinClose      = document.getElementById('task-pin-close');
+const typingLblEl       = document.querySelector('#typing .t-lbl');
 
 const PHASE_PROGRESS = {
   PLANNING:12, ORCHESTRATING:18,
@@ -581,14 +586,16 @@ function updateSessionDelta(added, removed) {
   sessionDeltaEl.innerHTML = html;
 }
 
-function updateCtxMeter(messageCount, threshold) {
+function updateCtxMeter(messageCount, threshold, segmentIndex) {
   if (!ctxMeter || !ctxFill || !ctxLbl) return;
   if (!threshold) { ctxMeter.classList.remove('show'); return; }
   const pct = Math.min(100, Math.round((messageCount / threshold) * 100));
   ctxFill.style.width = pct + '%';
   ctxFill.classList.toggle('warn', pct >= 60 && pct < 85);
   ctxFill.classList.toggle('crit', pct >= 85);
-  ctxLbl.textContent = messageCount + '/' + threshold;
+  // Show "S2 · 45/60" when on a non-first segment so rotation is obvious
+  const segPfx = segmentIndex > 1 ? 'S' + segmentIndex + ' · ' : '';
+  ctxLbl.textContent = segPfx + messageCount + '/' + threshold;
   ctxMeter.classList.add('show');
 }
 
@@ -747,6 +754,9 @@ function newChat(){
   activityStrip?.classList.add('hidden');
   sessionDeltaEl?.classList.add('hidden');
   ctxMeter?.classList.remove('show');
+  taskPin?.classList.remove('show');
+  if (phaseSubtask) phaseSubtask.classList.remove('show');
+  if (typingLblEl) typingLblEl.textContent = '';
   stopPhaseTimer();
   _stoppedByUser=false; _hadError=false;
   _userScrolled=false; scrollBtn.classList.remove('show');
@@ -989,10 +999,15 @@ function _bannerTime() {
 function _addBannerActs(lastPrompt) {
   if (!lastPrompt) return;
   const acts = document.createElement('div'); acts.className = 'banner-acts';
+  const fileCount = _writesThisSession.length;
+  const newCount  = _writesThisSession.filter(f => f.isNew).length;
+  const fileStat  = fileCount ? (fileCount + ' file' + (fileCount !== 1 ? 's' : '') + (newCount ? ' · ' + newCount + ' new' : '')) : '';
   acts.innerHTML =
-    '<button class="bact primary" data-p="'+esc(lastPrompt)+'" onclick="retryPrompt(this)">↺ Run again</button>'
-    + '<button class="bact" onclick="fillPrompt(\'Fix any remaining issues or errors\')">Fix issues</button>'
-    + '<button class="bact" onclick="fillPrompt(\'Write tests for the changes made\')">Write tests</button>';
+    (fileStat ? '<span class="bstat">' + fileStat + '</span>' : '')
+    + '<button class="bact primary" data-p="'+esc(lastPrompt)+'" onclick="retryPrompt(this)">↺ Run again</button>'
+    + '<button class="bact" onclick="fillPrompt(\'Fix any remaining issues, errors or warnings\')">Fix issues</button>'
+    + '<button class="bact" onclick="fillPrompt(\'Add comprehensive tests for all the changes made\')">Add tests</button>'
+    + '<button class="bact" onclick="fillPrompt(\'Review the code and suggest improvements\')">Review</button>';
   ibt(acts);
 }
 
@@ -1315,6 +1330,7 @@ function exportSession() {
   });
 }
 document.getElementById('btn-export').addEventListener('click', exportSession);
+if (taskPinClose) taskPinClose.addEventListener('click', () => taskPin?.classList.remove('show'));
 
 /* ── char count ── */
 const inpChar = document.getElementById('inp-char');
@@ -1451,6 +1467,13 @@ btnSend.addEventListener('click',()=>{
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
   phaseBar.style.removeProperty('--phase-color');
   progressFill.style.removeProperty('--phase-color');
+  // Show pinned task prompt
+  if (taskPinText) taskPinText.textContent = text.length > 90 ? text.slice(0, 90) + '…' : text;
+  taskPin?.classList.add('show');
+  // Reset subtask counter
+  if (phaseSubtask) { phaseSubtask.textContent=''; phaseSubtask.classList.remove('show'); }
+  // Reset typing label
+  if (typingLblEl) typingLblEl.textContent = '';
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null; resetDividers();
   stopPhaseTimer();
   resetAiSessionBar();
@@ -1682,6 +1705,9 @@ window.addEventListener('message',e=>{
       const phColor = PHASE_COLORS[ph] || 'var(--acc)';
       phaseBar.style.setProperty('--phase-color', phColor);
       progressFill.style.setProperty('--phase-color', phColor);
+      // Update typing dots and label to match phase
+      typingEl?.style.setProperty('--phase-color', phColor);
+      if (typingLblEl) typingLblEl.textContent = L[ph] || ph;
       const pct=PHASE_PROGRESS[ph]; if(pct) setProgress(pct);
       const si=phaseToStep(ph); if(si>=0) { setStep(si,ph==='DEBUGGING'); enterStep(si); }
       addPhaseDivider(ph);
@@ -1843,8 +1869,11 @@ window.addEventListener('message',e=>{
       if(msg._taskId && _activeTaskId && msg._taskId !== _activeTaskId) break;
       _dlog('session_end type='+msg.type+' stopped='+_stoppedByUser+' err='+_hadError);
       flushReads(); hideTyping(); toolChip.style.display='none';
-      // Clear any leftover streaming state
+      // Clear streaming state and UI chrome
       if (_streamingEl) { _streamingEl.remove(); _streamingEl = null; _streamingBuf = ''; }
+      taskPin?.classList.remove('show');
+      if (phaseSubtask) phaseSubtask.classList.remove('show');
+      if (typingLblEl) typingLblEl.textContent = '';
       stopPhaseTimer();
 
       if(_stoppedByUser){
@@ -1887,8 +1916,53 @@ window.addEventListener('message',e=>{
       break;
     }
 
+    case 'subtask_kickoff': {
+      const idx = (msg.index || 0) + 1;
+      const total = msg.total || '?';
+      const label = msg.label || '';
+      _dlog('subtask_kickoff: ' + idx + '/' + total + ' "' + label.slice(0, 30) + '"');
+      if (phaseSubtask) {
+        phaseSubtask.textContent = idx + ' / ' + total;
+        phaseSubtask.title = label;
+        phaseSubtask.classList.add('show');
+      }
+      // Update typing label to show what's being worked on
+      if (typingLblEl) typingLblEl.textContent = label.length > 45 ? label.slice(0, 45) + '…' : label;
+      break;
+    }
+
+    case 'subtask_status': {
+      const isPassed = msg.feedback === 'PASS';
+      const idx = (msg.index || 0) + 1;
+      const retries = msg.retries || 0;
+      _dlog('subtask_status: ' + msg.feedback + ' [' + idx + '/' + (msg.total || '?') + '] retries=' + retries);
+      if (isPassed) {
+        // Brief brightness pulse on the counter to signal completion
+        if (phaseSubtask) {
+          phaseSubtask.style.filter = 'brightness(1.5)';
+          setTimeout(() => { if (phaseSubtask) phaseSubtask.style.filter = ''; }, 700);
+        }
+      } else if (retries > 0) {
+        // Show an inline retry notice so the user knows the agent is trying again
+        const notice = document.createElement('div');
+        notice.className = 'retry-notice';
+        notice.innerHTML = '<span class="rn-icon">↺</span>'
+          + 'Subtask ' + idx + ' — verification failed · retry ' + retries;
+        ibt(notice);
+      }
+      break;
+    }
+
+    case 'progress_update': {
+      const { completed = 0, total = 1 } = msg;
+      _dlog('progress_update: ' + completed + '/' + total);
+      // Drive progress bar: scale 15→90% range across subtask completion
+      if (total > 0) setProgress(Math.min(90, Math.round((completed / total) * 80) + 12));
+      break;
+    }
+
     case 'browser_context_update':
-      updateCtxMeter(msg.messageCount, msg.threshold);
+      updateCtxMeter(msg.messageCount, msg.threshold, msg.segmentIndex);
       break;
 
     case 'session_handoff':

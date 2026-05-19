@@ -68,6 +68,8 @@ class AgentSession extends EventEmitter {
         "phase_change", "tool_call_start", "tool_call_end",
         "browser_context_update", "copilot365_segment_boundary",
         "session_handoff", "session_role_update",
+        // Subtask-level progress — carries index/total/label for the counter chip
+        "subtask_kickoff", "subtask_status", "progress_update",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {

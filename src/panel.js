@@ -520,6 +520,42 @@ a{color:var(--acc)}
 .sd-add{color:var(--ok);font-weight:600}
 .sd-rem{color:var(--err);font-weight:600}
 
+/* ── subtask counter chip in phase bar ── */
+.phase-subtask{
+  display:none;align-items:center;
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  color:var(--phase-color,var(--acc));
+  background:color-mix(in srgb,var(--phase-color,var(--acc)) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--phase-color,var(--acc)) 28%,transparent);
+  padding:1px 6px;border-radius:3px;white-space:nowrap;letter-spacing:.02em;
+  transition:background .35s,border-color .35s,color .35s;
+}
+.phase-subtask.show{display:flex}
+
+/* ── task pin — shows user's prompt during a run ── */
+#task-pin{
+  flex-shrink:0;display:none;align-items:center;gap:7px;
+  padding:5px 12px 5px 15px;border-bottom:1px solid var(--bd);
+  background:color-mix(in srgb,var(--acc) 5%,var(--sidebar));
+  font-size:11px;
+}
+#task-pin.show{display:flex}
+.tp-badge{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--acc);opacity:.7;white-space:nowrap;flex-shrink:0;
+}
+#task-pin-text{
+  flex:1;min-width:0;color:var(--mu);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:11px;opacity:.9;
+}
+#task-pin-close{
+  background:transparent;border:none;color:var(--mu);cursor:pointer;
+  font-size:12px;padding:1px 4px;border-radius:3px;opacity:.4;
+  transition:opacity .1s,background .1s;flex-shrink:0;line-height:1;
+}
+#task-pin-close:hover{opacity:.8;background:var(--hov)}
+
 /* ── browser context meter ── */
 #ctx-meter{
   display:none;align-items:center;gap:5px;flex-shrink:0;
@@ -913,6 +949,15 @@ a{color:var(--acc)}
 .tcrd.pending .tc-pfx{animation:blink .9s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
 
+/* ── retry notice (subtask FAIL) ── */
+.retry-notice{
+  display:flex;align-items:center;gap:6px;
+  font-size:10.5px;font-family:var(--mono);
+  color:var(--warn);opacity:.75;
+  padding:3px 2px 3px 0;margin:1px 0;animation:msgIn .15s ease;
+}
+.rn-icon{font-size:12px;flex-shrink:0;animation:spin .8s linear infinite}
+
 /* plan / review special cards */
 .sc-card{border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin:8px 0}
 .sc-card.plan{border-color:color-mix(in srgb,var(--cp) 25%,var(--bd));border-left:2px solid var(--cp)}
@@ -1057,13 +1102,16 @@ a{color:var(--acc)}
 }
 
 /* typing indicator */
-#typing{display:none;align-items:center;gap:9px;padding:8px 2px;
-        font-size:12px;color:var(--mu)}
-.tdots{display:flex;gap:4px;align-items:center}
-.tdots span{width:5px;height:5px;border-radius:50%;background:var(--acc);opacity:.4;animation:tb .9s infinite}
-.tdots span:nth-child(2){animation-delay:.2s}
-.tdots span:nth-child(3){animation-delay:.4s}
-@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-5px);opacity:1}}
+#typing{display:none;align-items:center;gap:8px;padding:8px 2px;
+        font-size:11px;color:var(--mu)}
+.tdots{display:flex;gap:3px;align-items:center}
+.tdots span{width:4px;height:4px;border-radius:50%;background:var(--phase-color,var(--acc));
+            opacity:.35;animation:tb .9s infinite}
+.tdots span:nth-child(2){animation-delay:.18s}
+.tdots span:nth-child(3){animation-delay:.36s}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.25}30%{transform:translateY(-4px);opacity:.9}}
+.t-lbl{font-family:var(--mono);font-size:10px;opacity:.5;letter-spacing:.01em;
+        color:var(--phase-color,var(--mu));transition:color .35s}
 
 /* done / stopped banners */
 .done-banner,.stop-banner{
@@ -1091,7 +1139,11 @@ a{color:var(--acc)}
 .inp-stop:disabled{opacity:.45;cursor:not-allowed}
 
 /* ── banner action row ── */
-.banner-acts{display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 8px;padding:0 2px}
+.banner-acts{display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 8px;padding:0 2px;align-items:center}
+.bstat{
+  font-size:10px;font-family:var(--mono);color:var(--ok);opacity:.7;
+  padding:0 4px;white-space:nowrap;font-weight:600;flex-shrink:0;
+}
 .bact{
   background:transparent;border:1px solid var(--bd);color:var(--mu);
   font:inherit;font-size:11px;padding:4px 11px;border-radius:5px;
@@ -1370,6 +1422,7 @@ a{color:var(--acc)}
       <div id="phase-steps" style="display:none"></div>
       <span class="ph-spinner"></span>
       <span id="phase-lbl">Starting…</span>
+      <span id="phase-subtask" class="phase-subtask"></span>
       <div class="tool-chip" id="tool-chip"></div>
       <span class="phase-gap"></span>
       <span id="session-delta" class="hidden"></span>
@@ -1396,6 +1449,12 @@ a{color:var(--acc)}
     </div>
     <div id="phase-pills" class="hidden"></div>
     <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="task-pin">
+      <span class="tp-badge">Task</span>
+      <span id="task-pin-text"></span>
+      <button id="task-pin-close" title="Dismiss">×</button>
+    </div>
+
     <div id="chat-body">
     <div id="activity-strip" class="hidden">
       <span class="as-label">Changed</span>
@@ -1437,6 +1496,7 @@ a{color:var(--acc)}
       </div>
       <div id="typing">
         <div class="tdots"><span></span><span></span><span></span></div>
+        <span class="t-lbl"></span>
       </div>
     </div>
     </div><!-- #chat-body -->
