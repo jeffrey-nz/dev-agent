@@ -148,6 +148,7 @@
     <div class="drop-item drop-shortcuts">
       <span>⌘K</span><span>New session</span>
       <span>⌘⇧C</span><span>Copy last reply</span>
+      <span>⌘F</span><span>Search messages</span>
       <span>⌘⇧I</span><span>Debug snapshot</span>
       <span>⌘M</span><span>Compact mode</span>
       <span>↑ ↓</span><span>History</span>
@@ -219,6 +220,14 @@
 
       <!-- Right column: message feed -->
       <div id="messages">
+        <!-- In-session search bar (toggled by ⌘F) -->
+        <div id="msg-search" class="hidden">
+          <input type="text" id="msg-search-input" placeholder="Search messages…" autocomplete="off"/>
+          <span id="msg-search-count"></span>
+          <button id="msg-search-prev" title="Previous (Shift+Enter)">↑</button>
+          <button id="msg-search-next" title="Next (Enter)">↓</button>
+          <button id="msg-search-close" title="Close (Esc)">✕</button>
+        </div>
         <!-- Welcome screen (shown when no session is active) -->
         <div id="welcome">
           <div class="w-logo">◉</div>

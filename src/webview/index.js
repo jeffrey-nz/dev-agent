@@ -661,14 +661,107 @@ if (prompt) {
   }, 5000);
 }
 
+// ── In-session message search (⌘+F) ───────────────────────────────────────
+
+const msgSearchEl    = document.getElementById('msg-search');
+const msgSearchInput = document.getElementById('msg-search-input');
+const msgSearchCount = document.getElementById('msg-search-count');
+const msgSearchPrev  = document.getElementById('msg-search-prev');
+const msgSearchNext  = document.getElementById('msg-search-next');
+const msgSearchClose = document.getElementById('msg-search-close');
+
+let _searchMatches = [];
+let _searchIdx     = -1;
+
+function _doSearch(query) {
+  document.querySelectorAll('.msg-match, .msg-match-current').forEach(el =>
+    el.classList.remove('msg-match', 'msg-match-current')
+  );
+  _searchMatches = [];
+  _searchIdx = -1;
+
+  if (!query.trim()) {
+    if (msgSearchCount) msgSearchCount.textContent = '';
+    return;
+  }
+
+  const q = query.toLowerCase();
+  messages.querySelectorAll(
+    '.msg-u, .msg-a, .msg-sys, .msg-warn, .msg-err, .msg-ok, .diff-card, .sc-card, .changes-card, .done-banner, .stop-banner'
+  ).forEach(el => {
+    if ((el.textContent || '').toLowerCase().includes(q)) {
+      el.classList.add('msg-match');
+      _searchMatches.push(el);
+    }
+  });
+
+  if (_searchMatches.length) {
+    _searchIdx = 0;
+    _searchMatches[0].classList.add('msg-match-current');
+    _searchMatches[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  _updateSearchCount();
+}
+
+function _searchNav(dir) {
+  if (!_searchMatches.length) return;
+  _searchMatches[_searchIdx]?.classList.remove('msg-match-current');
+  _searchIdx = (_searchIdx + dir + _searchMatches.length) % _searchMatches.length;
+  _searchMatches[_searchIdx].classList.add('msg-match-current');
+  _searchMatches[_searchIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  _updateSearchCount();
+}
+
+function _updateSearchCount() {
+  if (!msgSearchCount) return;
+  if (!_searchMatches.length) {
+    msgSearchCount.textContent = msgSearchInput?.value.trim() ? 'No results' : '';
+  } else {
+    msgSearchCount.textContent = `${_searchIdx + 1} / ${_searchMatches.length}`;
+  }
+}
+
+function _openSearch() {
+  msgSearchEl?.classList.remove('hidden');
+  msgSearchInput?.focus();
+  msgSearchInput?.select();
+}
+
+function _closeSearch() {
+  msgSearchEl?.classList.add('hidden');
+  document.querySelectorAll('.msg-match, .msg-match-current').forEach(el =>
+    el.classList.remove('msg-match', 'msg-match-current')
+  );
+  _searchMatches = [];
+  _searchIdx = -1;
+  if (msgSearchCount) msgSearchCount.textContent = '';
+  if (msgSearchInput)  msgSearchInput.value = '';
+}
+
+msgSearchInput?.addEventListener('input', () => _doSearch(msgSearchInput.value));
+msgSearchInput?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); _searchNav(e.shiftKey ? -1 : 1); }
+  if (e.key === 'Escape') { e.preventDefault(); _closeSearch(); prompt?.focus(); }
+});
+msgSearchPrev?.addEventListener('click', () => _searchNav(-1));
+msgSearchNext?.addEventListener('click', () => _searchNav(1));
+msgSearchClose?.addEventListener('click', () => { _closeSearch(); prompt?.focus(); });
+
 // ── Global keyboard shortcuts ──────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {
-  // Escape — close any open dropdowns or notes drawer
+  // Escape — close search first, then dropdowns/notes
   if (e.key === 'Escape') {
+    if (!msgSearchEl?.classList.contains('hidden')) { _closeSearch(); prompt?.focus(); return; }
     closeDropdowns();
     notesDrawer?.classList.remove('open');
     btnNotes?.classList.remove('active');
+    return;
+  }
+  // Cmd/Ctrl+F — toggle in-session search
+  if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+    e.preventDefault();
+    if (msgSearchEl?.classList.contains('hidden')) _openSearch(); else _closeSearch();
     return;
   }
   // Cmd/Ctrl+K — new chat (when prompt not focused)
