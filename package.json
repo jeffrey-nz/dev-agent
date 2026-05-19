@@ -31,6 +31,10 @@
       {
         "command": "devAgent.selectProvider",
         "title": "Dev Agent: Select Provider"
+      },
+      {
+        "command": "devAgent.debugSnapshot",
+        "title": "Dev Agent: Debug Snapshot (save DOM to /tmp)"
       }
     ],
     "keybindings": [

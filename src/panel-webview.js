@@ -1,6 +1,40 @@
 /* jshint browser: true */
 /* global acquireVsCodeApi */
 const vscode = acquireVsCodeApi();
+
+/* ── debug log (ring buffer, included in debug snapshots) ── */
+const _debugLog = [];
+const MAX_DEBUG_LOG = 120;
+function _dlog(msg) {
+  const ts = new Date().toISOString().slice(11, 23);
+  _debugLog.push(`[${ts}] ${msg}`);
+  if (_debugLog.length > MAX_DEBUG_LOG) _debugLog.shift();
+}
+
+/* ── debug snapshot ── */
+function debugSnapshot() {
+  const state = {
+    ts: new Date().toISOString(),
+    screen: (() => {
+      if (scrChat && !scrChat.classList.contains('hidden')) return 'chat';
+      if (scrConnect && !scrConnect.classList.contains('hidden')) return 'connect';
+      if (scrProvider && !scrProvider.classList.contains('hidden')) return 'provider';
+      if (scrConfirm && !scrConfirm.classList.contains('hidden')) return 'confirm';
+      if (scrProject && !scrProject.classList.contains('hidden')) return 'project';
+      return 'unknown';
+    })(),
+    sessionLocked, runningSid, activeSid,
+    sessionCount: sessions.length,
+    currentPhase, currentStepIdx,
+    _compact: typeof _compact !== 'undefined' ? _compact : null,
+    aiSessionsBarVisible: aiSessionsBar ? !aiSessionsBar.classList.contains('hidden') : false,
+    phaseBarVisible: phaseBar ? !phaseBar.classList.contains('hidden') : false,
+    recentLog: _debugLog.slice(-50),
+  };
+  const html = document.documentElement.outerHTML;
+  vscode.postMessage({ type: 'debug_snapshot', html, state });
+  _dlog('debug_snapshot sent');
+}
 const _INIT = JSON.parse(document.getElementById('init-data').textContent || '{}');
 
 /* ── element refs ── */
@@ -1388,6 +1422,19 @@ prompt.addEventListener('paste', (e) => {
   // Don't prevent default — allow text paste to continue normally
 });
 
+/* ── streaming state ── */
+let _streamingEl = null;
+let _streamingBuf = '';
+
+/* ── phase color map (matches CSS --cp/--cr/--ce/--cv/--cd/--ck) ── */
+const PHASE_COLORS = {
+  PLANNING:      'var(--cp)', ORCHESTRATING: 'var(--cp)',
+  RESEARCHING:   'var(--cr)', SCOPING:       'var(--cr)',
+  EXECUTION:     'var(--ce)', WRITING:       'var(--ce)',
+  VERIFYING:     'var(--cv)', REVIEWING:     'var(--cv)',
+  DEBUGGING:     'var(--cd)',
+};
+
 /* ── send / stop ── */
 let currentPhase='';
 // PLANNING and REVIEWING show as collapsible special cards; others are silent
@@ -1396,9 +1443,14 @@ const SILENT=new Set(['ORCHESTRATING','RESEARCHING','SCOPING']);
 btnSend.addEventListener('click',()=>{
   const text=prompt.value.trim(); if(!text && !_pendingImages.length) return;
   histPush(text); _histIdx = -1;
+  _dlog('send: "'+text.slice(0,60)+'"');
+  // Clear any leftover streaming state from a previous session
+  if (_streamingEl) { _streamingEl.remove(); _streamingEl = null; _streamingBuf = ''; }
   createSession(text); addUserMsg(text); showTyping();
   if(_pendingImages.length) addAttachmentMsg(_pendingImages.length);
   phaseBar.classList.remove('hidden'); phaseLbl.textContent='Starting…';
+  phaseBar.style.removeProperty('--phase-color');
+  progressFill.style.removeProperty('--phase-color');
   currentStepIdx=-1; lastPhase=''; currentPhase=''; readBuf=[]; pendingCard=null; resetDividers();
   stopPhaseTimer();
   resetAiSessionBar();
@@ -1480,6 +1532,10 @@ document.addEventListener('keydown',e=>{
   // Cmd/Ctrl+K — new chat (when prompt not focused)
   if((e.metaKey||e.ctrlKey)&&e.key==='k'&&document.activeElement!==prompt){
     e.preventDefault(); newChat();
+  }
+  // Cmd/Ctrl+Shift+I — debug snapshot (Inspect/Info shortcut)
+  if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='i'){
+    e.preventDefault(); debugSnapshot();
   }
 });
 
@@ -1612,6 +1668,7 @@ window.addEventListener('message',e=>{
       const ph=msg.phase||'';
       if(ph===lastPhase) break;
       flushReads(); lastPhase=ph; currentPhase=ph;
+      _dlog('phase_change: '+ph);
       const L={
         EXECUTION:'Executing',PLANNING:'Planning',
         ORCHESTRATING:'Orchestrating',RESEARCHING:'Researching',
@@ -1621,6 +1678,10 @@ window.addEventListener('message',e=>{
       const label=(L[ph]||msg.label||ph)+'…';
       phaseLbl.textContent=label;
       startPhaseTimer(label);
+      // Apply phase color to the phase bar and progress bar via CSS custom property
+      const phColor = PHASE_COLORS[ph] || 'var(--acc)';
+      phaseBar.style.setProperty('--phase-color', phColor);
+      progressFill.style.setProperty('--phase-color', phColor);
       const pct=PHASE_PROGRESS[ph]; if(pct) setProgress(pct);
       const si=phaseToStep(ph); if(si>=0) { setStep(si,ph==='DEBUGGING'); enterStep(si); }
       addPhaseDivider(ph);
@@ -1629,6 +1690,7 @@ window.addEventListener('message',e=>{
 
     case 'tool_call_start':
       if(msg.tool){
+        _dlog('tool_start: '+msg.tool+' '+(msg.paramsSummary||'').slice(0,40));
         const ts_=toolStyle(msg.tool);
         if(ts_.label==='read'){
           if(msg.paramsSummary) _readsThisSession.add(msg.paramsSummary.split('\n')[0].trim());
@@ -1680,21 +1742,68 @@ window.addEventListener('message',e=>{
       break;
     }
 
+    case 'message_chunk': {
+      const chunk = msg.text || msg.chunk || '';
+      if (!chunk) break;
+      _streamingBuf += chunk;
+      if (!_streamingEl) {
+        // First chunk — create a streaming element and hide the typing indicator
+        _streamingEl = document.createElement('div');
+        _streamingEl.className = 'msg-a streaming';
+        _streamingEl.innerHTML =
+          '<div class="msg-sender agent">Dev Agent</div>'
+          + '<div class="mab-md"></div>';
+        hideTyping();
+        ibt(_streamingEl);
+      }
+      const mdEl = _streamingEl.querySelector('.mab-md');
+      if (mdEl) { mdEl.innerHTML = renderMarkdown(_streamingBuf); scrollMsgs(); }
+      break;
+    }
+
     case 'message_complete': {
       hideTyping();
-      if(SILENT.has(currentPhase)) break;
-      const raw=msg.text||msg.content||'';
+      _dlog('message_complete phase='+currentPhase+' len='+(msg.text||msg.content||'').length);
+
+      if (SILENT.has(currentPhase)) {
+        // Discard any streaming content for silent phases
+        if (_streamingEl) { _streamingEl.remove(); _streamingEl = null; _streamingBuf = ''; }
+        break;
+      }
+
+      const raw = msg.text || msg.content || '';
       // EMPTY_RESPONSE is a pipeline sentinel injected when the AI returns nothing
       // (context overflow). Show it as a warning chip, never as an AI message.
-      if(raw.includes('[EMPTY_RESPONSE]')){
+      if (raw.includes('[EMPTY_RESPONSE]')) {
+        if (_streamingEl) { _streamingEl.remove(); _streamingEl = null; _streamingBuf = ''; }
         addSysMsg('⚠ AI returned empty response — resetting session', false, true);
         break;
       }
-      const cleaned=extractAgentText(raw);
-      const preview=cleaned.length>2400?cleaned.slice(0,2400)+'…':cleaned;
-      if(!preview.trim()) break;
-      if(currentPhase==='PLANNING') addSpecialCard('plan', preview);
-      else if(currentPhase==='REVIEWING') addSpecialCard('review', preview);
+
+      if (_streamingEl) {
+        // Finalize the streaming element: remove cursor, add copy button
+        const finalText = _streamingBuf || extractAgentText(raw);
+        _streamingEl.classList.remove('streaming');
+        _streamingEl.innerHTML =
+          '<div class="msg-sender agent">Dev Agent</div>'
+          + '<div class="mab-md">' + renderMarkdown(finalText) + '</div>'
+          + '<button class="msg-copy" onclick="copyMsg(this)" title="Copy response">⎘</button>';
+        const body = _streamingEl.querySelector('.mab-md');
+        if (body && body.scrollHeight > 320) {
+          _streamingEl.classList.add('collapsible');
+          _addExpandToggle(_streamingEl, body);
+        }
+        _streamingEl = null; _streamingBuf = '';
+        scrollMsgs();
+        break;
+      }
+
+      // No streaming: normal path
+      const cleaned = extractAgentText(raw);
+      const preview = cleaned.length > 2400 ? cleaned.slice(0, 2400) + '…' : cleaned;
+      if (!preview.trim()) break;
+      if (currentPhase === 'PLANNING') addSpecialCard('plan', preview);
+      else if (currentPhase === 'REVIEWING') addSpecialCard('review', preview);
       else addAgentMsg(preview);
       break;
     }
@@ -1717,17 +1826,25 @@ window.addEventListener('message',e=>{
     case 'system_message': {
       const isErr = msg.level==='error';
       const isWarn = msg.level==='warning' || msg.level==='warn';
+      _dlog('sys_msg ['+msg.level+'] '+(msg.text||'').slice(0,60));
       hideTyping(); addSysMsg(msg.text, isErr, isWarn);
       if(isErr) _hadError=true;
       else if(!sessionLocked){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
     }
 
+    case 'debug_snapshot_request':
+      debugSnapshot();
+      break;
+
     case 'session_end':
     case 'task_complete': {
       // Drop stale events from a previous session that was aborted/replaced
       if(msg._taskId && _activeTaskId && msg._taskId !== _activeTaskId) break;
+      _dlog('session_end type='+msg.type+' stopped='+_stoppedByUser+' err='+_hadError);
       flushReads(); hideTyping(); toolChip.style.display='none';
+      // Clear any leftover streaming state
+      if (_streamingEl) { _streamingEl.remove(); _streamingEl = null; _streamingBuf = ''; }
       stopPhaseTimer();
 
       if(_stoppedByUser){
@@ -1784,6 +1901,7 @@ window.addEventListener('message',e=>{
       break;
 
     case 'session_role_update':
+      _dlog('sess_role: '+msg.role+' '+msg.status+' '+msg.provider+(msg.task?' "'+msg.task.slice(0,30)+'"':''));
       updateAiSessionBar(msg.role, msg.status, msg.provider, msg.task);
       break;
   }

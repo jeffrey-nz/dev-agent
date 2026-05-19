@@ -62,10 +62,9 @@ class AgentSession extends EventEmitter {
       // Strip ANSI codes from text before forwarding to the UI
       const stripAnsi = (s) => typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s;
 
-      // Forward only the events the UI actually uses; skip raw 'log' (ANSI-heavy terminal output).
-      // message_chunk is not forwarded — the panel only shows message_complete.
+      // Forward events the UI uses. message_chunk enables streaming display.
       const FORWARDED_EVENTS = [
-        "system_message", "message_complete",
+        "system_message", "message_complete", "message_chunk",
         "phase_change", "tool_call_start", "tool_call_end",
         "browser_context_update", "copilot365_segment_boundary",
         "session_handoff", "session_role_update",

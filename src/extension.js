@@ -191,6 +191,14 @@ async function activate(context) {
       setStatusIdle();
     }),
     vscode.commands.registerCommand("devAgent.selectProvider", selectProviderQuickPick),
+    vscode.commands.registerCommand("devAgent.debugSnapshot", () => {
+      const panel = DevAgentPanel.currentPanel;
+      if (!panel) {
+        vscode.window.showWarningMessage("Dev Agent panel is not open.");
+        return;
+      }
+      panel.postMessage({ type: "debug_snapshot_request" });
+    }),
     vscode.window.registerWebviewPanelSerializer("devAgent.chat", {
       async deserializeWebviewPanel(webviewPanel) {
         const instance = DevAgentPanel.revive(extensionCtx, webviewPanel, handleWebviewMessage);
@@ -534,6 +542,30 @@ async function handleWebviewMessage(msg, senderPanel) {
       _lastBridgeKey = null;
       setStatusIdle();
       break;
+
+    case "debug_snapshot": {
+      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+      const snapPath = `/tmp/dev-agent-debug-${ts}.html`;
+      try {
+        // Write the HTML snapshot
+        fs.writeFileSync(snapPath, msg.html || "<html><body>Empty snapshot</body></html>");
+        // Write the state JSON alongside it
+        if (msg.state) {
+          fs.writeFileSync(snapPath.replace(".html", ".json"), JSON.stringify(msg.state, null, 2));
+        }
+        vscode.window.showInformationMessage(
+          `Debug snapshot → ${snapPath}`,
+          "Open in Browser",
+        ).then((choice) => {
+          if (choice === "Open in Browser") {
+            vscode.env.openExternal(vscode.Uri.file(snapPath));
+          }
+        });
+      } catch (err) {
+        vscode.window.showErrorMessage(`Debug snapshot failed: ${err.message}`);
+      }
+      break;
+    }
 
     case "change_project":
       panel?.postMessage({ type: "show_project_screen" });

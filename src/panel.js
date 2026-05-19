@@ -484,22 +484,28 @@ a{color:var(--acc)}
 
 /* ── phase bar ────────────────────────────────────────────────────────── */
 #phase-bar{
-  flex-shrink:0;padding:0 12px;height:34px;border-bottom:1px solid var(--bd);
+  flex-shrink:0;padding:0 10px 0 12px;height:36px;border-bottom:1px solid var(--bd);
   display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mu);
-  background:color-mix(in srgb,var(--bg) 94%,var(--acc) 6%);
+  background:color-mix(in srgb,var(--bg) 96%,var(--acc) 4%);
+  border-left:3px solid var(--phase-color,var(--acc));
+  transition:border-color .35s ease,background .35s ease;
 }
 .ph-spinner{
   width:11px;height:11px;
-  border:1.5px solid color-mix(in srgb,var(--acc) 25%,transparent);
-  border-top-color:var(--acc);
-  border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0;opacity:.8;
+  border:1.5px solid color-mix(in srgb,var(--phase-color,var(--acc)) 22%,transparent);
+  border-top-color:var(--phase-color,var(--acc));
+  border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0;opacity:.85;
+  transition:border-color .35s;
 }
-#phase-lbl{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.01em}
-.phase-elapsed{font-family:var(--mono);font-size:10px;opacity:.35;margin-left:1px}
+#phase-lbl{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.01em;
+  color:var(--phase-color,var(--mu));transition:color .35s;
+}
+.phase-elapsed{font-family:var(--mono);font-size:10px;opacity:.4;margin-left:1px;font-weight:400;color:var(--mu)}
 .tool-chip{
   display:none;align-items:center;font-family:var(--mono);font-size:10px;
-  color:var(--mu);max-width:160px;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;flex-shrink:0;opacity:.7;
+  color:var(--mu);max-width:200px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex-shrink:0;opacity:.6;
 }
 .phase-gap{flex:1}
 #phase-stats{
@@ -532,45 +538,47 @@ a{color:var(--acc)}
 
 /* ── AI sessions bar ────────────────────────────────────────────────── */
 #ai-sessions-bar{
-  flex-shrink:0;display:none;align-items:center;gap:6px;padding:0 10px;
-  height:26px;border-bottom:1px solid var(--bd);
+  flex-shrink:0;display:none;align-items:center;gap:6px;padding:0 12px;
+  height:30px;border-bottom:1px solid var(--bd);
   background:color-mix(in srgb,var(--bg) 97%,var(--acc) 3%);
   font-size:10.5px;
 }
 #ai-sessions-bar.show{display:flex}
 .ai-sess{
-  display:flex;align-items:center;gap:5px;padding:2px 7px;
-  border-radius:4px;border:1px solid color-mix(in srgb,var(--bd) 80%,transparent);
-  transition:border-color .2s,background .2s;flex-shrink:0;
+  display:flex;align-items:center;gap:6px;padding:3px 9px;
+  border-radius:5px;border:1px solid color-mix(in srgb,var(--bd) 70%,transparent);
+  transition:border-color .25s,background .25s;flex-shrink:0;min-width:0;
 }
 .ai-sess.active{
-  border-color:color-mix(in srgb,var(--acc) 50%,transparent);
-  background:color-mix(in srgb,var(--acc) 8%,transparent);
+  border-color:color-mix(in srgb,var(--acc) 45%,transparent);
+  background:color-mix(in srgb,var(--acc) 9%,transparent);
 }
 .ai-sess-dot{
-  width:6px;height:6px;border-radius:50%;background:color-mix(in srgb,var(--mu) 30%,transparent);
-  flex-shrink:0;transition:background .2s;
+  width:7px;height:7px;border-radius:50%;
+  background:color-mix(in srgb,var(--mu) 25%,transparent);
+  flex-shrink:0;transition:background .25s;
 }
 .ai-sess.active .ai-sess-dot{
   background:var(--acc);
-  animation:sess-pulse 1.6s ease-in-out infinite;
+  animation:sess-pulse 1.4s ease-in-out infinite;
 }
 @keyframes sess-pulse{
   0%,100%{opacity:1;transform:scale(1)}
-  50%{opacity:.4;transform:scale(.85)}
+  50%{opacity:.35;transform:scale(.78)}
 }
 .ai-sess-badge{
-  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--mu);opacity:.6;
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--mu);opacity:.5;white-space:nowrap;
 }
-.ai-sess.active .ai-sess-badge{opacity:.9;color:var(--acc)}
-.ai-sess-name{font-weight:600;color:var(--fg);opacity:.8;font-size:10.5px}
+.ai-sess.active .ai-sess-badge{opacity:.85;color:var(--acc)}
+.ai-sess-name{font-weight:600;color:var(--fg);opacity:.75;font-size:10.5px;white-space:nowrap}
+.ai-sess.active .ai-sess-name{opacity:1}
 .ai-sess-task{
-  color:var(--mu);opacity:.65;font-family:var(--mono);font-size:10px;
-  max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--mu);opacity:.6;font-family:var(--mono);font-size:10px;
+  max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.ai-sess.active .ai-sess-task{opacity:.9}
-.ai-sess-sep{color:var(--mu);opacity:.25;flex-shrink:0;font-size:10px;margin:0 1px}
+.ai-sess.active .ai-sess-task{opacity:.85;color:var(--fg)}
+.ai-sess-sep{color:var(--mu);opacity:.2;flex-shrink:0;font-size:11px;margin:0 2px}
 
 /* ── browser session rotation banner ── */
 /* ── session handoff card ─────────────────────────────────────────────── */
@@ -626,35 +634,35 @@ a{color:var(--acc)}
 /* ── phase timeline pills ─────────────────────────────────────────────── */
 #phase-pills{
   display:flex;align-items:center;gap:0;
-  padding:0 12px;height:26px;flex-shrink:0;overflow:hidden;
+  padding:0 10px;height:26px;flex-shrink:0;overflow:hidden;
   border-bottom:1px solid var(--bd);
-  background:color-mix(in srgb,var(--bg) 97%,var(--acc) 3%);
+  background:color-mix(in srgb,var(--bg) 98%,var(--acc) 2%);
 }
-.pp-sep{font-size:10px;color:var(--mu);opacity:.2;padding:0 3px;user-select:none}
+.pp-sep{font-size:10px;color:var(--mu);opacity:.18;padding:0 2px;user-select:none}
 .pp-item{
-  display:flex;align-items:center;gap:4px;padding:2px 6px;
+  display:flex;align-items:center;gap:4px;padding:2px 7px;
   border-radius:4px;font-size:10px;white-space:nowrap;
-  color:var(--mu);opacity:.32;
-  transition:opacity .2s,background .15s;
+  color:var(--mu);opacity:.28;
+  transition:opacity .25s,background .2s,color .2s;
 }
-.pp-item.done{opacity:.7;color:var(--pc,var(--mu))}
+.pp-item.done{opacity:.65;color:var(--pc,var(--mu))}
 .pp-item.active{
-  opacity:1;color:var(--pc,var(--fg));font-weight:600;
-  background:color-mix(in srgb,var(--pc,var(--acc)) 10%,transparent);
+  opacity:1;color:var(--pc,var(--fg));font-weight:700;
+  background:color-mix(in srgb,var(--pc,var(--acc)) 12%,transparent);
 }
 .pp-check{font-size:9px;color:inherit;flex-shrink:0}
 .pp-num{font-size:9px;font-family:var(--mono);opacity:.5;flex-shrink:0}
 .pp-pulse{
   width:5px;height:5px;border-radius:50%;
   background:var(--pc,var(--acc));
-  animation:pulse .9s infinite;flex-shrink:0;
+  animation:pulse .85s infinite;flex-shrink:0;
 }
 .pp-label{
-  font-size:10px;font-weight:600;letter-spacing:.04em;
+  font-size:10px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;font-family:var(--mono);
 }
-.pp-dur{font-size:9px;font-family:var(--mono);opacity:.55}
-.pp-dur.pp-live{opacity:.85}
+.pp-dur{font-size:9px;font-family:var(--mono);opacity:.5}
+.pp-dur.pp-live{opacity:.8;color:var(--pc,var(--mu))}
 
 /* ── activity strip (file/command chips) ─────────────────────────────── */
 /* activity sidebar — left column showing changed files */
@@ -709,10 +717,10 @@ a{color:var(--acc)}
 
 /* ── session progress bar ─────────────────────────────────────────────── */
 #progress-bar{height:2px;background:transparent;flex-shrink:0;overflow:hidden;
-              position:relative}
-#progress-fill{height:100%;background:var(--acc);width:0;
+              position:relative;transition:opacity .3s}
+#progress-fill{height:100%;background:var(--phase-color,var(--acc));width:0;
                transition:width .55s cubic-bezier(.4,0,.2,1),background .35s;
-               box-shadow:0 0 6px var(--acc)}
+               box-shadow:0 0 8px var(--phase-color,var(--acc))}
 
 /* ── chat main area ───────────────────────────────────────────────────── */
 #chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
@@ -727,42 +735,42 @@ a{color:var(--acc)}
 
 /* welcome */
 #welcome{flex:1;display:flex;flex-direction:column;justify-content:center;
-         padding:32px 4px 20px}
-.w-logo{font-size:28px;margin-bottom:16px;opacity:.6;line-height:1;color:var(--acc)}
-.w-title{font-size:18px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px}
-.w-sub{font-size:12px;color:var(--mu);line-height:1.65;margin-bottom:20px;max-width:300px}
-.w-examples{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+         padding:32px 8px 20px}
+.w-logo{font-size:26px;margin-bottom:14px;opacity:.55;line-height:1;color:var(--acc)}
+.w-title{font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.4px}
+.w-sub{font-size:12px;color:var(--mu);line-height:1.65;margin-bottom:18px;max-width:300px;opacity:.85}
+.w-examples{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .w-ex{
-  text-align:left;padding:10px 11px;
-  background:color-mix(in srgb,var(--fg) 4%,transparent);
+  text-align:left;padding:9px 11px;
+  background:color-mix(in srgb,var(--fg) 3%,transparent);
   border:1px solid var(--bd);
   color:var(--mu);font:inherit;font-size:11px;cursor:pointer;
   border-radius:7px;
   transition:background .12s,color .12s,border-color .12s;
-  display:flex;flex-direction:column;gap:4px;
+  display:flex;flex-direction:column;gap:3px;
 }
-.w-ex-icon{font-size:15px;line-height:1}
-.w-ex-txt{font-size:11px;font-weight:500;color:var(--fg);opacity:.8;line-height:1.3}
-.w-ex:hover{background:var(--hov);border-color:color-mix(in srgb,var(--acc) 35%,transparent);color:var(--fg)}
+.w-ex-icon{font-size:14px;line-height:1;opacity:.8}
+.w-ex-txt{font-size:11px;font-weight:500;color:var(--fg);opacity:.75;line-height:1.3}
+.w-ex:hover{background:var(--hov);border-color:color-mix(in srgb,var(--acc) 30%,transparent);color:var(--fg)}
 .w-ex:hover .w-ex-txt{opacity:1}
 
 /* user message */
 .msg-u{margin:18px 0 2px;display:flex;flex-direction:column;align-items:flex-end}
-.msg-sender{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-            margin-bottom:5px;color:var(--mu);opacity:.7}
-.msg-sender.agent{color:var(--acc);opacity:1}
+.msg-sender{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+            margin-bottom:5px;color:var(--mu);opacity:.6}
+.msg-sender.agent{color:var(--acc);opacity:.85}
 .msg-body{
   font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
-  color:var(--fg);padding:9px 13px;
-  background:color-mix(in srgb,var(--acc) 11%,transparent);
-  border-radius:12px 12px 3px 12px;
-  border:1px solid color-mix(in srgb,var(--acc) 18%,transparent);
-  max-width:90%;
+  color:var(--fg);padding:9px 14px;
+  background:color-mix(in srgb,var(--acc) 10%,transparent);
+  border-radius:14px 14px 4px 14px;
+  border:1px solid color-mix(in srgb,var(--acc) 16%,transparent);
+  max-width:88%;
 }
 
 /* agent message */
 .msg-a{margin:4px 0 2px}
-.mab-md{font-size:13px;line-height:1.7;color:var(--fg)}
+.mab-md{font-size:13px;line-height:1.72;color:var(--fg)}
 
 /* markdown */
 .mab-md .md-p{margin:0 0 4px}
@@ -857,6 +865,14 @@ a{color:var(--acc)}
 }
 .msg-a:hover .msg-copy{opacity:1}
 .msg-copy:hover{background:var(--hov);color:var(--fg)}
+
+/* streaming cursor — shown while AI is generating */
+.msg-a.streaming .mab-md::after{
+  content:'▋';display:inline;
+  animation:stream-cursor .75s step-end infinite;
+  color:var(--acc);font-size:11px;opacity:.8;margin-left:2px;vertical-align:middle;
+}
+@keyframes stream-cursor{0%,100%{opacity:.8}50%{opacity:0}}
 
 /* ── collapsible long messages ── */
 .msg-a.collapsible .mab-md,.sc-card.collapsible .sc-body{
@@ -1052,22 +1068,25 @@ a{color:var(--acc)}
 /* done / stopped banners */
 .done-banner,.stop-banner{
   display:flex;align-items:center;gap:9px;
-  padding:8px 12px;margin:12px 0 4px;
+  padding:7px 12px;margin:14px 0 4px;
   font-size:11px;font-family:var(--mono);
   border-radius:7px;border:1px solid;
+  animation:msgIn .2s ease;
 }
 .done-banner{
   color:var(--ok);
-  background:color-mix(in srgb,var(--ok) 8%,transparent);
-  border-color:color-mix(in srgb,var(--ok) 22%,transparent);
+  background:color-mix(in srgb,var(--ok) 7%,transparent);
+  border-color:color-mix(in srgb,var(--ok) 20%,transparent);
+  border-left:2px solid var(--ok);
 }
 .stop-banner{
   color:var(--err);
-  background:color-mix(in srgb,var(--err) 6%,transparent);
-  border-color:color-mix(in srgb,var(--err) 18%,transparent);
+  background:color-mix(in srgb,var(--err) 5%,transparent);
+  border-color:color-mix(in srgb,var(--err) 16%,transparent);
+  border-left:2px solid var(--err);
 }
-.done-line{flex:1;height:1px;background:color-mix(in srgb,var(--ok) 20%,transparent)}
-.stop-line{flex:1;height:1px;background:color-mix(in srgb,var(--err) 18%,transparent)}
+.done-line{flex:1;height:1px;background:color-mix(in srgb,var(--ok) 18%,transparent)}
+.stop-line{flex:1;height:1px;background:color-mix(in srgb,var(--err) 15%,transparent)}
 /* stop button disabled during stopping */
 .inp-stop:disabled{opacity:.45;cursor:not-allowed}
 
@@ -1390,21 +1409,29 @@ a{color:var(--acc)}
         <div class="w-title">What can I build for you?</div>
         <div class="w-sub">Plans, codes, and verifies — no API key needed.</div>
         <div class="w-examples">
-          <button class="w-ex" data-prompt="Add dark mode support to the app">
-            <span class="w-ex-icon">🌙</span>
-            <span class="w-ex-txt">Add dark mode</span>
+          <button class="w-ex" data-prompt="Build a React todo app with local storage persistence and filtering by status">
+            <span class="w-ex-icon">⚛</span>
+            <span class="w-ex-txt">New React app</span>
           </button>
-          <button class="w-ex" data-prompt="Write unit tests for the main module">
+          <button class="w-ex" data-prompt="Write unit tests for all exported functions with edge case coverage">
             <span class="w-ex-icon">🧪</span>
             <span class="w-ex-txt">Write tests</span>
           </button>
-          <button class="w-ex" data-prompt="Fix all TypeScript errors in the project">
+          <button class="w-ex" data-prompt="Fix all TypeScript errors and add missing type annotations">
             <span class="w-ex-icon">🔧</span>
             <span class="w-ex-txt">Fix TS errors</span>
           </button>
-          <button class="w-ex" data-prompt="Refactor the API layer to use async/await">
+          <button class="w-ex" data-prompt="Add dark mode with system preference detection and a toggle button">
+            <span class="w-ex-icon">🌙</span>
+            <span class="w-ex-txt">Add dark mode</span>
+          </button>
+          <button class="w-ex" data-prompt="Refactor the codebase to use async/await throughout and add proper error handling">
             <span class="w-ex-icon">⚡</span>
-            <span class="w-ex-txt">Refactor API</span>
+            <span class="w-ex-txt">Async refactor</span>
+          </button>
+          <button class="w-ex" data-prompt="Add REST API endpoints with validation, error handling, and OpenAPI documentation">
+            <span class="w-ex-icon">🌐</span>
+            <span class="w-ex-txt">Add REST API</span>
           </button>
         </div>
       </div>
