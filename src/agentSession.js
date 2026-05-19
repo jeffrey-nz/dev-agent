@@ -72,6 +72,8 @@ class AgentSession extends EventEmitter {
         "subtask_kickoff", "subtask_status", "progress_update",
         // Research step counter — updates typing label during RESEARCHING phase
         "research_progress",
+        // Pipeline classification result — shows which agent pipeline was selected
+        "pipeline_selected",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {

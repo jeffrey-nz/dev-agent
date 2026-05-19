@@ -49,6 +49,15 @@ const session = new AgentSession({
       log(`[${e.level || "info"}] ${e.text}`);
     } else if (e.type === "phase_change") {
       log(`[phase] ${e.phase} — ${e.label || ""}`);
+    } else if (e.type === "pipeline_selected") {
+      log(`[pipeline] ${e.pipelineLabel || e.taskType} — ${e.rationale || ""}`);
+    } else if (e.type === "subtask_kickoff") {
+      log(`[subtask] ${e.index + 1}/${e.total}: ${(e.label || "").slice(0, 80)}`);
+    } else if (e.type === "subtask_status") {
+      const score = e.score != null ? ` score=${Math.round(e.score * 100)}%` : "";
+      log(`[subtask-${e.feedback}] #${e.index + 1}${score} retries=${e.retries || 0}`);
+    } else if (e.type === "progress_update") {
+      log(`[progress] ${e.completed}/${e.total}`);
     } else if (e.type === "tool_call_start") {
       log(`[tool] ${e.tool}${e.paramsSummary ? ": " + e.paramsSummary.slice(0, 80) : ""}`);
     } else if (e.type === "tool_call_end" && e.isError) {

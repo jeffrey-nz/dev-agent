@@ -1972,6 +1972,14 @@ window.addEventListener('message',e=>{
         phaseSubtask.title = label;
         phaseSubtask.classList.add('show');
       }
+      // Show inline kickoff chip in message feed when there are multiple subtasks
+      if (typeof total === 'number' && total > 1 && label) {
+        const chip = document.createElement('div'); chip.className = 'subtask-chip';
+        const shortLabel = label.length > 60 ? label.slice(0, 60) + '…' : label;
+        chip.innerHTML = '<span class="sc-num">' + idx + ' / ' + total + '</span>'
+          + '<span class="sc-label" title="' + esc(label) + '">' + esc(shortLabel) + '</span>';
+        ibt(chip);
+      }
       // Update typing label to show what's being worked on
       if (typingLblEl) typingLblEl.textContent = label.length > 45 ? label.slice(0, 45) + '…' : label;
       break;
@@ -2028,6 +2036,13 @@ window.addEventListener('message',e=>{
         const elapsedStr = elapsed != null ? ' · ' + elapsed + 's' : '';
         typingLblEl.textContent = 'step ' + step + (maxSteps ? '/' + maxSteps : '') + elapsedStr;
       }
+      break;
+    }
+
+    case 'pipeline_selected': {
+      const lbl = msg.pipelineLabel || msg.taskType || 'unknown';
+      _dlog('pipeline_selected: ' + lbl);
+      addSysMsg('Pipeline: ' + lbl, false, false, false);
       break;
     }
 

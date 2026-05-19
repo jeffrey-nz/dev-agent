@@ -1095,6 +1095,22 @@ a{color:var(--acc)}
 .dl.rem .dl-sym{color:var(--err);font-weight:700}
 .dl-code{flex:1;padding:0 10px;white-space:pre;color:var(--fg);word-break:normal;min-width:0;overflow:hidden}
 
+/* subtask kickoff chip */
+.subtask-chip{
+  display:flex;align-items:center;gap:6px;
+  font-size:10.5px;font-family:var(--mono);
+  color:var(--ce);padding:4px 9px 4px 8px;margin:8px 0 2px;
+  background:color-mix(in srgb,var(--ce) 6%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--ce) 40%,transparent);
+  border-radius:4px;animation:msgIn .15s ease;
+}
+.sc-num{
+  font-size:9px;opacity:.55;padding:1px 5px;
+  background:color-mix(in srgb,var(--ce) 15%,transparent);
+  border-radius:10px;white-space:nowrap;flex-shrink:0;
+}
+.sc-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8;flex:1}
+
 /* system / error messages */
 .msg-sys{font-size:11px;color:var(--mu);font-style:italic;padding:3px 2px;opacity:.45}
 .msg-warn{
