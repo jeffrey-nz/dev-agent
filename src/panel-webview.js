@@ -1870,7 +1870,10 @@ window.addEventListener('message',e=>{
       const isOk = !isErr && !isWarn && msg.level==='info'
         && (msg.text||'').trimStart().startsWith('✓');
       _dlog('sys_msg ['+msg.level+'] '+(msg.text||'').slice(0,60));
-      hideTyping(); addSysMsg(msg.text, isErr, isWarn, isOk);
+      // Only hide typing for errors/warnings — info/ok messages are mid-session
+      // signals that don't stop execution, so typing stays visible.
+      if(isErr || isWarn) hideTyping();
+      addSysMsg(msg.text, isErr, isWarn, isOk);
       if(isErr) _hadError=true;
       else if(!sessionLocked){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
