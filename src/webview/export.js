@@ -126,7 +126,7 @@ export function exportSession() {
     } else if (node.classList.contains('msg-warn')) {
       const t = node.textContent?.trim();
       if (t) lines.push('> ⚠ ' + t);
-    } else if (node.classList.contains('done-banner') || node.classList.contains('stop-banner')) {
+    } else if (node.classList.contains('done-banner') || node.classList.contains('stop-banner') || node.classList.contains('error-banner')) {
       lines.push('---\n' + (node.querySelector('span')?.textContent || '').trim());
     } else if (node.classList.contains('changes-card')) {
       const items = Array.from(node.querySelectorAll('.change-item .change-path'))

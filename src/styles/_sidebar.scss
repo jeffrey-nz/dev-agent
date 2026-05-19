@@ -85,6 +85,15 @@
   overflow: hidden; line-height: 1.4; margin-bottom: 3px;
 }
 
+// Inline rename input — appears when user double-clicks the session title
+.s-rename-inp {
+  display: block; width: 100%; box-sizing: border-box;
+  background: var(--in-bg); border: 1px solid var(--acc);
+  color: var(--fg); font: inherit; font-size: 12px; font-weight: 500;
+  padding: 1px 4px; border-radius: 3px; outline: none;
+  line-height: 1.4; margin-bottom: 3px;
+}
+
 // Meta line: time ago, file count, tool count, elapsed
 .s-meta { font-size: 10px; color: var(--mu); opacity: 0.7; }
 

@@ -387,7 +387,32 @@ export function renderSessions() {
       + '<div class="s-meta">' + metaParts.join(' · ') + '</div>'
       + '</div>'
       + provBadge;
-    btn.addEventListener('click', () => switchSession(s.id));
+    btn.addEventListener('click', e => { if (e.target.tagName !== 'INPUT') switchSession(s.id); });
+
+    // Inline rename: double-click the prompt text to edit it
+    if (!sessionLocked) {
+      const promptDiv = btn.querySelector('.s-prompt');
+      promptDiv?.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        const inp = document.createElement('input');
+        inp.className = 's-rename-inp';
+        inp.value = s.prompt;
+        inp.addEventListener('click', ev => ev.stopPropagation());
+        inp.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); }
+          if (ev.key === 'Escape') { s._cancelRename = true; inp.blur(); }
+        });
+        inp.addEventListener('blur', () => {
+          const v = inp.value.trim();
+          if (!s._cancelRename && v && v !== s.prompt) s.prompt = v;
+          delete s._cancelRename;
+          renderSessions();
+        });
+        promptDiv.innerHTML = '';
+        promptDiv.appendChild(inp);
+        requestAnimationFrame(() => { inp.select(); inp.focus(); });
+      });
+    }
     // Arrow key navigation within the list
     btn.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') {
