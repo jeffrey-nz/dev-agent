@@ -953,10 +953,20 @@ a{color:var(--acc)}
 .retry-notice{
   display:flex;align-items:center;gap:6px;
   font-size:10.5px;font-family:var(--mono);
-  color:var(--warn);opacity:.75;
-  padding:3px 2px 3px 0;margin:1px 0;animation:msgIn .15s ease;
+  color:var(--warn);
+  padding:4px 9px 4px 8px;margin:2px 0;animation:msgIn .15s ease;
+  background:color-mix(in srgb,var(--warn) 7%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--warn) 45%,transparent);
+  border-radius:4px;
 }
-.rn-icon{font-size:12px;flex-shrink:0;animation:spin .8s linear infinite}
+.rn-icon{font-size:11px;flex-shrink:0;animation:spin .9s linear infinite;opacity:.8}
+.rn-score{
+  font-size:10px;opacity:.55;margin-left:auto;white-space:nowrap;
+}
+.rn-label{
+  opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:180px;flex-shrink:1;
+}
 
 /* plan / review special cards */
 .sc-card{border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin:8px 0}
@@ -1087,6 +1097,12 @@ a{color:var(--acc)}
   border:1px solid color-mix(in srgb,var(--err) 18%,transparent);
   border-left:2px solid var(--err);
   border-radius:6px;margin:6px 0;font-family:var(--mono);
+}
+.msg-ok{
+  font-size:11px;color:var(--ok);
+  padding:3px 7px;background:color-mix(in srgb,var(--ok) 7%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--ok) 45%,transparent);
+  border-radius:4px;margin:2px 0;opacity:.85;font-family:var(--mono);
 }
 
 /* phase dividers */

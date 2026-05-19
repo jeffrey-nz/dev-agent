@@ -376,6 +376,8 @@ let _activeTaskId  = null;  // tag from extension; stale session_ends are ignore
 let _writesThisSession = []; // {path, isNew}
 let _readsThisSession  = new Set();
 let _runsThisSession   = 0;
+let _subtasksCompleted = 0;
+let _subtasksTotal     = 0;
 
 /* ── phase timeline ── */
 let _stepTimes = []; // [{start, end|null}] indexed by STEPS index
@@ -435,6 +437,7 @@ function updatePhaseStats() {
 
 function resetSessionTracking() {
   _writesThisSession = []; _readsThisSession = new Set(); _runsThisSession = 0;
+  _subtasksCompleted = 0; _subtasksTotal = 0;
   _totalAdded = 0; _totalRemoved = 0; _lastRunSummary = null;
   _chipMap.clear(); _hiddenChipsCount = 0;
   if (activityChips) activityChips.innerHTML = '';
@@ -728,7 +731,12 @@ function createSession(promptText){
 }
 function finishSession(status){
   const s=sessions.find(x=>x.id===runningSid);
-  if(s){ s.status=status; if(_sessionStartTs) s.elapsed=Math.round((Date.now()-_sessionStartTs)/1000); }
+  if(s){
+    s.status=status;
+    if(_sessionStartTs) s.elapsed=Math.round((Date.now()-_sessionStartTs)/1000);
+    s.files=_writesThisSession.length;
+    if(_subtasksTotal>1) s.subtasks={done:_subtasksCompleted,total:_subtasksTotal};
+  }
   saveSession(activeSid);
   runningSid=null; sessionLocked=false;
   renderSessions();
@@ -804,7 +812,9 @@ function renderSessions(){
     const btn=document.createElement('button'); btn.className='sitem'+(s.id===activeSid?' active':'');
     if(sessionLocked&&s.id!==activeSid) btn.disabled=true;
     const metaParts=[relTime(s.ts)];
+    if(s.files) metaParts.push(s.files+' file'+(s.files!==1?'s':''));
     if(s.tools) metaParts.push(s.tools+' tools');
+    if(s.subtasks) metaParts.push(s.subtasks.done+'/'+s.subtasks.total+' subtasks');
     if(s.elapsed!=null){ const m=Math.floor(s.elapsed/60), sec=s.elapsed%60; metaParts.push(m?m+'m '+sec+'s':sec+'s'); }
     btn.innerHTML='<div class="s-dot '+s.status+'"></div>'
       +'<div class="s-body">'
@@ -982,11 +992,12 @@ function addAgentMsg(text){
     if(body && body.scrollHeight>320){ d.classList.add('collapsible'); _addExpandToggle(d, body); }
   });
 }
-function addSysMsg(text,isErr,isWarn){
+function addSysMsg(text,isErr,isWarn,isOk){
   if(!text) return;
   const d=document.createElement('div');
   if(isErr){ d.className='msg-err'; d.textContent='✗ '+text; }
   else if(isWarn){ d.className='msg-warn'; d.textContent=text; }
+  else if(isOk){ d.className='msg-ok'; d.textContent=text; }
   else { d.className='msg-sys'; d.textContent=text; }
   ibt(d);
 }
@@ -1023,6 +1034,7 @@ function addDoneBanner(){
   let label='✓ Task complete' + _bannerTime();
   const sess=sessions.find(x=>x.id===runningSid||x.id===activeSid);
   if(sess?.tools) label+=' · '+sess.tools+' tools';
+  if(_subtasksTotal > 1) label+=' · '+_subtasksCompleted+'/'+_subtasksTotal+' subtasks';
   d.innerHTML='<div class="done-line"></div><span>'+label+'</span><div class="done-line"></div>';
   ibt(d);
   _addBannerActs(_history[0]);
@@ -1755,7 +1767,10 @@ window.addEventListener('message',e=>{
         flushReads(); resolveCard(!!msg.isError); toolChip.style.display='none';
         // Write tools: suppress typing — the file_diff card follows immediately
         if(!isWrite || msg.isError) showTyping();
-        if(msg.isError) addSysMsg('Tool error: '+msg.tool,true);
+        if(msg.isError){
+          const errDetail = msg.errorSummary || msg.error || msg.tool;
+          addSysMsg('Tool error: '+errDetail,true);
+        }
       }
       break;
     }
@@ -1826,11 +1841,10 @@ window.addEventListener('message',e=>{
 
       // No streaming: normal path
       const cleaned = extractAgentText(raw);
-      const preview = cleaned.length > 2400 ? cleaned.slice(0, 2400) + '…' : cleaned;
-      if (!preview.trim()) break;
-      if (currentPhase === 'PLANNING') addSpecialCard('plan', preview);
-      else if (currentPhase === 'REVIEWING') addSpecialCard('review', preview);
-      else addAgentMsg(preview);
+      if (!cleaned.trim()) break;
+      if (currentPhase === 'PLANNING') addSpecialCard('plan', cleaned);
+      else if (currentPhase === 'REVIEWING') addSpecialCard('review', cleaned);
+      else addAgentMsg(cleaned);
       break;
     }
 
@@ -1852,8 +1866,11 @@ window.addEventListener('message',e=>{
     case 'system_message': {
       const isErr = msg.level==='error';
       const isWarn = msg.level==='warning' || msg.level==='warn';
+      // ✓-prefixed info messages get green styling (verifier success, subtask pass, etc.)
+      const isOk = !isErr && !isWarn && msg.level==='info'
+        && (msg.text||'').trimStart().startsWith('✓');
       _dlog('sys_msg ['+msg.level+'] '+(msg.text||'').slice(0,60));
-      hideTyping(); addSysMsg(msg.text, isErr, isWarn);
+      hideTyping(); addSysMsg(msg.text, isErr, isWarn, isOk);
       if(isErr) _hadError=true;
       else if(!sessionLocked){ btnSend.classList.remove('hidden'); btnStop.classList.add('hidden'); }
       break;
@@ -1921,6 +1938,7 @@ window.addEventListener('message',e=>{
       const total = msg.total || '?';
       const label = msg.label || '';
       _dlog('subtask_kickoff: ' + idx + '/' + total + ' "' + label.slice(0, 30) + '"');
+      if (typeof total === 'number' && total > _subtasksTotal) _subtasksTotal = total;
       if (phaseSubtask) {
         phaseSubtask.textContent = idx + ' / ' + total;
         phaseSubtask.title = label;
@@ -1934,9 +1952,14 @@ window.addEventListener('message',e=>{
     case 'subtask_status': {
       const isPassed = msg.feedback === 'PASS';
       const idx = (msg.index || 0) + 1;
+      const total = msg.total || '?';
       const retries = msg.retries || 0;
-      _dlog('subtask_status: ' + msg.feedback + ' [' + idx + '/' + (msg.total || '?') + '] retries=' + retries);
+      const label = msg.label || '';
+      const score = msg.score != null ? Math.round(msg.score * 100) : null;
+      _dlog('subtask_status: ' + msg.feedback + ' [' + idx + '/' + total + '] retries=' + retries + (score!=null?' score='+score+'%':''));
+      if (typeof total === 'number' && total > _subtasksTotal) _subtasksTotal = total;
       if (isPassed) {
+        _subtasksCompleted++;
         // Brief brightness pulse on the counter to signal completion
         if (phaseSubtask) {
           phaseSubtask.style.filter = 'brightness(1.5)';
@@ -1944,10 +1967,13 @@ window.addEventListener('message',e=>{
         }
       } else if (retries > 0) {
         // Show an inline retry notice so the user knows the agent is trying again
+        const shortLabel = label.length > 42 ? label.slice(0, 42) + '…' : label;
         const notice = document.createElement('div');
         notice.className = 'retry-notice';
         notice.innerHTML = '<span class="rn-icon">↺</span>'
-          + 'Subtask ' + idx + ' — verification failed · retry ' + retries;
+          + 'Retry ' + retries
+          + (shortLabel ? ' <span class="rn-label" title="'+esc(label)+'">· '+esc(shortLabel)+'</span>' : '')
+          + (score != null ? '<span class="rn-score">'+score+'%</span>' : '');
         ibt(notice);
       }
       break;
