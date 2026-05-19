@@ -74,6 +74,8 @@ class AgentSession extends EventEmitter {
         "research_progress",
         // Pipeline classification result — shows which agent pipeline was selected
         "pipeline_selected",
+        // Rate limiting — shown as a countdown toast rather than a chat message
+        "rate_limit",
       ];
       FORWARDED_EVENTS.forEach((t) => {
         const handler = (d) => {

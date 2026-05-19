@@ -345,6 +345,10 @@ export function addHandoffCard(msg) {
     .replace('claude', 'Claude');
   const sessionNum = msg.segmentIndex ?? 1;
 
+  // Capture the ctx% at time of handoff (meter resets after this card is shown)
+  const ctxEl  = document.getElementById('ctx-fill');
+  const ctxPct = ctxEl ? parseInt(ctxEl.style.width || '0', 10) : null;
+
   // Subtask progress
   const subtasks     = msg.subtasks || [];
   const currentIdx   = msg.currentSubtaskIndex ?? 0;
@@ -385,11 +389,13 @@ export function addHandoffCard(msg) {
     '<div class="hc-header" onclick="this.nextElementSibling?.classList.toggle(\'hidden\');this.querySelector(\'.hc-caret\').classList.toggle(\'open\')">'
     + '<span class="hc-icon">↻</span>'
     + '<div class="hc-header-body">'
-    + '<div class="hc-title">Session ' + sessionNum + ' · ' + provLabel + '</div>'
+    + '<div class="hc-title">Session ' + sessionNum + ' · ' + provLabel
+    + (ctxPct != null && ctxPct > 0 ? '<span class="hc-ctx-pct">' + ctxPct + '% ctx</span>' : '')
+    + '</div>'
     + '<div class="hc-subtitle">'
     + (currentTask
       ? 'Continuing: <em>' + esc(currentTask.slice(0, 60)) + (currentTask.length > 60 ? '…' : '') + '</em>'
-      : 'Context handed off to new session')
+      : 'Context window full — new session started')
     + (modCount > 0 ? ' · ' + modCount + ' file' + (modCount !== 1 ? 's' : '') + ' carried over' : '')
     + '</div>'
     + progressBar

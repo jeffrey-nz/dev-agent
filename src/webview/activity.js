@@ -169,14 +169,14 @@ export function updateSessionDelta(added, removed) {
  * Called from the events handler on each tool_call_start.
  */
 export function updatePhaseStats() {
-  const { _readsThisSession } = /** @type {any} */ (window._stateRefs || {});
-  const reads  = _readsThisSession?.size || 0;
+  // _readsThisSession is a Set exposed via window by index.js
+  const reads  = window._readsThisSession?.size || 0;
   const writes = _writesThisSession.length;
   const runs   = _runsThisSession;
   const parts  = [];
-  if (reads)  parts.push('<span class="pstat"><span class="pstat-val">' + reads  + '</span>r</span>');
-  if (writes) parts.push('<span class="pstat"><span class="pstat-val">' + writes + '</span>w</span>');
-  if (runs)   parts.push('<span class="pstat"><span class="pstat-val">' + runs   + '</span>!</span>');
+  if (reads)  parts.push('<span class="pstat" title="files read"><span class="pstat-val">' + reads  + '</span>r</span>');
+  if (writes) parts.push('<span class="pstat" title="files written"><span class="pstat-val">' + writes + '</span>w</span>');
+  if (runs)   parts.push('<span class="pstat" title="commands run"><span class="pstat-val">' + runs   + '</span>!</span>');
   if (phaseStats) phaseStats.innerHTML = parts.join('');
 }
 
@@ -225,13 +225,18 @@ function escLocal(s) {
 export function addChangesSummary() {
   if (!_writesThisSession.length && !_runsThisSession) return;
 
-  const wLabel = _writesThisSession.length
-    ? _writesThisSession.length + ' file' + (_writesThisSession.length > 1 ? 's' : '') + ' written'
+  const fileCount = _writesThisSession.length;
+  const newCount  = _writesThisSession.filter(f => f.isNew).length;
+  const wLabel = fileCount
+    ? fileCount + ' file' + (fileCount > 1 ? 's' : '') + (newCount ? ' (' + newCount + ' new)' : '')
     : '';
   const rLabel = _runsThisSession
     ? _runsThisSession + ' command' + (_runsThisSession > 1 ? 's' : '') + ' run'
     : '';
-  const title = [wLabel, rLabel].filter(Boolean).join(' · ');
+  const deltaLabel = (_totalAdded || _totalRemoved)
+    ? (_totalAdded ? '+' + _totalAdded : '') + (_totalRemoved ? ' −' + _totalRemoved : '')
+    : '';
+  const title = [wLabel, rLabel, deltaLabel].filter(Boolean).join(' · ');
 
   const items = _writesThisSession.map(f => {
     const sym   = f.isNew ? 'new' : 'mod';

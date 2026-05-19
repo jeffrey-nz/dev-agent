@@ -144,6 +144,14 @@
     </div>
     <button class="drop-item" id="btn-export">📋 Export transcript</button>
     <div class="drop-sep"></div>
+    <div class="drop-label">Shortcuts</div>
+    <div class="drop-item drop-shortcuts">
+      <span>⌘K</span><span>New session</span>
+      <span>⌘⇧C</span><span>Copy last reply</span>
+      <span>⌘⇧I</span><span>Debug snapshot</span>
+      <span>↑ ↓</span><span>History</span>
+    </div>
+    <div class="drop-sep"></div>
     <div class="drop-label">Bridge</div>
     <button class="drop-item" id="btn-sb-prov">↺ Reconnect…</button>
     <button class="drop-item" id="btn-stop-bridge" style="color:var(--err)">⏹ Stop bridge</button>
@@ -281,7 +289,7 @@
           <span id="prov-name">No provider</span>
           <span class="prov-chip-caret">▾</span>
         </button>
-        <span class="inp-hint" id="inp-hint">↵ send · ↑ history · 📎 paste image</span>
+        <span class="inp-hint" id="inp-hint">↵ send · ↑↓ history · ⌘K new · 📎 image</span>
         <span class="inp-char" id="inp-char"></span>
       </div>
       <div id="prov-drop" class="hidden"></div>

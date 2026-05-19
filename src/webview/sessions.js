@@ -71,6 +71,30 @@ function esc(s) {
 }
 
 /**
+ * Extract a concise, meaningful title from a prompt by stripping leading
+ * filler phrases ("please", "can you build", etc.) and capitalising.
+ * @param {string} text
+ * @returns {string}
+ */
+function _sessionTitle(text) {
+  const stripped = text
+    .trim()
+    // Strip leading polite filler and common imperative prefixes
+    .replace(
+      /^(please\s+|could you\s+|can you\s+|would you\s+|i want you to\s+|i need you to\s+|help me\s+|help me to\s+)/i,
+      ''
+    )
+    // Strip common task-start verbs when followed by content
+    .replace(
+      /^(make\s+me\s+|create\s+|build\s+|add\s+|write\s+|update\s+|fix\s+|refactor\s+|implement\s+|generate\s+|set up\s+|setup\s+)/i,
+      m => m  // keep the verb — it's signal
+    )
+    .trim();
+  // Capitalise first letter, then cap at 72 chars
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1, 72);
+}
+
+/**
  * Close all open dropdowns (delegated — defined in index.js).
  * We import via window to avoid a circular dependency with connection.js.
  */
@@ -105,7 +129,7 @@ export function createSession(promptText) {
 
   sessions.unshift({
     id,
-    prompt:   promptText.slice(0, 80),
+    prompt:   _sessionTitle(promptText),
     ts:       new Date(),
     status:   'running',
     html:     '',

@@ -280,18 +280,42 @@ export function renderPhasePills() {
     item.style.setProperty('--pc', step.color);
 
     if (isDone) {
+      const toolCount = t.tools || 0;
+      const toolTxt   = toolCount > 0 ? '<span class="pp-tools">' + toolCount + '</span>' : '';
       item.innerHTML = '<span class="pp-check">✓</span>'
         + '<span class="pp-label">' + step.label + '</span>'
+        + toolTxt
         + '<span class="pp-dur">' + _fmtDur(t.end - t.start) + '</span>';
     } else if (isActive) {
       const el = t ? _fmtDur(Date.now() - t.start) : '';
+      const toolCount = t?.tools || 0;
+      const toolTxt   = toolCount > 0 ? '<span class="pp-tools">' + toolCount + '</span>' : '';
       item.innerHTML = '<span class="pp-pulse"></span>'
         + '<span class="pp-label">' + step.label + '</span>'
+        + toolTxt
         + (el ? '<span class="pp-dur pp-live">' + el + '</span>' : '');
     } else {
       item.innerHTML = '<span class="pp-num">' + (i + 1) + '</span>'
         + '<span class="pp-label">' + step.label + '</span>';
     }
+    // Clicking a done pill jumps to that phase's first divider in the feed
+    if (isDone) {
+      item.style.cursor = 'pointer';
+      item.title = 'Jump to ' + step.label + ' section';
+      item.addEventListener('click', () => {
+        const label = step.label.toUpperCase();
+        // Find the first pdlabel whose text starts with this step's phase label
+        const dividers = Array.from(messages.querySelectorAll('.pdlabel'));
+        const target   = dividers.find(el => {
+          const txt = el.textContent.trim().toUpperCase();
+          return step.phases.some(ph => txt.startsWith(ph.toUpperCase()));
+        });
+        if (target) {
+          target.closest('.pdiv')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    }
+
     phasePillsEl.appendChild(item);
   });
 }

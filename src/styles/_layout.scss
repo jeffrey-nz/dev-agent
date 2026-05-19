@@ -397,3 +397,13 @@
   margin-left: auto; font-size: 11px; color: var(--acc); opacity: 0;
   .pi-item.active & { opacity: 1; }
 }
+
+// Keyboard shortcuts mini-grid inside the settings dropdown
+.drop-shortcuts {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 3px 10px; padding: 4px 10px;
+  font-size: 11px; color: var(--mu);
+
+  span:nth-child(odd)  { font-family: var(--mono); font-size: 10px; opacity: 0.7; white-space: nowrap; }
+  span:nth-child(even) { opacity: 0.55; }
+}

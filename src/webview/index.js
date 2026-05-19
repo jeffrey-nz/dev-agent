@@ -572,6 +572,33 @@ prompt?.addEventListener('input', () => {
 
 if (btnSend) btnSend.disabled = true;
 
+// ── Rotating placeholder prompts ───────────────────────────────────────────
+// Cycles through example prompts in the textarea when the user isn't typing.
+
+const _PLACEHOLDERS = [
+  'Ask Dev Agent to build something…',
+  'Add comprehensive tests for the auth module…',
+  'Refactor the API client to use async/await…',
+  'Fix the race condition in the job queue…',
+  'Explain how the caching layer works…',
+  'Add TypeScript types to all exported functions…',
+  'Review and optimise the database queries…',
+  'Set up Docker and a CI pipeline…',
+];
+let _phIdx = 0;
+if (prompt) {
+  prompt.placeholder = _PLACEHOLDERS[0];
+  setInterval(() => {
+    if (document.activeElement === prompt || prompt.value.length > 0) return;
+    _phIdx = (_phIdx + 1) % _PLACEHOLDERS.length;
+    // Fade transition via opacity on the textarea
+    prompt.style.transition = 'none';
+    setTimeout(() => {
+      prompt.placeholder = _PLACEHOLDERS[_phIdx];
+    }, 0);
+  }, 5000);
+}
+
 // ── Global keyboard shortcuts ──────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {

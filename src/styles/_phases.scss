@@ -254,6 +254,14 @@
 .pp-check { font-size: 9px; color: inherit; flex-shrink: 0; }
 .pp-num   { font-size: 9px; font-family: var(--mono); opacity: 0.5; flex-shrink: 0; }
 
+// Tool count badge on done/active pills
+.pp-tools {
+  font-size: 8.5px; font-family: var(--mono); font-weight: 600;
+  padding: 0 4px; border-radius: 8px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--pc, var(--mu)) 14%, transparent);
+  color: var(--pc, var(--mu)); opacity: 0.75; line-height: 16px;
+}
+
 .pp-pulse {
   width: 5px; height: 5px; border-radius: 50%;
   background: var(--pc, var(--acc));

@@ -58,6 +58,7 @@ import {
   pcards, _onBridgeReady,
 } from './connection.js';
 import { debugSnapshot } from './export.js';
+import { showToast, showRateLimitToast } from './toast.js';
 import { _debugLog, MAX_DEBUG_LOG } from './state.js';
 
 // vscode API (set by index.js)
@@ -87,6 +88,16 @@ const aiSessAuxiliary = document.getElementById('ai-sess-auxiliary');
 const btnSend     = document.getElementById('btn-send');
 const btnStop     = document.getElementById('btn-stop');
 const ctxMeterEl  = document.getElementById('ctx-meter');
+
+// ── System message deduplication ──────────────────────────────────────────
+// Suppresses repeated identical messages within a short window
+
+let _lastSysMsg = { text: '', ts: 0 };
+
+// ── Streaming render throttle ──────────────────────────────────────────────
+// Batches chunk renders to ~30fps so rapid streaming doesn't thrash the DOM
+
+let _streamRenderTimer = null;
 
 // ── Debug log helper ───────────────────────────────────────────────────────
 
@@ -415,6 +426,14 @@ function _handleMessage(msg) {
         const s = window._sessions.find(x => x.id === window._runningSid);
         if (s) s.tools = (s.tools || 0) + 1;
       }
+      // Track tools per phase step (shown in phase pills at completion)
+      {
+        const times = window._stepTimes;
+        const si    = window._currentStepIdx ?? -1;
+        if (si >= 0 && times?.[si]) {
+          times[si].tools = (times[si].tools || 0) + 1;
+        }
+      }
       if (isRead) {
         if (toolChip) toolChip.style.display = 'none';
       } else {
@@ -428,10 +447,36 @@ function _handleMessage(msg) {
         } else if (isRun && msg.result && !msg.result.startsWith('[ERROR]')) {
           const out = msg.result.trimEnd();
           if (out && out.length > 2) {
-            const pre = document.createElement('pre');
-            pre.className = 'run-output';
-            pre.textContent = out.length > 240 ? out.slice(0, 240) + '\n…' : out;
-            ibt(pre);
+            if (out.length > 300) {
+              // Long output: show a collapsible block (first ~10 lines collapsed)
+              const firstLines = out.split('\n').slice(0, 8).join('\n');
+              const wrap = document.createElement('div');
+              wrap.className = 'run-output-wrap collapsed';
+              const pre = document.createElement('pre');
+              pre.className = 'run-output';
+              pre.textContent = out;
+              const toggle = document.createElement('button');
+              toggle.className = 'run-output-toggle';
+              toggle.textContent = 'Show all ' + out.split('\n').length + ' lines ▾';
+              toggle.addEventListener('click', () => {
+                const isCollapsed = wrap.classList.toggle('collapsed');
+                toggle.textContent = isCollapsed
+                  ? 'Show all ' + out.split('\n').length + ' lines ▾'
+                  : 'Show less ▴';
+              });
+              const preview = document.createElement('pre');
+              preview.className = 'run-output-preview';
+              preview.textContent = firstLines + '\n…';
+              wrap.appendChild(preview);
+              wrap.appendChild(pre);
+              wrap.appendChild(toggle);
+              ibt(wrap);
+            } else {
+              const pre = document.createElement('pre');
+              pre.className = 'run-output';
+              pre.textContent = out;
+              ibt(pre);
+            }
           }
         }
       }
@@ -468,13 +513,20 @@ function _handleMessage(msg) {
         ibt(el);
         setStreamingEl(el);
       }
-      const mdEl = _streamingEl?.querySelector('.mab-md');
-      if (mdEl) {
-        mdEl.innerHTML = renderMarkdown(newBuf);
-        if (!window._userScrolled) {
-          const messages = document.getElementById('messages');
-          messages.scrollTop = messages.scrollHeight;
-        }
+      // Throttle markdown renders to ~30fps to avoid thrashing the DOM
+      // on providers that stream very rapidly (e.g. DeepSeek)
+      if (!_streamRenderTimer) {
+        _streamRenderTimer = setTimeout(() => {
+          _streamRenderTimer = null;
+          const mdEl2 = _streamingEl?.querySelector('.mab-md');
+          if (mdEl2) {
+            mdEl2.innerHTML = renderMarkdown(_streamingBuf);
+            if (!window._userScrolled) {
+              const messages = document.getElementById('messages');
+              if (messages) messages.scrollTop = messages.scrollHeight;
+            }
+          }
+        }, 33);
       }
       break;
     }
@@ -499,6 +551,8 @@ function _handleMessage(msg) {
       }
 
       if (_streamingEl) {
+        // Flush any pending throttled render before finalizing
+        if (_streamRenderTimer) { clearTimeout(_streamRenderTimer); _streamRenderTimer = null; }
         // Finalize the streaming element — preserve the sender div (has provider badge)
         const finalText = _streamingBuf || extractAgentText(raw);
         _streamingEl.classList.remove('streaming');
@@ -548,14 +602,34 @@ function _handleMessage(msg) {
       const isOk   = !isErr && !isWarn && msg.level === 'info'
         && (msg.text || '').trimStart().startsWith('✓');
       _dlog('sys_msg [' + msg.level + '] ' + (msg.text || '').slice(0, 60));
+
+      // Suppress repeated identical messages within 4 s to reduce noise
+      const now = Date.now();
+      if (msg.text === _lastSysMsg.text && now - _lastSysMsg.ts < 4000) break;
+      _lastSysMsg = { text: msg.text || '', ts: now };
+
+      // Show non-critical info messages as toasts rather than cluttering the feed
+      if (!isErr && !isWarn && !isOk && msg.level === 'info') {
+        showToast(msg.text, 'info', 3000);
+        break;
+      }
+
       if (isErr || isWarn) hideTyping();
       addSysMsg(msg.text, isErr, isWarn, isOk);
       if (isErr) {
         setHadError(true);
+        showToast('Error: ' + (msg.text || '').slice(0, 80), 'err', 5000);
       } else if (!window._sessionLocked) {
         if (btnSend) btnSend.classList.remove('hidden');
         if (btnStop) btnStop.classList.add('hidden');
       }
+      break;
+    }
+
+    case 'rate_limit': {
+      const retryMs = msg.retryAfter ? msg.retryAfter * 1000 : 0;
+      _dlog('rate_limit retryAfter=' + (msg.retryAfter || '?'));
+      showRateLimitToast(retryMs);
       break;
     }
 

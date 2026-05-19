@@ -10,6 +10,7 @@
  */
 
 import { _debugLog } from './state.js';
+import { showToast } from './toast.js';
 
 // ── Element refs ───────────────────────────────────────────────────────────
 const messages  = document.getElementById('messages');
@@ -72,6 +73,7 @@ export function copyCode(btn) {
     const orig = btn.textContent;
     btn.textContent = '✓ Copied';
     setTimeout(() => { btn.textContent = orig; }, 1500);
+    showToast('Code copied', 'ok', 1800);
   });
 }
 
@@ -135,6 +137,7 @@ export function exportSession() {
       btn.textContent = '✓ Copied';
       setTimeout(() => { btn.textContent = orig; }, 1500);
     }
+    showToast('Session transcript copied (' + lines.length + ' entries)', 'ok', 2500);
   });
 }
 
