@@ -103,11 +103,33 @@ export function addUserMsg(text) {
   d.className = 'msg-u';
   d.innerHTML = '<div class="msg-sender" title="' + timeStr + '">You</div>'
     + '<div class="msg-body">' + esc(text) + '</div>';
+
+  // Copy button (appears on hover)
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'msg-u-copy';
+  copyBtn.title = 'Copy message';
+  copyBtn.textContent = '⎘';
+  copyBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = '✓';
+      setTimeout(() => { copyBtn.textContent = '⎘'; }, 1400);
+    }).catch(() => {});
+  });
+  d.appendChild(copyBtn);
+
+  // Double-click bubble to refill the prompt input
+  const body = d.querySelector('.msg-body');
+  if (body) {
+    body.title = 'Double-click to reuse';
+    body.addEventListener('dblclick', () => window.fillPrompt?.(text));
+  }
+
   ibt(d);
   // Collapse very long user messages
   requestAnimationFrame(() => {
-    const body = d.querySelector('.msg-body');
-    if (body && body.scrollHeight > 160) {
+    const b = d.querySelector('.msg-body');
+    if (b && b.scrollHeight > 160) {
       d.classList.add('msg-u-long');
       const btn = document.createElement('button');
       btn.className = 'msg-expand-btn';

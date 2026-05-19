@@ -38,6 +38,20 @@
   margin: 18px 0 2px;
   display: flex; flex-direction: column; align-items: flex-end;
   animation: msgIn 0.16s ease;
+  position: relative;
+
+  &:hover .msg-u-copy { opacity: 0.6; }
+}
+
+// Copy button — floats to the left of the bubble on hover
+.msg-u-copy {
+  position: absolute; top: 22px; left: 0;
+  background: var(--sidebar); border: 1px solid var(--bd); color: var(--mu);
+  border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer;
+  opacity: 0; transition: opacity 0.15s, background 0.1s; line-height: 1.4;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+
+  &:hover { opacity: 1 !important; background: var(--hov); color: var(--fg); }
 }
 
 .msg-sender {

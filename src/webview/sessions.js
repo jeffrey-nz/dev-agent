@@ -403,6 +403,22 @@ export function renderSessions() {
         window._closeDropdowns?.();
       }
     });
+
+    // Delete button — only on inactive, non-running sessions
+    if (s.id !== activeSid && s.id !== runningSid && !sessionLocked) {
+      const del = document.createElement('button');
+      del.className = 's-del';
+      del.title = 'Remove session';
+      del.textContent = '×';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        const idx = sessions.findIndex(x => x.id === s.id);
+        if (idx >= 0) sessions.splice(idx, 1);
+        renderSessions();
+      });
+      btn.appendChild(del);
+    }
+
     sessionList.appendChild(btn);
   });
 }
