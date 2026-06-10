@@ -150,21 +150,7 @@ async function activate(context) {
 
   // Pre-check bridge status so _buildHtml() can embed it — panels created
   // during activate (revive) will start in the correct screen immediately.
-  try {
-    const initStatus = await bridge.checkStatus();
-    const isReady = initStatus.running && initStatus.phase === "ready";
-    if (isReady && selectedProviders.length === 0) {
-      const active = await bridge.getActiveProviders().catch(() => []);
-      if (active.length > 0) selectedProviders = active;
-    }
-    DevAgentPanel.initialState = {
-      bridgeReady: isReady,
-      bridgePort:  bridge.resolvePort(),
-      bridgeProviders: isReady ? selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })) : [],
-    };
-  } catch {
-    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort(), bridgeProviders: [] };
-  }
+  await refreshInitialState();
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.command = "devAgent.start";
@@ -214,21 +200,7 @@ async function activate(context) {
 }
 
 async function openChatPanel() {
-  try {
-    const status = await bridge.checkStatus();
-    const isReady = status.running && status.phase === "ready";
-    if (isReady && selectedProviders.length === 0) {
-      const active = await bridge.getActiveProviders().catch(() => []);
-      if (active.length > 0) selectedProviders = active;
-    }
-    DevAgentPanel.initialState = {
-      bridgeReady: isReady,
-      bridgePort:  bridge.resolvePort(),
-      bridgeProviders: isReady ? selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })) : [],
-    };
-  } catch {
-    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort(), bridgeProviders: [] };
-  }
+  await refreshInitialState();
   DevAgentPanel.createOrReveal(extensionCtx, handleWebviewMessage);
   // Reset key so the watcher's next poll re-broadcasts bridge status to the new panel.
   _lastBridgeKey = null;
@@ -301,6 +273,26 @@ async function selectProviderQuickPick() {
     id: picked.id,
     label: picked.label,
   });
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────
+
+async function refreshInitialState() {
+  try {
+    const status = await bridge.checkStatus();
+    const isReady = status.running && status.phase === "ready";
+    if (isReady && selectedProviders.length === 0) {
+      const active = await bridge.getActiveProviders().catch(() => []);
+      if (active.length > 0) selectedProviders = active;
+    }
+    DevAgentPanel.initialState = {
+      bridgeReady: isReady,
+      bridgePort:  bridge.resolvePort(),
+      bridgeProviders: isReady ? selectedProviders.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id })) : [],
+    };
+  } catch {
+    DevAgentPanel.initialState = { bridgeReady: false, bridgePort: bridge.resolvePort(), bridgeProviders: [] };
+  }
 }
 
 // ── Bridge launch helper (for VS Code-initiated launches) ──────────────────
