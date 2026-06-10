@@ -23,7 +23,9 @@ jobs:
         run: npm ci
 
       - name: Syntax-check all source files
-        run: find src scripts bin -name '*.js' -o -name '*.mjs' -o -name '*.cjs' | xargs -n1 node --check
+        # src/webview/ uses ESM import/export and is bundled for the browser by
+        # esbuild — node --check rejects it as CJS in this commonjs package.
+        run: find src scripts bin -name '*.js' -o -name '*.mjs' -o -name '*.cjs' | grep -v 'src/webview' | xargs -n1 node --check
 
       - name: Build extension bundle
         run: npm run build
